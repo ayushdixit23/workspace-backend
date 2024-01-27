@@ -21,7 +21,7 @@ const communityRoutes = require("./routes/community");
 const topicRoutes = require("./routes/topic");
 const productRoutes = require("./routes/product");
 const postRoutes = require("./routes/post");
-const prositeRoutes = require("./routes/prosite");
+// const prositeRoutes = require("./routes/prosite");
 const commentRoutes = require("./routes/comment");
 const reviewRoutes = require("./routes/review");
 const orderRoutes = require("./routes/order");
@@ -58,7 +58,7 @@ app.use("/api", communityRoutes);
 app.use("/api", topicRoutes);
 app.use("/api", productRoutes);
 app.use("/api", postRoutes);
-app.use("/api", prositeRoutes);
+// app.use("/api", prositeRoutes);
 app.use("/api", commentRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api", orderRoutes);
@@ -78,16 +78,16 @@ app.use("/api/v1", workspacev1);
 const connectDB = async () => {
   try {
     mongoose.set("strictQuery", false);
-    // mongoose.connect(process.env.DATABASE).then(() => {
-    //   console.log("DB is connected");
-    // });
-    mongoose
-      .connect(
-        "mongodb+srv://fsayush100:shreyansh7@cluster0.mrnejwh.mongodb.net/your-database-name?retryWrites=true&w=majority"
-      )
-      .then(() => {
-        console.log("DB is connected");
-      });
+    mongoose.connect(process.env.DATABASE).then(() => {
+      console.log("DB is connected");
+    });
+    // mongoose
+    //   .connect(
+    //     "mongodb+srv://fsayush100:shreyansh7@cluster0.mrnejwh.mongodb.net/your-database-name?retryWrites=true&w=majority"
+    //   )
+    //   .then(() => {
+    //     console.log("DB is connected");
+    //   });
   } catch (err) {
     console.log(err);
   }
@@ -147,48 +147,48 @@ connectDB();
 
 //connect to App
 
-const loca = async () => {
-  try {
-    const user = await User.findById("64b84197281876c462d40978")
-    if (user) {
-      const data = {
-        AndhraPradesh: 76,
-        ArunachalPradesh: 42,
-        Assam: 59,
-        Bihar: 23,
-        Chhattisgarh: 88,
-        Goa: 12,
-        Gujarat: 34,
-        Haryana: 67,
-        HimachalPradesh: 51,
-        Jharkhand: 78,
-        Karnataka: 91,
-        Kerala: 5,
-        MadhyaPradesh: 29,
-        Maharashtra: 89,
-        Manipur: 63,
-        Meghalaya: 17,
-        Mizoram: 72,
-        Nagaland: 95,
-        Odisha: 39,
-        Punjab: 54,
-        Rajasthan: 8,
-        Sikkim: 21,
-        TamilNadu: 63,
-        Telangana: 74,
-        UttarPradesh: 98,
-        Tripura: 31,
-        Uttarakhand: 47,
-        WestBengal: 66
-      }
-      user.storeLocation = data
-    }
-    const c = await user.save()
-    console.log(c)
-  } catch (error) {
-    console.log(error)
-  }
-}
+// const loca = async () => {
+//   try {
+//     const user = await User.findById("64b84197281876c462d40978")
+//     if (user) {
+//       const data = {
+//         AndhraPradesh: 76,
+//         ArunachalPradesh: 42,
+//         Assam: 59,
+//         Bihar: 23,
+//         Chhattisgarh: 88,
+//         Goa: 12,
+//         Gujarat: 34,
+//         Haryana: 67,
+//         HimachalPradesh: 51,
+//         Jharkhand: 78,
+//         Karnataka: 91,
+//         Kerala: 5,
+//         MadhyaPradesh: 29,
+//         Maharashtra: 89,
+//         Manipur: 63,
+//         Meghalaya: 17,
+//         Mizoram: 72,
+//         Nagaland: 95,
+//         Odisha: 39,
+//         Punjab: 54,
+//         Rajasthan: 8,
+//         Sikkim: 21,
+//         TamilNadu: 63,
+//         Telangana: 74,
+//         UttarPradesh: 98,
+//         Tripura: 31,
+//         Uttarakhand: 47,
+//         WestBengal: 66
+//       }
+//       user.storeLocation = data
+//     }
+//     const c = await user.save()
+//     console.log(c)
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
 
 const PORT = 7700;
 const connectApp = () => {
