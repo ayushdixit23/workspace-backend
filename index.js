@@ -190,7 +190,7 @@ connectDB();
 //   }
 // }
 
-const PORT = 7700;
+const PORT = 7200;
 const connectApp = () => {
   try {
     app.listen(process.env.PORT, () => {
