@@ -31,26 +31,26 @@ const {
   profileStore,
   earnings,
   deletecom,
-  base64upload,
-  getimage,
-  colors,
-  getColors,
-  fonts,
-  getFonts,
-  button,
-  getButton,
-  background,
-  getBackground,
-  backColor,
-  getbackColor,
-  temp,
-  getLottie,
-  fetchData,
-  devpost,
-  lottie,
-  getDevpost,
-  getprositefull,
-  prosite,
+  // base64upload,
+  // getimage,
+  // colors,
+  // getColors,
+  // fonts,
+  // getFonts,
+  // button,
+  // getButton,
+  // background,
+  // getBackground,
+  // backColor,
+  // getbackColor,
+  // temp,
+  // getLottie,
+  // fetchData,
+  // devpost,
+  // lottie,
+  // getDevpost,
+  // getprositefull,
+  // prosite,
 } = require("../controllers/WorkspaceV1");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -99,24 +99,24 @@ router.get("/checkstore/:id", checkStore);
 router.get("/earnings/:id", earnings);
 
 // prosite route
-router.use("/uploadbase64", base64upload);
-router.post("/devpost", devpost);
-router.get("/getDevPost", getDevpost);
-router.get("/getimage", getimage);
-router.post("/colors", colors);
-router.get("/getColors", getColors);
-router.post("/fonts", fonts);
-router.get("/getFonts", getFonts);
-router.post("/button", button);
-router.get("/getButton", getButton);
-router.post("/background", background);
-router.get("/getBackground", getBackground);
-router.post("/backColor", backColor);
-router.get("/getbackColor", getbackColor);
-router.post("/temp", temp);
-router.get("/fetchData", fetchData);
-router.get("/getLottie", getLottie);
-router.post("/lottie", upload.single("lottieFile"), lottie);
-router.post("/getprositefull", getprositefull);
-router.post("/postforprosite", prosite);
+// router.use("/uploadbase64", base64upload);
+// router.post("/devpost", devpost);
+// router.get("/getDevPost", getDevpost);
+// router.get("/getimage", getimage);
+// router.post("/colors", colors);
+// router.get("/getColors", getColors);
+// router.post("/fonts", fonts);
+// router.get("/getFonts", getFonts);
+// router.post("/button", button);
+// router.get("/getButton", getButton);
+// router.post("/background", background);
+// router.get("/getBackground", getBackground);
+// router.post("/backColor", backColor);
+// router.get("/getbackColor", getbackColor);
+// router.post("/temp", temp);
+// router.get("/fetchData", fetchData);
+// router.get("/getLottie", getLottie);
+// router.post("/lottie", upload.single("lottieFile"), lottie);
+// router.post("/getprositefull", getprositefull);
+// router.post("/postforprosite", prosite);
 module.exports = router;
