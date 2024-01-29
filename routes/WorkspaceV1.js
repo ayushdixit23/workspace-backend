@@ -31,6 +31,9 @@ const {
   profileStore,
   earnings,
   deletecom,
+  membershipbuy,
+  memfinalize,
+  addbank,
   // base64upload,
   // getimage,
   // colors,
@@ -97,6 +100,9 @@ router.post(
 );
 router.get("/checkstore/:id", checkStore);
 router.get("/earnings/:id", earnings);
+router.post("/membershipbuy/:id/:memid", membershipbuy)
+router.post("/memfinalize/:id/:orderId", memfinalize)
+router.post("/addbank/:id", addbank)
 
 // prosite route
 // router.use("/uploadbase64", base64upload);

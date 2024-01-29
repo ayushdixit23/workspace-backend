@@ -23,7 +23,9 @@ const Order = require("../models/orders");
 // const Temp = require("../models/Temp");
 // const Lottie = require("../models/Lottie");
 const mongoose = require("mongoose");
+const Subscriptions = require("../models/Subscriptions");
 // const Prosite = require("../models/prosite");
+const Razorpay = require("razorpay");
 
 const minioClient = new Minio.Client({
   endPoint: "minio.grovyo.xyz",
@@ -38,6 +40,22 @@ function generateAccessToken(data) {
   });
   return access_token;
 }
+
+
+const {
+  validatePaymentVerification,
+  validateWebhookSignature,
+} = require("razorpay/dist/utils/razorpay-utils");
+const Membership = require("../models/membership");
+
+const instance = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+// const instance = new Razorpay({
+//   "key_id": "rzp_test_jXDMq8a2wN26Ss",
+//   "key_secret": "bxyQhbzS0bHNBnalbBg9QTDo"
+// });
 
 function generateRefreshToken(data) {
 
@@ -1584,6 +1602,17 @@ exports.checkStore = async (req, res) => {
 
 exports.earnings = async (req, res) => {
   try {
+    const { id } = req.params
+    const user = await User.findById(id)
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found" })
+    }
+    const earningStats = {
+      earnings: user.moneyearned,
+      pendingpayments: user.pendingpayments,
+      bank: user.bank
+    }
+    res.status(200).json({ success: true, earningStats })
   } catch (err) {
     console.log(err);
   }
@@ -1605,5 +1634,115 @@ exports.deletecom = async (req, res) => {
   }
 };
 
-// Prosite Functions
+exports.membershipbuy = async (req, res) => {
+  try {
+    const { amount } = req.body
+    const { id, memid } = req.params
+    const user = await User.findById(id)
+    const membership = await Membership.findById(memid)
+    const newamount = amount.split("₹")[1]
+    const parseAmout = Number(newamount)
 
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found" })
+    }
+    let oi = Math.floor(Math.random() * 9000000) + 1000000
+    const subs = new Subscriptions({
+      memid,
+      validity: Date.now(),
+      paymentMode: 'UPI',
+      orderId: oi,
+      purchasedby: id, amount: parseAmout
+    })
+    await subs.save()
+    // / creatign a rzp order
+
+    instance.orders.create(
+      {
+        amount: parseAmout * 100,
+        currency: "INR",
+        receipt: `receipt-mem#${oi}`,
+        notes: {
+          oi,
+          id,
+          memid,
+          amount: parseAmout,
+        },
+      },
+      function (err, order) {
+        console.log(err, order);
+        if (err) {
+          res.status(400).json({ err, success: false });
+        } else {
+          res.status(200).json({
+            oid: order.id,
+            order: oi,
+            orderCreated: order,
+            phone: user?.phone,
+            email: user?.email,
+            success: true,
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: error.message, success: false });
+  }
+}
+
+exports.memfinalize = async (req, res) => {
+  try {
+
+    const { id, orderId } = req.params
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, status, paymentMethod } = req.body
+    const user = await User.findById(id)
+    const subscription = await Subscriptions.findOne({ orderId: orderId })
+    const isValid = validatePaymentVerification(
+      { order_id: razorpay_order_id, payment_id: razorpay_payment_id },
+      razorpay_signature,
+      "bxyQhbzS0bHNBnalbBg9QTDo"
+    );
+    if (!subscription) {
+      return res.status(400).json({ success: false })
+    }
+    console.log(paymentMethod)
+    if (isValid) {
+      if (status) {
+        subscription.currentStatus = "completed"
+      }
+    }
+    else {
+      if (status == false) {
+        subscription.currentStatus = "failed"
+      }
+    }
+    subscription.paymentMode = paymentMethod
+    const newSub = await subscription.save()
+    user.activeSubscription.push(newSub._id)
+    await user.save()
+    res.status(200).json({ success: true })
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+exports.addbank = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { bankname, branchname, accountno, IFSCcode } = req.body
+    const user = await User.findById(id)
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found" })
+    }
+    user.bank.bankname = bankname
+    user.bank.branchname = branchname
+    user.bank.accountno = accountno
+    user.bank.IFSCcode = IFSCcode
+    const newuser = await user.save()
+
+    res.status(200).json({ success: true, bank: newuser.bank })
+  } catch (error) {
+    res.status(500).json({ message: error.message, success: false });
+  }
+}

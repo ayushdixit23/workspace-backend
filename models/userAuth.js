@@ -95,6 +95,7 @@ const userSchema = new mongoose.Schema(
     currentmoney: { type: Number, default: 0 },
     paymenthistory: [{ type: ObjectId, ref: "Payment" }],
     moneyearned: { type: Number, default: 0 },
+    pendingpayments: { type: Number, default: 0 },
     revenue: { type: Number, default: 0 },
     cart: [{ type: ObjectId, ref: "Cart" }],
     cartproducts: [{ type: "String" }],
@@ -274,6 +275,19 @@ const userSchema = new mongoose.Schema(
         gstamount: { type: Number },
       },
     },
+    activeSubscription: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subscriptions"
+    }],
+    bank: {
+      bankname: { type: String },
+      branchname: { type: String },
+      accountno: { type: String },
+      IFSCcode: {
+        type: String
+      }
+    }
+    // for workspace membership
   },
 
   { timestamps: true }
