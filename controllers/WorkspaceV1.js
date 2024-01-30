@@ -159,7 +159,11 @@ exports.checkid = async (req, res) => {
       const endata = await encryptaes(JSON.stringify(dat));
       res
         .status(200)
-        .json({ dp, access_token, refresh_token, endata, sessionId, success: true });
+        .json({
+
+          dp,
+          access_token, refresh_token, endata, sessionId, success: true
+        });
     } else {
       res.status(404).json({ message: "User not found", success: false });
     }
