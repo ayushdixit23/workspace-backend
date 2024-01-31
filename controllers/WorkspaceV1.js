@@ -140,13 +140,17 @@ exports.checkid = async (req, res) => {
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
-      res.cookie(`access_token_${sessionId}`, access_token, {
+      res.cookie(`excktn${sessionId}`, access_token, {
         httpOnly: true,
-        secure: true,
+        // secure: true,
       });
-      res.cookie(`refresh_token_${sessionId}`, refresh_token, {
+      res.cookie(`frhktn${sessionId}`, refresh_token, {
         httpOnly: true,
-        secure: true,
+        // secure: true,
+      });
+      res.cookie(`sessionId_${sessionId}`, sessionId, {
+        httpOnly: true,
+        // secure: true,
       });
 
       res.header("Authorization", `Bearer ${access_token}`);
@@ -194,14 +198,19 @@ exports.checkqr = async (req, res) => {
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
-      res.cookie(`access_token_${sessionId}`, access_token, {
+      res.cookie(`excktn${sessionId}`, access_token, {
         httpOnly: true,
         secure: true,
       });
-      res.cookie(`refresh_token_${sessionId}`, refresh_token, {
+      res.cookie(`frhktn${sessionId}`, refresh_token, {
         httpOnly: true,
         secure: true,
       });
+      res.cookie(`sessionId_${sessionId}`, sessionId, {
+        httpOnly: true,
+        // secure: true,
+      });
+
       res.header("Authorization", `Bearer ${access_token}`);
       const dat = {
         dp,
@@ -805,25 +814,21 @@ exports.registerstore = async (req, res) => {
       .catch((err) => {
         console.log(err.message, "-error");
       });
-    const findStore = await User.findById(userId);
-    const finaladdress = {
+    const user = await User.findById(userId);
+    const finaladdress = [{
       buildingno: buildingno,
       city: city,
       state: state,
       postal: postal,
       landmark: landmark,
-      gst: gst,
+      gst: gst ? gst : undefined,
       businesscategory: businesscategory,
       documenttype: documenttype,
       documentfile: objectName,
-    };
+    }];
 
-    if (findStore) {
-      await User.updateOne(
-        { _id: userId },
-        { $set: { storeAddress: finaladdress } }
-      );
-
+    if (user) {
+      user.storeAddress = finaladdress
       res.status(200).json({ success: true });
     } else {
       res.status(404).json({ success: false, message: "User Not Found" });
