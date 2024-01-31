@@ -804,7 +804,7 @@ exports.registerstore = async (req, res) => {
     const uuidString = uuid();
     const bucketName = "products";
     const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
-    console.log(objectName);
+
     await sharp(req.file.buffer)
       .jpeg({ quality: 50 })
       .toBuffer()
@@ -829,6 +829,7 @@ exports.registerstore = async (req, res) => {
 
     if (user) {
       user.storeAddress = finaladdress
+      await user.save()
       res.status(200).json({ success: true });
     } else {
       res.status(404).json({ success: false, message: "User Not Found" });
