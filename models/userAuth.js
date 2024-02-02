@@ -193,7 +193,7 @@ const userSchema = new mongoose.Schema(
         state: { type: String },
         postal: { type: Number },
         landmark: { type: String },
-        gst: { type: Number },
+        gst: { type: String },
         businesscategory: { type: String },
         documenttype: { type: String },
         documentfile: { type: String },

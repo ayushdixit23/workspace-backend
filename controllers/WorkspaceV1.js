@@ -198,18 +198,7 @@ exports.checkqr = async (req, res) => {
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
-      res.cookie(`excktn${sessionId}`, access_token, {
-        httpOnly: true,
-        secure: true,
-      });
-      res.cookie(`frhktn${sessionId}`, refresh_token, {
-        httpOnly: true,
-        secure: true,
-      });
-      res.cookie(`sessionId_${sessionId}`, sessionId, {
-        httpOnly: true,
-        // secure: true,
-      });
+
 
       res.header("Authorization", `Bearer ${access_token}`);
       const dat = {
@@ -1598,9 +1587,9 @@ exports.checkStore = async (req, res) => {
     if (user) {
       const store = user.storeAddress.length;
       if (store > 0) {
-        return res.status(200).json({ exist: true });
+        return res.status(200).json({ exist: true, q: "collection" });
       } else {
-        return res.status(200).json({ exist: false });
+        return res.status(200).json({ exist: false, q: "store" });
       }
     } else {
       return res.status(400).json({ message: "User Not Found" });
