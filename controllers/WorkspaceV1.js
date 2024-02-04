@@ -436,7 +436,7 @@ exports.analyticsuser = async (req, res) => {
       });
       res
         .status(200)
-        .json({ success: true, sales: user.storeStats, storeLocation: actualStoreLoc, pieChart, commerged, promerged, postmerged });
+        .json({ success: true, sales: user.storeStats, storeLocation: actualStoreLoc, pieChart, commerged, promerged: [], postmerged });
     }
   } catch (err) {
     console.log(err);
@@ -1134,11 +1134,15 @@ exports.updateproduct = async (req, res) => {
   try {
     const { name, price, desc, discountedprice, quality, image } = req.body
     const { userId, colid, productId } = req.params;
+    let imageArr
+    if (typeof image == "string") {
+      imageArr = [image];
+    }
 
     let pos = [];
     let im = []
-    for (let i = 0; i < image.length; i++) {
-      const s = image[i].split("?")[0].split("/").pop()
+    for (let i = 0; i < imageArr.length; i++) {
+      const s = imageArr[i].split("?")[0].split("/").pop()
       im.push(s)
     }
     if (req.files.length > 0) {
@@ -1172,7 +1176,6 @@ exports.updateproduct = async (req, res) => {
         }
       }
     }
-
     const collection = await Collection.findById(colid);
 
     if (!collection) {
@@ -1191,6 +1194,7 @@ exports.updateproduct = async (req, res) => {
     if (!productid) {
       res.status(404).json({ message: "Product not found", success: false });
     } else {
+
       const product = await Product.findById(productId)
       for (let i = 0; i < product.images.length; i++) {
         for (let j = 0; j < im.length; j++) {
@@ -1205,6 +1209,8 @@ exports.updateproduct = async (req, res) => {
       product.discountedprice = discountedprice
       product.quality = quality
       product.images = pos
+
+      console.log(pos)
       await product.save()
       res.status(200).json({ success: true });
     }
@@ -1222,7 +1228,7 @@ exports.fetchallorders = async (req, res) => {
       const orders = await Order.find({ sellerId: user._id })
         .populate("productId")
         .populate("buyerId", "fullname")
-        .limit(2);
+        .limit(20);
 
       const pendingOrders = orders.filter(
         (order) => order.currentStatus === "pending"
