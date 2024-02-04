@@ -804,17 +804,31 @@ exports.registerstore = async (req, res) => {
         console.log(err.message, "-error");
       });
     const user = await User.findById(userId);
-    const finaladdress = [{
-      buildingno: buildingno,
-      city: city,
-      state: state,
-      postal: postal,
-      landmark: landmark,
-      gst: gst ? gst : undefined,
-      businesscategory: businesscategory,
-      documenttype: documenttype,
-      documentfile: objectName,
-    }];
+    let finaladdress;
+    if (gst) {
+      finaladdress = [{
+        buildingno: buildingno,
+        city: city,
+        state: state,
+        postal: postal,
+        landmark: landmark,
+        gst: gst,
+        businesscategory: businesscategory,
+        documenttype: documenttype.toString(),
+        documentfile: objectName,
+      }];
+    } else {
+      finaladdress = [{
+        buildingno: buildingno,
+        city: city,
+        state: state,
+        postal: postal,
+        landmark: landmark,
+        businesscategory: businesscategory,
+        documenttype: documenttype.toString(),
+        documentfile: objectName,
+      }];
+    }
 
     if (user) {
       user.storeAddress = finaladdress
