@@ -777,6 +777,9 @@ exports.registerstore = async (req, res) => {
 
   try {
     const { userId } = req.params;
+    console.log(userId, "id", typeof userId)
+    console.log(req.body, "body")
+
     const {
       buildingno,
       postal,
@@ -804,6 +807,7 @@ exports.registerstore = async (req, res) => {
         console.log(err.message, "-error");
       });
     const user = await User.findById(userId);
+    console.log(user, "user")
     let finaladdress;
     if (gst) {
       finaladdress = [{
