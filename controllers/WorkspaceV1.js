@@ -1137,8 +1137,10 @@ exports.updateproduct = async (req, res) => {
     let imageArr
     if (typeof image == "string") {
       imageArr = [image];
+    } else {
+      imageArr = image
     }
-
+    console.log(imageArr)
     let pos = [];
     let im = []
     for (let i = 0; i < imageArr.length; i++) {
@@ -1215,6 +1217,7 @@ exports.updateproduct = async (req, res) => {
       res.status(200).json({ success: true });
     }
   } catch (e) {
+    console.log(e)
     res.status(400).json({ message: e.message, success: false });
   }
 };
