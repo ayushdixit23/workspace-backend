@@ -223,17 +223,14 @@ exports.checkqr = async (req, res) => {
 
 // email
 exports.checkemail = async (req, res) => {
+  const { email, password } = req.body;
   try {
-    const { email, passw } = req.body
-
-    const user = await User.findOne({ email })
+    const user = await User.findOne({ email: email, passw: password });
     if (!user) {
-      return res.status(400).json({ success: false, message: "User not found" })
-    }
-    if (!passw) {
-      return res.status(400).json({ success: false, message: "Enter Password" })
-    }
-    if (passw === user.passw) {
+      res
+        .status(203)
+        .json({ message: "User not found", success: true, userexists: false });
+    } else {
       const dp = await generatePresignedUrl(
         "images",
         user.profilepic.toString(),
@@ -249,13 +246,21 @@ exports.checkemail = async (req, res) => {
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
-      return res.status(200).json({ success: true, access_token, sessionId, refresh_token })
-    } else {
-      return res.status(400).json({ success: false, message: "Invalid Details" })
+      res.status(200).json({
+        message: "Account exists",
+        access_token,
+        sessionId,
+        refresh_token,
+        success: true,
+        userexists: true,
+      });
     }
-  } catch (err) {
-    console.log(err);
-    res.status(400).json({ success: false });
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({
+      message: "Something went wrong...",
+      success: false,
+    });
   }
 };
 
@@ -400,13 +405,11 @@ exports.analyticsuser = async (req, res) => {
       const locstore = storeLocationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
 
       const actualStoreLoc = locstore.map((d, i) => {
-
         return {
           state: d?.state,
           value: Math.round((d?.value / user.salesCount) * 100)
         }
       })
-
 
       const posts = await Post.find({ sender: user._id.toString() }).populate(
         "community",
