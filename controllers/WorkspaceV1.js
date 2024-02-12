@@ -1300,10 +1300,9 @@ exports.fetchallorders = async (req, res) => {
 };
 
 exports.profileinfo = async (req, res) => {
-  console.log(req.body);
   try {
     const { id } = req.params;
-    const { name, phone, email, username } = req.body;
+    const { name, phone, email, username, bio, date } = req.body;
     const fun = async () => {
       const userChange = await User.findOne({
         username,
@@ -1324,11 +1323,28 @@ exports.profileinfo = async (req, res) => {
     };
     const [newUsername, newPhone, newEmail] = await fun();
     const user = await User.findById(id);
+    const uuidString = uuid();
     if (user) {
+      if (req.file) {
+        const bucketName = "images";
+        const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
+        await sharp(req.file.buffer)
+          .jpeg({ quality: 50 })
+          .toBuffer()
+          .then(async (data) => {
+            await minioClient.putObject(bucketName, objectName, data);
+          })
+          .catch((err) => {
+            console.log(err.message, "-Sharp error");
+          });
+        user.profilepic = objectName
+      }
       user.fullname = name;
       user.phone = newPhone;
       user.email = newEmail;
       user.username = newUsername;
+      user.desc = bio;
+      user.DOB = date;
       await user.save();
       const sessionId = generateSessionId()
       const dp = await generatePresignedUrl(
@@ -1344,7 +1360,8 @@ exports.profileinfo = async (req, res) => {
         sessionId
       };
       const access_token = generateAccessToken(data)
-      return res.status(200).json({ success: true, sessionId, access_token });
+      const refresh_token = generateRefreshToken(data)
+      return res.status(200).json({ success: true, sessionId, refresh_token, access_token });
     } else {
       res.status(400).json({ message: "User Not Found", success: false });
     }
@@ -1397,16 +1414,24 @@ exports.getprofileinfo = async (req, res) => {
     const { id } = req.params;
     const user = await User.findById(id);
     if (user) {
+      const dp = await generatePresignedUrl(
+        "images",
+        user.profilepic.toString(),
+        60 * 60
+      );
       const data = {
         name: user?.fullname,
         email: user?.email,
         phone: user?.phone,
         username: user?.username,
-        storeAddress: user?.storeAddress[0]?.buildingno,
-        city: user?.storeAddress[0]?.city,
-        state: user?.storeAddress[0]?.state,
-        postalCode: user?.storeAddress[0]?.postal,
-        landmark: user?.storeAddress[0]?.landmark,
+        // storeAddress: user?.storeAddress[0]?.buildingno,
+        // city: user?.storeAddress[0]?.city,
+        // state: user?.storeAddress[0]?.state,
+        // postalCode: user?.storeAddress[0]?.postal,
+        // landmark: user?.storeAddress[0]?.landmark,
+        image: dp,
+        date: user.DOB,
+        bio: user.desc
       };
       res.status(200).json({ success: true, data });
     } else {

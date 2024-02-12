@@ -86,7 +86,7 @@ router.get("/getaproduct/:id/:productId", getaproduct);
 router.get("/fetchallorders/:id", fetchallorders);
 router.get("/getposts/:id/:comid", getposts);
 router.get("/getprofileinfo/:id", getprofileinfo);
-router.post("/profileinfo/:id", profileinfo);
+router.post("/profileinfo/:id", upload.single("image"), profileinfo);
 router.post("/profilestore/:id", profileStore);
 router.post("/createtopic/:userId", createtopic);
 router.post("/delete/:comid", deletecom);
