@@ -344,7 +344,7 @@ exports.analyticsuser = async (req, res) => {
       );
 
       const commerged = community.map((f, i) => {
-        const reversedStats = f?.stats.reverse().slice(0, 7)
+        const reversedStats = f?.stats.reverse().slice(0, 8)
         const locationToSend = Object.entries(f.location).map(([state, value]) => ({ state, value }));
         const loc = locationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
         const actualloc = loc.map((d, i) => {
