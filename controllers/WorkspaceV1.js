@@ -32,6 +32,7 @@ const fs = require("fs");
 require("dotenv").config();
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
+const PRODUCT_BUCKET = process.env.PRODUCT_BUCKET;
 
 const s3 = new S3Client({
   region: process.env.BUCKET_REGION,
