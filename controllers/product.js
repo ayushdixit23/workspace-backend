@@ -24,6 +24,7 @@ require("dotenv").config();
 const axios = require("axios");
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
+const PRODUCT_BUCKET = process.env.PRODUCT_BUCKET;
 
 const s3 = new S3Client({
   region: process.env.BUCKET_REGION,
@@ -87,7 +88,7 @@ exports.create = async (req, res) => {
           a = objectName;
           await s3.send(
             new PutObjectCommand({
-              Bucket: BUCKET_NAME,
+              Bucket: PRODUCT_BUCKET,
               Key: objectName,
               Body: image1.buffer,
               ContentType: image1.mimetype,
@@ -107,7 +108,7 @@ exports.create = async (req, res) => {
           b = objectName;
           await s3.send(
             new PutObjectCommand({
-              Bucket: BUCKET_NAME,
+              Bucket: PRODUCT_BUCKET,
               Key: objectName,
               Body: image2.buffer,
               ContentType: image2.mimetype,
@@ -127,7 +128,7 @@ exports.create = async (req, res) => {
           c = objectName;
           await s3.send(
             new PutObjectCommand({
-              Bucket: BUCKET_NAME,
+              Bucket: PRODUCT_BUCKET,
               Key: objectName,
               Body: image3.buffer,
               ContentType: image3.mimetype,
@@ -147,7 +148,7 @@ exports.create = async (req, res) => {
           d = objectName;
           await s3.send(
             new PutObjectCommand({
-              Bucket: BUCKET_NAME,
+              Bucket: PRODUCT_BUCKET,
               Key: objectName,
               Body: image4.buffer,
               ContentType: image4.mimetype,

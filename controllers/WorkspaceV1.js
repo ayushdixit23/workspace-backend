@@ -993,7 +993,7 @@ exports.fetchProduct = async (req, res) => {
           const dps = await Promise.all(
             find.products.map(async (product) => {
               const a =
-                process.env.URL + product.images[0].content;
+                process.env.PRODUCT_URL + product.images[0].content;
 
               return a
             })
@@ -1051,9 +1051,9 @@ exports.createproduct = async (req, res) => {
           const uuidString = uuid();
           const bucketName = "products";
           const objectName = `${Date.now()}_${uuidString}`;
-          const result = await s3.send(
+          await s3.send(
             new PutObjectCommand({
-              Bucket: BUCKET_NAME,
+              Bucket: PRODUCT_BUCKET,
               Key: objectName,
               Body: req.files[i].buffer,
               ContentType: req.files[i].mimetype,
@@ -1198,7 +1198,7 @@ exports.updateproduct = async (req, res) => {
     if (req.files && req.files.length > 0) {
       for (let i = 0; i < req?.files?.length; i++) {
         const uuidString = uuid();
-        const bucketName = "products";
+
         const objectName = `${Date.now()}_${uuidString}`;
         const objectId = mongoose.Types.ObjectId();
 
@@ -1225,7 +1225,7 @@ exports.updateproduct = async (req, res) => {
 
         const result = await s3.send(
           new PutObjectCommand({
-            Bucket: BUCKET_NAME,
+            Bucket: PRODUCT_BUCKET,
             Key: objectName,
             Body: req.files[i].buffer,
             ContentType: req.files[i].mimetype,
@@ -1315,7 +1315,7 @@ exports.fetchallorders = async (req, res) => {
             const l = await Promise.all(
               d?.productId?.map(async (f, il) => {
                 const a =
-                  process.env.URL + d?.productId[il]?.images[0]?.content;
+                  process.env.PRODUCT_URL + d?.productId[il]?.images[0]?.content;
 
                 return a
                 // generatePresignedUrl(
