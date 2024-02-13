@@ -15,6 +15,7 @@ const fs = require("fs");
 require("dotenv").config();
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
+const POST_BUCKET = process.env.POST_BUCKET;
 
 const s3 = new S3Client({
   region: process.env.BUCKET_REGION,
@@ -986,20 +987,26 @@ exports.getallposts = async (req, res) => {
         }
       }
       for (let i = 0; i < posts.length; i++) {
-        const a = await generatePresignedUrl(
-          "posts",
-          posts[i].post.toString(),
-          60 * 60
-        );
+        // const a = await generatePresignedUrl(
+        //   "posts",
+        //   posts[i].post.toString(),
+        //   60 * 60
+        // );
+        // content.push(a);
+        const a =
+          process.env.POST_URL + posts[i].post;
         content.push(a);
       }
       for (let i = 0; i < posts.length; i++) {
-        const a = await generatePresignedUrl(
-          "images",
-          posts[i].sender.profilepic.toString(),
-          60 * 60
-        );
+        // const a = await generatePresignedUrl(
+        //   "images",
+        //   posts[i].sender.profilepic.toString(),
+        //   60 * 60
+        // );
+        const a =
+          process.env.POST_URL + posts[i].sender.profilepic;
         dps.push(a);
+
       }
       let eng = []
       await posts.map((p, i) => {
@@ -1063,19 +1070,23 @@ exports.getallposts = async (req, res) => {
         }
       }
       for (let i = 0; i < posts.length; i++) {
-        const a = await generatePresignedUrl(
-          "posts",
-          posts[i].post[0].content.toString(),
-          60 * 60
-        );
+        // const a = await generatePresignedUrl(
+        //   "posts",
+        //   posts[i].post[0].content.toString(),
+        //   60 * 60
+        // );
+        const a =
+          process.env.POST_URL + posts[i].post[0].content;
         content.push(a);
       }
       for (let i = 0; i < posts.length; i++) {
-        const a = await generatePresignedUrl(
-          "images",
-          posts[i].sender.profilepic.toString(),
-          60 * 60
-        );
+        // const a = await generatePresignedUrl(
+        //   "images",
+        //   posts[i].sender.profilepic.toString(),
+        //   60 * 60
+        // );
+        const a =
+          process.env.POST_URL + posts[i].sender.profilepic;
         dps.push(a);
       }
       let eng = []
@@ -1083,8 +1094,6 @@ exports.getallposts = async (req, res) => {
         let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
         eng.push(final)
       })
-
-
       res.status(200).json({
         liked,
         posts,
@@ -1157,7 +1166,7 @@ exports.postanything = async (req, res) => {
           }`;
         const result = await s3.send(
           new PutObjectCommand({
-            Bucket: BUCKET_NAME,
+            Bucket: POST_BUCKET,
             Key: objectName,
             Body: req.files[i].buffer,
             ContentType: req.files[i].mimetype,

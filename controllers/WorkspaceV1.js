@@ -33,6 +33,7 @@ require("dotenv").config();
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
 const PRODUCT_BUCKET = process.env.PRODUCT_BUCKET;
+const POST_BUCKET = process.env.POST_BUCKET;
 
 const s3 = new S3Client({
   region: process.env.BUCKET_REGION,
@@ -132,18 +133,9 @@ const encryptaes = async (data) => {
   }
 };
 
-
-const enc = () => {
-  const num = "911234567891"
-  const encn = encryptaes(num)
-  console.log(encn)
-}
-enc()
-
 // for checking if user exists
 exports.checkid = async (req, res) => {
   try {
-    console.log(req.body)
     const { phone } = req.body;
     const dphone = await decryptaes(phone);
     const user = await User.findOne({ phone: dphone });
@@ -353,7 +345,7 @@ exports.analyticsuser = async (req, res) => {
       const dps = await Promise.all(
         community.map(async (d) => {
           const a =
-            process.env.URL + d?.dp;
+            process.env.POST_URL + d?.dp;
           // const presignedUrl = await generatePresignedUrl(
           //   "images",
           //   dp,
@@ -400,7 +392,7 @@ exports.analyticsuser = async (req, res) => {
       const productdps = await Promise.all(
         product.map(async (f) => {
           const dp =
-            process.env.URL + f?.images[0].content;
+            process.env.PRODUCT_URL + f?.images[0].content;
           // const dp = f?.images[0].content?.toString();
           // const presignedUrl = await generatePresignedUrl(
           //   "products",
@@ -441,7 +433,7 @@ exports.analyticsuser = async (req, res) => {
       const postsdps = await Promise.all(
         posts.map(async (f) => {
           const dp =
-            process.env.URL + f?.post[0].content;
+            process.env.POST_URL + f?.post[0].content;
           // const dp = f?.post[0].content?.toString();
           // const presignedUrl = await generatePresignedUrl("posts", dp, 60 * 60);
           return dp;
@@ -464,7 +456,7 @@ exports.analyticsuser = async (req, res) => {
       });
       res
         .status(200)
-        .json({ success: true, sales: user.storeStats, storeLocation: actualStoreLoc, pieChart, commerged, promerged: [], postmerged });
+        .json({ success: true, sales: user.storeStats, storeLocation: actualStoreLoc, pieChart, commerged, promerged, postmerged });
     }
   } catch (err) {
     console.log(err);
@@ -512,7 +504,7 @@ exports.allcoms = async (req, res) => {
     let avgeng = [];
     for (let i = 0; i < Co.length; i++) {
       const abc =
-        process.env.URL + Co[i].dp;
+        process.env.POST_URL + Co[i].dp;
       // const a = await generatePresignedUrl(
       //   "images",
       //   Co[i].dp.toString(),
@@ -577,7 +569,7 @@ exports.createcom = async (req, res) => {
       a = objectName;
       const result = await s3.send(
         new PutObjectCommand({
-          Bucket: BUCKET_NAME,
+          Bucket: POST_BUCKET,
           Key: objectName,
           Body: req.files[i].buffer,
           ContentType: req.files[i].mimetype,
@@ -1156,7 +1148,7 @@ exports.getaproduct = async (req, res) => {
       for (let i = 0; i < product.images.length; i++) {
         if (product.images[i] !== null) {
           const a =
-            process.env.URL + product.images[i].content
+            process.env.PRODUCT_URL + product.images[i].content
           // const a = await generatePresignedUrl(
           //   "products",
           //   product.images[i].content.toString(),
@@ -1664,7 +1656,7 @@ exports.updatecommunity = async (req, res) => {
         //   });
         const result = await s3.send(
           new PutObjectCommand({
-            Bucket: BUCKET_NAME,
+            Bucket: POST_BUCKET,
             Key: objectName,
             Body: req.file.buffer,
             ContentType: req.file.mimetype,
