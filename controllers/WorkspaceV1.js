@@ -26,6 +26,20 @@ const mongoose = require("mongoose");
 const Subscriptions = require("../models/Subscriptions");
 // const Prosite = require("../models/prosite");
 const Razorpay = require("razorpay");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/cloudfront-signer");
+const fs = require("fs");
+require("dotenv").config();
+
+const BUCKET_NAME = process.env.BUCKET_NAME;
+
+const s3 = new S3Client({
+  region: process.env.BUCKET_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+  },
+});
 
 const minioClient = new Minio.Client({
   endPoint: "minio.grovyo.xyz",
@@ -117,6 +131,14 @@ const encryptaes = async (data) => {
   }
 };
 
+
+const enc = () => {
+  const num = "911234567891"
+  const encn = encryptaes(num)
+  console.log(encn)
+}
+enc()
+
 // for checking if user exists
 exports.checkid = async (req, res) => {
   try {
@@ -126,11 +148,9 @@ exports.checkid = async (req, res) => {
     const user = await User.findOne({ phone: dphone });
     if (user) {
       const sessionId = generateSessionId();
-      const dp = await generatePresignedUrl(
-        "images",
-        user.profilepic.toString(),
-        60 * 60
-      );
+
+      const dp =
+        process.env.URL + user.profilepic;
       const data = {
         dp,
         fullname: user.fullname,
@@ -184,11 +204,8 @@ exports.checkqr = async (req, res) => {
     const user = await User.findById(id);
     if (user) {
       const sessionId = generateSessionId();
-      const dp = await generatePresignedUrl(
-        "images",
-        user.profilepic.toString(),
-        60 * 60
-      );
+      const dp =
+        process.env.URL + user.profilepic;
       const data = {
         dp,
         fullname: user.fullname,
@@ -231,11 +248,9 @@ exports.checkemail = async (req, res) => {
         .status(203)
         .json({ message: "User not found", success: true, userexists: false });
     } else {
-      const dp = await generatePresignedUrl(
-        "images",
-        user.profilepic.toString(),
-        60 * 60
-      );
+
+      const dp =
+        process.env.URL + user.profilepic;
       const sessionId = generateSessionId()
       const data = {
         dp,
@@ -286,11 +301,14 @@ exports.refresh = async (req, res) => {
           }
           const sessionId = payload.sessionId;
           const user = await User.findById(payload.id);
-          const dp = await generatePresignedUrl(
-            "images",
-            user.profilepic.toString(),
-            60 * 60
-          );
+          // const dp = await generatePresignedUrl(
+          //   "images",
+          //   user.profilepic.toString(),
+          //   60 * 60
+          // );
+
+          const dp =
+            process.env.URL + user.profilepic;
           if (!user) {
             return res
               .status(400)
@@ -333,13 +351,15 @@ exports.analyticsuser = async (req, res) => {
 
       const dps = await Promise.all(
         community.map(async (d) => {
-          const dp = d?.dp?.toString();
-          const presignedUrl = await generatePresignedUrl(
-            "images",
-            dp,
-            60 * 60
-          );
-          return presignedUrl;
+          const a =
+            process.env.URL + d?.dp;
+          // const presignedUrl = await generatePresignedUrl(
+          //   "images",
+          //   dp,
+          //   60 * 60
+          // );
+
+          return a;
         })
       );
 
@@ -378,13 +398,15 @@ exports.analyticsuser = async (req, res) => {
       const product = await Product.find({ creator: user._id.toString() }).sort({ itemsold: -1 }).limit(5)
       const productdps = await Promise.all(
         product.map(async (f) => {
-          const dp = f?.images[0].content?.toString();
-          const presignedUrl = await generatePresignedUrl(
-            "products",
-            dp,
-            60 * 60
-          );
-          return presignedUrl;
+          const dp =
+            process.env.URL + f?.images[0].content;
+          // const dp = f?.images[0].content?.toString();
+          // const presignedUrl = await generatePresignedUrl(
+          //   "products",
+          //   dp,
+          //   60 * 60
+          // );
+          return dp;
         })
       );
 
@@ -417,9 +439,11 @@ exports.analyticsuser = async (req, res) => {
       );
       const postsdps = await Promise.all(
         posts.map(async (f) => {
-          const dp = f?.post[0].content?.toString();
-          const presignedUrl = await generatePresignedUrl("posts", dp, 60 * 60);
-          return presignedUrl;
+          const dp =
+            process.env.URL + f?.post[0].content;
+          // const dp = f?.post[0].content?.toString();
+          // const presignedUrl = await generatePresignedUrl("posts", dp, 60 * 60);
+          return dp;
         })
       );
 
@@ -486,12 +510,14 @@ exports.allcoms = async (req, res) => {
     const dps = [];
     let avgeng = [];
     for (let i = 0; i < Co.length; i++) {
-      const a = await generatePresignedUrl(
-        "images",
-        Co[i].dp.toString(),
-        60 * 60
-      );
-      dps.push(a);
+      const abc =
+        process.env.URL + Co[i].dp;
+      // const a = await generatePresignedUrl(
+      //   "images",
+      //   Co[i].dp.toString(),
+      //   60 * 60
+      // );
+      dps.push(abc);
     }
     const Com = Co.reverse();
     for (let i = 0; i < Co.length; i++) {
@@ -545,14 +571,16 @@ exports.createcom = async (req, res) => {
   } else if (iddata != undefined) {
     try {
       const user = await User.findById(userId);
-      const bucketName = "images";
+      // const bucketName = "images";
       const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
       a = objectName;
-      await minioClient.putObject(
-        bucketName,
-        objectName,
-        image.buffer,
-        image.buffer.length
+      const result = await s3.send(
+        new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: objectName,
+          Body: req.files[i].buffer,
+          ContentType: req.files[i].mimetype,
+        })
       );
       const community = new Community({
         title,
@@ -675,11 +703,13 @@ exports.createcom = async (req, res) => {
       const bucketName = "images";
       const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
       a = objectName;
-      await minioClient.putObject(
-        bucketName,
-        objectName,
-        image.buffer,
-        image.buffer.length
+      const result = await s3.send(
+        new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: objectName,
+          Body: req.files[i].buffer,
+          ContentType: req.files[i].mimetype,
+        })
       );
       const community = new Community({
         title,
@@ -748,6 +778,8 @@ exports.createcom = async (req, res) => {
   }
 };
 
+
+
 exports.getposts = async (req, res) => {
   try {
     const { id, comid } = req.params;
@@ -800,15 +832,25 @@ exports.registerstore = async (req, res) => {
     const bucketName = "products";
     const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
 
-    await sharp(req.file.buffer)
-      .jpeg({ quality: 50 })
-      .toBuffer()
-      .then(async (data) => {
-        await minioClient.putObject(bucketName, objectName, data);
+    // await sharp(req.file.buffer)
+    //   .jpeg({ quality: 50 })
+    //   .toBuffer()
+    //   .then(async (data) => {
+    //     await minioClient.putObject(bucketName, objectName, data);
+    //   })
+    //   .catch((err) => {
+    //     console.log(err.message, "-error");
+    //   });
+
+    const result = await s3.send(
+      new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: objectName,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
       })
-      .catch((err) => {
-        console.log(err.message, "-error");
-      });
+    );
+
     const user = await User.findById(userId);
     console.log(user, "user")
     let finaladdress;
@@ -862,15 +904,23 @@ exports.createCollection = async (req, res) => {
       const bucketName = "products";
       const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
       console.log(objectName);
-      await sharp(req.file.buffer)
-        .jpeg({ quality: 50 })
-        .toBuffer()
-        .then(async (data) => {
-          await minioClient.putObject(bucketName, objectName, data);
+      // await sharp(req.file.buffer)
+      //   .jpeg({ quality: 50 })
+      //   .toBuffer()
+      //   .then(async (data) => {
+      //     await minioClient.putObject(bucketName, objectName, data);
+      //   })
+      //   .catch((err) => {
+      //     console.log(err.message, "-error");
+      //   });
+      const result = await s3.send(
+        new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: objectName,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
         })
-        .catch((err) => {
-          console.log(err.message, "-error");
-        });
+      );
       data = {
         name: name,
         category: category,
@@ -942,8 +992,10 @@ exports.fetchProduct = async (req, res) => {
         if (find) {
           const dps = await Promise.all(
             find.products.map(async (product) => {
-              const imageUrl = product.images[0].content.toString();
-              return await generatePresignedUrl("products", imageUrl, 60 * 60);
+              const a =
+                process.env.URL + product.images[0].content;
+
+              return a
             })
           );
           const productsWithDps = find.products.map((product, index) => {
@@ -999,29 +1051,17 @@ exports.createproduct = async (req, res) => {
           const uuidString = uuid();
           const bucketName = "products";
           const objectName = `${Date.now()}_${uuidString}`;
-          if (req.files[i].fieldname === "video") {
-            await minioClient.putObject(
-              bucketName,
-              objectName,
-              req.files[i].buffer,
-              req.files[i].size,
-              req.files[i].mimetype
-            );
-            pos.push({ content: objectName, type: req.files[i].mimetype });
-          } else {
-            await sharp(req.files[i].buffer)
-              .jpeg({ quality: 50 })
-              .toBuffer()
-              .then(async (data) => {
-                await minioClient.putObject(bucketName, objectName, data);
-              })
-              .catch((err) => {
-                console.log(err.message, "-error");
-              });
-
-            pos.push({ content: objectName, type: req.files[i].mimetype });
-          }
+          const result = await s3.send(
+            new PutObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+          pos.push({ content: objectName, type: req.files[i].mimetype });
         }
+
 
         const p = new Product({
           name,
@@ -1114,11 +1154,13 @@ exports.getaproduct = async (req, res) => {
       }
       for (let i = 0; i < product.images.length; i++) {
         if (product.images[i] !== null) {
-          const a = await generatePresignedUrl(
-            "products",
-            product.images[i].content.toString(),
-            60 * 60
-          );
+          const a =
+            process.env.URL + product.images[i].content
+          // const a = await generatePresignedUrl(
+          //   "products",
+          //   product.images[i].content.toString(),
+          //   60 * 60
+          // );
           urls.push(a);
         }
       }
@@ -1133,6 +1175,8 @@ exports.getaproduct = async (req, res) => {
 };
 
 // update product
+
+// have to check again
 exports.updateproduct = async (req, res) => {
   try {
     const { name, price, desc, discountedprice, quality, image } = req.body
@@ -1147,7 +1191,8 @@ exports.updateproduct = async (req, res) => {
     let pos = [];
     let im = []
     for (let i = 0; i < imageArr.length; i++) {
-      const s = imageArr[i].split("?")[0].split("/").pop()
+      // const s = imageArr[i].split("?")[0].split("/").pop()
+      const s = imageArr[i].split("/").pop()
       im.push(s)
     }
     if (req.files && req.files.length > 0) {
@@ -1157,28 +1202,38 @@ exports.updateproduct = async (req, res) => {
         const objectName = `${Date.now()}_${uuidString}`;
         const objectId = mongoose.Types.ObjectId();
 
-        if (req.files[i].fieldname === "video") {
-          await minioClient.putObject(
-            bucketName,
-            objectName,
-            req.files[i].buffer,
-            req.files[i].size,
-            req.files[i].mimetype
-          );
-          pos.push({ content: objectName, type: req.files[i].mimetype, _id: objectId });
-        } else {
-          await sharp(req.files[i].buffer)
-            .jpeg({ quality: 50 })
-            .toBuffer()
-            .then(async (data) => {
-              await minioClient.putObject(bucketName, objectName, data);
-            })
-            .catch((err) => {
-              console.log(err.message, "-error");
-            });
+        // if (req.files[i].fieldname === "video") {
+        //   await minioClient.putObject(
+        //     bucketName,
+        //     objectName,
+        //     req.files[i].buffer,
+        //     req.files[i].size,
+        //     req.files[i].mimetype
+        //   );
+        //   pos.push({ content: objectName, type: req.files[i].mimetype, _id: objectId });
+        // } else {
+        //   await sharp(req.files[i].buffer)
+        //     .jpeg({ quality: 50 })
+        //     .toBuffer()
+        //     .then(async (data) => {
+        //       await minioClient.putObject(bucketName, objectName, data);
+        //     })
+        //     .catch((err) => {
+        //       console.log(err.message, "-error");
+        //     });
 
-          pos.push({ content: objectName, type: req.files[i].mimetype, _id: objectId });
-        }
+
+        const result = await s3.send(
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: objectName,
+            Body: req.files[i].buffer,
+            ContentType: req.files[i].mimetype,
+          })
+        );
+
+        pos.push({ content: objectName, type: req.files[i].mimetype, _id: objectId });
+        // }
       }
     }
     const collection = await Collection.findById(colid);
@@ -1259,11 +1314,15 @@ exports.fetchallorders = async (req, res) => {
           if (d?.productId?.length > 0) {
             const l = await Promise.all(
               d?.productId?.map(async (f, il) => {
-                return generatePresignedUrl(
-                  "products",
-                  d?.productId[il]?.images[0]?.content?.toString(),
-                  60 * 60
-                );
+                const a =
+                  process.env.URL + d?.productId[il]?.images[0]?.content;
+
+                return a
+                // generatePresignedUrl(
+                //   "products",
+                //   d?.productId[il]?.images[0]?.content?.toString(),
+                //   60 * 60
+                // );
               })
             );
             return l;
@@ -1328,15 +1387,23 @@ exports.profileinfo = async (req, res) => {
       if (req.file) {
         const bucketName = "images";
         const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
-        await sharp(req.file.buffer)
-          .jpeg({ quality: 50 })
-          .toBuffer()
-          .then(async (data) => {
-            await minioClient.putObject(bucketName, objectName, data);
+        // await sharp(req.file.buffer)
+        //   .jpeg({ quality: 50 })
+        //   .toBuffer()
+        //   .then(async (data) => {
+        //     await minioClient.putObject(bucketName, objectName, data);
+        //   })
+        //   .catch((err) => {
+        //     console.log(err.message, "-Sharp error");
+        //   });
+        const result = await s3.send(
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: objectName,
+            Body: req.file.buffer,
+            ContentType: req.file.mimetype,
           })
-          .catch((err) => {
-            console.log(err.message, "-Sharp error");
-          });
+        );
         user.profilepic = objectName
       }
       user.fullname = name;
@@ -1347,11 +1414,13 @@ exports.profileinfo = async (req, res) => {
       user.DOB = date;
       await user.save();
       const sessionId = generateSessionId()
-      const dp = await generatePresignedUrl(
-        "images",
-        user.profilepic.toString(),
-        60 * 60
-      );
+      const dp =
+        process.env.URL + user.profilepic;
+      // const dp = await generatePresignedUrl(
+      //   "images",
+      //   user.profilepic.toString(),
+      //   60 * 60
+      // );
       const data = {
         dp,
         fullname: user.fullname,
@@ -1371,54 +1440,56 @@ exports.profileinfo = async (req, res) => {
   }
 };
 
-exports.profileStore = async (req, res) => {
-  console.log(req.body);
-  try {
-    const { id } = req.params;
-    const { storeAddress, city, landmark, state, postalCode } = req.body;
+// exports.profileStore = async (req, res) => {
+//   console.log(req.body);
+//   try {
+//     const { id } = req.params;
+//     const { storeAddress, city, landmark, state, postalCode } = req.body;
 
-    const user = await User.findById(id);
-    if (user) {
-      user.storeAddress[0].buildingno = storeAddress;
-      user.storeAddress[0].state = state;
-      user.storeAddress[0].postal = postalCode;
-      user.storeAddress[0].city = city;
-      user.storeAddress[0].landmark = landmark;
-      await user.save();
-      const sessionId = generateSessionId();
-      const dp = await generatePresignedUrl(
-        "images",
-        user.profilepic.toString(),
-        60 * 60
-      );
-      const data = {
-        dp,
-        fullname: user.fullname,
-        username: user.username,
-        id: user._id.toString(),
-        sessionId
-      };
-      const access_token = generateAccessToken(data)
-      return res.status(200).json({ success: true, sessionId, access_token });
-    } else {
-      res.status(400).json({ message: "User Not Found", success: false });
-    }
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
+//     const user = await User.findById(id);
+//     if (user) {
+//       user.storeAddress[0].buildingno = storeAddress;
+//       user.storeAddress[0].state = state;
+//       user.storeAddress[0].postal = postalCode;
+//       user.storeAddress[0].city = city;
+//       user.storeAddress[0].landmark = landmark;
+//       await user.save();
+//       const sessionId = generateSessionId();
+//       const dp = await generatePresignedUrl(
+//         "images",
+//         user.profilepic.toString(),
+//         60 * 60
+//       );
+//       const data = {
+//         dp,
+//         fullname: user.fullname,
+//         username: user.username,
+//         id: user._id.toString(),
+//         sessionId
+//       };
+//       const access_token = generateAccessToken(data)
+//       return res.status(200).json({ success: true, sessionId, access_token });
+//     } else {
+//       res.status(400).json({ message: "User Not Found", success: false });
+//     }
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
 
 exports.getprofileinfo = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id);
     if (user) {
-      const dp = await generatePresignedUrl(
-        "images",
-        user.profilepic.toString(),
-        60 * 60
-      );
+      // const dp = await generatePresignedUrl(
+      //   "images",
+      //   user.profilepic.toString(),
+      //   60 * 60
+      // );
+      const dp =
+        process.env.URL + user.profilepic;
       const data = {
         name: user?.fullname,
         email: user?.email,
@@ -1566,7 +1637,6 @@ exports.updatecommunity = async (req, res) => {
   const { category, title, desc, topicId, message, price, topicname, type } =
     req.body;
   const uuidString = uuid();
-  console.log(req.file, req.body, userId, comId);
   try {
     const user = await User.findById(userId);
     const com = await Community.findById(comId);
@@ -1582,15 +1652,23 @@ exports.updatecommunity = async (req, res) => {
         a1 = objectName;
         a2 = req.file.mimetype;
 
-        await sharp(req.file.buffer)
-          .jpeg({ quality: 50 })
-          .toBuffer()
-          .then(async (data) => {
-            await minioClient.putObject(bucketName, objectName, data);
+        // await sharp(req.file.buffer)
+        //   .jpeg({ quality: 50 })
+        //   .toBuffer()
+        //   .then(async (data) => {
+        //     await minioClient.putObject(bucketName, objectName, data);
+        //   })
+        //   .catch((err) => {
+        //     console.log(err.message, "-error");
+        //   });
+        const result = await s3.send(
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: objectName,
+            Body: req.file.buffer,
+            ContentType: req.file.mimetype,
           })
-          .catch((err) => {
-            console.log(err.message, "-error");
-          });
+        );
         await Community.updateOne(
           { _id: com._id },
           {
@@ -1603,7 +1681,6 @@ exports.updatecommunity = async (req, res) => {
           }
         );
       }
-      console.log("firsr");
       const commun = await Community.findByIdAndUpdate(
         { _id: com._id },
         {
@@ -1747,7 +1824,6 @@ exports.membershipbuy = async (req, res) => {
 
 exports.memfinalize = async (req, res) => {
   try {
-
     const { id, orderId } = req.params
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, status, paymentMethod } = req.body
     const user = await User.findById(id)

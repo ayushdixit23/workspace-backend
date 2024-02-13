@@ -3,6 +3,7 @@ const uuid = require("uuid").v4;
 const Minio = require("minio");
 const User = require("../models/userAuth");
 const Order = require("../models/orders");
+
 const sharp = require("sharp");
 const stripe = require("stripe")(
   "sk_test_51NAGrZSEXlKwVDBNhya5wiyCmbRILf14f1Bk2uro1IMurrItZFsnmn7WNA0I5Q3RMnCVui1ox5v9ynOg3CGrFkHu00hLvIqqS1"
@@ -14,6 +15,22 @@ const minioClient = new Minio.Client({
   useSSL: true,
   accessKey: "shreyansh379",
   secretKey: "shreyansh379",
+});
+
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/cloudfront-signer");
+const fs = require("fs");
+require("dotenv").config();
+const axios = require("axios");
+
+const BUCKET_NAME = process.env.BUCKET_NAME;
+
+const s3 = new S3Client({
+  region: process.env.BUCKET_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+  },
 });
 
 //function to generate a presignedurl of minio
@@ -65,55 +82,83 @@ exports.create = async (req, res) => {
         let a, b, c, d;
         if (image1) {
           const bucketName = "products";
-          const objectName = `${Date.now()}_${uuidString}_${
-            image1.originalname
-          }`;
+          const objectName = `${Date.now()}_${uuidString}_${image1.originalname
+            }`;
           a = objectName;
-          await minioClient.putObject(
-            bucketName,
-            objectName,
-            image1.buffer,
-            image1.buffer.length
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: objectName,
+              Body: image1.buffer,
+              ContentType: image1.mimetype,
+            })
           );
+          // await minioClient.putObject(
+          //   bucketName,
+          //   objectName,
+          //   image1.buffer,
+          //   image1.buffer.length
+          // );
         }
         if (image2) {
           const bucketName = "products";
-          const objectName = `${Date.now()}_${uuidString}_${
-            image2.originalname
-          }`;
+          const objectName = `${Date.now()}_${uuidString}_${image2.originalname
+            }`;
           b = objectName;
-          await minioClient.putObject(
-            bucketName,
-            objectName,
-            image2.buffer,
-            image2.buffer.length
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: objectName,
+              Body: image2.buffer,
+              ContentType: image2.mimetype,
+            })
           );
+          // await minioClient.putObject(
+          //   bucketName,
+          //   objectName,
+          //   image2.buffer,
+          //   image2.buffer.length
+          // );
         }
         if (image3) {
           const bucketName = "products";
-          const objectName = `${Date.now()}_${uuidString}_${
-            image3.originalname
-          }`;
+          const objectName = `${Date.now()}_${uuidString}_${image3.originalname
+            }`;
           c = objectName;
-          await minioClient.putObject(
-            bucketName,
-            objectName,
-            image3.buffer,
-            image3.buffer.length
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: objectName,
+              Body: image3.buffer,
+              ContentType: image3.mimetype,
+            })
           );
+          // await minioClient.putObject(
+          //   bucketName,
+          //   objectName,
+          //   image3.buffer,
+          //   image3.buffer.length
+          // );
         }
         if (image4) {
           const bucketName = "products";
-          const objectName = `${Date.now()}_${uuidString}_${
-            image4.originalname
-          }`;
+          const objectName = `${Date.now()}_${uuidString}_${image4.originalname
+            }`;
           d = objectName;
-          await minioClient.putObject(
-            bucketName,
-            objectName,
-            image4.buffer,
-            image4.buffer.length
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: objectName,
+              Body: image4.buffer,
+              ContentType: image4.mimetype,
+            })
           );
+          // await minioClient.putObject(
+          //   bucketName,
+          //   objectName,
+          //   image4.buffer,
+          //   image4.buffer.length
+          // );
         }
         const p = new Product({
           name,
@@ -169,9 +214,8 @@ exports.createnew = async (req, res) => {
         for (let i = 0; i < req?.files?.length; i++) {
           const uuidString = uuid();
           const bucketName = "products";
-          const objectName = `${Date.now()}_${uuidString}_${
-            req.files[i].originalname
-          }`;
+          const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname
+            }`;
           if (req.files[i].fieldname === "video") {
             await minioClient.putObject(
               bucketName,

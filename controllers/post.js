@@ -9,6 +9,20 @@ const Notification = require("../models/notification");
 const sharp = require("sharp");
 const ffmpeg = require("fluent-ffmpeg");
 const Ads = require("../models/Ads");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/cloudfront-signer");
+const fs = require("fs");
+require("dotenv").config();
+
+const BUCKET_NAME = process.env.BUCKET_NAME;
+
+const s3 = new S3Client({
+  region: process.env.BUCKET_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+  },
+});
 
 const minioClient = new Minio.Client({
   endPoint: "minio.grovyo.xyz",
@@ -1139,33 +1153,18 @@ exports.postanything = async (req, res) => {
 
       for (let i = 0; i < req?.files?.length; i++) {
         const uuidString = uuid();
-        const bucketName = "posts";
         const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname
           }`;
+        const result = await s3.send(
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: objectName,
+            Body: req.files[i].buffer,
+            ContentType: req.files[i].mimetype,
+          })
+        );
+        pos.push({ content: objectName, type: req.files[i].mimetype });
 
-        if (req.files[i].fieldname === "video") {
-          await minioClient.putObject(
-            bucketName,
-            objectName,
-            req.files[i].buffer
-            // req.files[i].size,
-            // req.files[i].mimetype
-          );
-
-          pos.push({ content: objectName, type: req.files[i].mimetype });
-        } else {
-          await sharp(req.files[i].buffer)
-            .jpeg({ quality: 50 })
-            .toBuffer()
-            .then(async (data) => {
-              await minioClient.putObject(bucketName, objectName, data);
-            })
-            .catch((err) => {
-              console.log(err.message, "-error");
-            });
-
-          pos.push({ content: objectName, type: req.files[i].mimetype });
-        }
       }
       const post = new Post({
         title,

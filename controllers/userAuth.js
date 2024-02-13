@@ -16,6 +16,22 @@ const minioClient = new Minio.Client({
   secretKey: "shreyansh379",
 });
 
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/cloudfront-signer");
+const fs = require("fs");
+require("dotenv").config();
+
+const BUCKET_NAME = process.env.BUCKET_NAME;
+
+const s3 = new S3Client({
+  region: process.env.BUCKET_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+  },
+});
+
+
 //function to ge nerate a presignedurl of minio
 async function generatePresignedUrl(bucketName, objectName, expiry = 604800) {
   try {
@@ -939,9 +955,8 @@ exports.updateaccount = async (req, res) => {
     } else {
       if (req.file) {
         const bucketName = "images";
-        const objectName = `${Date.now()}_${uuidString}_${
-          req.file.originalname
-        }`;
+        const objectName = `${Date.now()}_${uuidString}_${req.file.originalname
+          }`;
         await sharp(req.file.buffer)
           .jpeg({ quality: 50 })
           .toBuffer()
@@ -1866,9 +1881,8 @@ exports.sendchatfile = async (req, res) => {
     let pos = {};
     const uuidString = uuid();
     const bucketName = "messages";
-    const objectName = `${Date.now()}_${uuidString}_${
-      req.files[0].originalname
-    }`;
+    const objectName = `${Date.now()}_${uuidString}_${req.files[0].originalname
+      }`;
 
     if (req.files[0].fieldname === "video") {
       await minioClient.putObject(
