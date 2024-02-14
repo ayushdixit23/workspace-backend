@@ -571,8 +571,8 @@ exports.createcom = async (req, res) => {
         new PutObjectCommand({
           Bucket: POST_BUCKET,
           Key: objectName,
-          Body: req.files[i].buffer,
-          ContentType: req.files[i].mimetype,
+          Body: image.buffer,
+          ContentType: image.mimetype,
         })
       );
       const community = new Community({
@@ -700,8 +700,8 @@ exports.createcom = async (req, res) => {
         new PutObjectCommand({
           Bucket: BUCKET_NAME,
           Key: objectName,
-          Body: req.files[i].buffer,
-          ContentType: req.files[i].mimetype,
+          Body: image.buffer,
+          ContentType: image.mimetype,
         })
       );
       const community = new Community({
@@ -887,14 +887,13 @@ exports.registerstore = async (req, res) => {
 
 // create collection
 exports.createCollection = async (req, res) => {
-
   try {
     const { name, category } = req.body;
     const { userId } = req.params;
-    let data;
+    const user = await User.findById(userId)
     if (req.file) {
       const uuidString = uuid();
-      const bucketName = "products";
+      // const bucketName = "products";
       const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
       console.log(objectName);
       // await sharp(req.file.buffer)
@@ -906,7 +905,7 @@ exports.createCollection = async (req, res) => {
       //   .catch((err) => {
       //     console.log(err.message, "-error");
       //   });
-      const result = await s3.send(
+      await s3.send(
         new PutObjectCommand({
           Bucket: BUCKET_NAME,
           Key: objectName,
@@ -914,25 +913,21 @@ exports.createCollection = async (req, res) => {
           ContentType: req.file.mimetype,
         })
       );
-      data = {
-        name: name,
-        category: category,
-        creator: userId,
-        verfication: objectName,
-      };
-    } else {
-      data = {
-        name: name,
-        category: category,
-        creator: userId,
-      };
+      user.foodLicense = objectName
+    }
+    const data = {
+      name,
+      category,
+      creator: userId,
     }
     const newCol = new Collection(data);
     await newCol.save();
-    await User.updateOne(
-      { _id: userId },
-      { $push: { collectionss: newCol._id } }
-    );
+    // await User.updateOne(
+    //   { _id: userId },
+    //   { $push: { collectionss: newCol._id } }
+    // );
+    user.collectionss.push(newCol._id)
+    await user.save()
     res.status(200).json({ success: true });
   } catch (e) {
     console.log(e);
@@ -1711,10 +1706,12 @@ exports.checkStore = async (req, res) => {
     const user = await User.findById(id);
     if (user) {
       const store = user.storeAddress.length;
+      const foodlic = user.foodLicense
+      const foodLicenceExist = foodlic ? true : false
       if (store > 0) {
-        return res.status(200).json({ exist: true, q: "collection" });
+        return res.status(200).json({ exist: true, q: "collection", foodLicenceExist });
       } else {
-        return res.status(200).json({ exist: false, q: "store" });
+        return res.status(200).json({ exist: false, q: "store", foodLicenceExist });
       }
     } else {
       return res.status(400).json({ message: "User Not Found" });

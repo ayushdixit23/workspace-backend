@@ -264,7 +264,7 @@ const userSchema = new mongoose.Schema(
         id: { type: ObjectId, ref: "User" },
       },
     ],
-
+    foodLicense: { type: String },
     memberships: {
       membership: { type: ObjectId, ref: "membership" },
       status: { type: Boolean, default: true },
