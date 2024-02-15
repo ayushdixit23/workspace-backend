@@ -3,10 +3,10 @@ const User = require("../models/userAuth");
 const Minio = require("minio");
 const Verification = require("../models/Veriification");
 const Transaction = require("../models/AdTransactions");
-const Order= require("../models/orders")
-const Product= require("../models/product")
+const Order = require("../models/orders")
+const Product = require("../models/product")
 const Razorpay = require("razorpay");
-const jwt= require("jsonwebtoken")
+const jwt = require("jsonwebtoken")
 const uuid = require("uuid").v4;
 const {
   validatePaymentVerification,
@@ -22,6 +22,10 @@ const minioClient = new Minio.Client({
   secretKey: "shreyansh379",
 });
 const Advertiser = require("../models/Advertiser");
+
+function generateSessionId() {
+  return Date.now().toString() + Math.random().toString(36).substring(2);
+}
 
 //function to generate a presignedurl of minio
 async function generatePresignedUrl(bucketName, objectName, expiry = 604800) {
@@ -72,22 +76,38 @@ exports.refresh = async (req, res) => {
               .status(400)
               .json({ success: false, message: "Invalid refresh token" });
           }
-          const user = await User.findById(payload.id).populate("advertiserid");
-          if (!user) {
+          const advertiser = await Advertiser.findById(payload.advid);
+          const sessionId = payload.sessionId;
+          if (!advertiser) {
             return res
               .status(400)
-              .json({ success: false, message: "User not found" });
+              .json({ success: false, message: "advertiser not found" });
           }
           const dp = await generatePresignedUrl(
             "images",
-            user.advertiserid.image.toString(),
+            advertiser.image,
             60 * 60
           );
+          // const data = {
+          //   id: user._id.toString(),
+          //   advid: user.advertiserid.toString(),
+          //   dp,
+          //   fullname: user.advertiserid.firstname + " " + user.advertiserid.lastname
+          // };
           const data = {
-            id: user._id.toString(),
-            advid:user.advertiserid.toString(),
-            dp,
-            fullname: user.advertiserid.firstname + " " + user.advertiserid.lastname 
+            userid: advertiser.userid,
+            advid: advertiser._id,
+            image: dp,
+            firstname: advertiser.firstname,
+            lastname: advertiser.lastname,
+            country: advertiser.country,
+            city: advertiser.city,
+            address: advertiser.address,
+            accounttype: advertiser.type,
+            taxinfo: advertiser.taxinfo,
+            email: advertiser.email,
+            // advid: advertiser.advertiserid,
+            sessionId
           };
           const access_token = generateAccessToken(data);
           res.status(200).json({ success: true, access_token });
@@ -124,15 +144,14 @@ exports.checkaccount = async (req, res) => {
         success: false,
       });
     }
-    console.log(
-    advertiser
-    )
     if (advertiser) {
+      console.log(advertiser)
       const dp = await generatePresignedUrl(
         "images",
-        advertiser.image.toString(),
+        advertiser.image,
         60 * 60
       );
+      const sessionId = generateSessionId();
       const newEditCount = {
         login: Date.now().toString(),
       };
@@ -143,13 +162,22 @@ exports.checkaccount = async (req, res) => {
         }
       );
       const data = {
-        id:advertiser.userid.toString(),
-        advid:advertiser._id.toString(),
-        dp,
-        fullname: advertiser.firstname + " " + advertiser.lastname
+        userid: advertiser.userid,
+        advid: advertiser._id,
+        image: dp,
+        firstname: advertiser.firstname,
+        lastname: advertiser.lastname,
+        country: advertiser.country,
+        city: advertiser.city,
+        address: advertiser.address,
+        accounttype: advertiser.type,
+        taxinfo: advertiser.taxinfo,
+        email: advertiser.email,
+        // advid: advertiser.advertiserid,
+        sessionId
       };
       const access_token = generateAccessToken(data)
-      const refresh_token= generateRefreshToken(data)
+      const refresh_token = generateRefreshToken(data)
       return res.status(200).json({
         message: "Advertiser exists",
         advertiser,
@@ -157,6 +185,7 @@ exports.checkaccount = async (req, res) => {
         refresh_token,
         userid: advertiser.userid,
         dp,
+        sessionId,
         success: true,
       });
     } else {
@@ -238,9 +267,8 @@ exports.createadvacc = async (req, res) => {
         const min = 100;
         const max = 999;
         const randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;
-        const usernam = `${
-          firstname + lastname.replace(/\s/g, "").toLowerCase()
-        }_${randomNumber}`;
+        const usernam = `${firstname + lastname.replace(/\s/g, "").toLowerCase()
+          }_${randomNumber}`;
         return usernam;
       };
 
@@ -737,10 +765,27 @@ exports.editadvertiser = async (req, res) => {
     accounttype,
   } = req.body;
   try {
-    const user = await Advertiser.findById(id);
-    if (!user) {
+    const advertiser = await Advertiser.findById(id);
+    if (!advertiser) {
       res.status(404).json({ success: false, message: "User not found" });
     } else {
+      const data = {
+        userid: advertiser.userid,
+        advid: advertiser._id,
+        image: dp,
+        firstname: advertiser.firstname,
+        lastname: advertiser.lastname,
+        country: advertiser.country,
+        city: advertiser.city,
+        address: advertiser.address,
+        accounttype: advertiser.type,
+        taxinfo: advertiser.taxinfo,
+        email: advertiser.email,
+        // advid: advertiser.advertiserid,
+        sessionId
+      };
+      const access_token = generateAccessToken(data)
+      const refresh_token = generateRefreshToken(data)
       const newEditCount = {
         date: Date.now().toString(),
         number: 1,
@@ -761,7 +806,7 @@ exports.editadvertiser = async (req, res) => {
           $push: { editcount: newEditCount },
         }
       );
-      res.status(200).json({ success: true, user });
+      res.status(200).json({ success: true, access_token, refresh_token });
     }
   } catch (e) {
     res.status(400).json({ message: "Something went wrong", success: false });
@@ -868,9 +913,9 @@ exports.addmoneytowallet = async (req, res) => {
         transactionid: newid,
       });
       await t.save();
-   
+
       await Advertiser.updateOne({ _id: id },
-        {$push: { transactions: t._id },}
+        { $push: { transactions: t._id }, }
       );
       const instance = new Razorpay({
         key_id: "rzp_test_jXDMq8a2wN26Ss",
@@ -882,9 +927,9 @@ exports.addmoneytowallet = async (req, res) => {
           currency: "INR",
           receipt: `receipt#${newid}`,
           notes: {
-          type:"Wallet"
+            type: "Wallet"
           }
-      
+
         }, function (err, order) {
           console.log(err, order);
           if (err) {
@@ -895,8 +940,8 @@ exports.addmoneytowallet = async (req, res) => {
               order_id: order.id,
             });
           }
-      })
-     
+        })
+
     }
   } catch (e) {
     console.log(e);
@@ -926,27 +971,27 @@ exports.updatetransactionstatus = async (req, res) => {
           "bxyQhbzS0bHNBnalbBg9QTDo"
         );
         console.log(isValid)
-       if(isValid){
-         await Transaction.updateOne(
-           { _id: t._id },
-           {
-             $set: {
-               status: success,
-             },
-           }
-         );
-         await Advertiser.updateOne(
-           { _id: id },
-           {
-             $inc: { currentbalance: amount },
-           }
-         );
-        return res.status(200).json({
-           success: true,
-         });
-       }else{
-        res.status(400).json({success:false})
-       }
+        if (isValid) {
+          await Transaction.updateOne(
+            { _id: t._id },
+            {
+              $set: {
+                status: success,
+              },
+            }
+          );
+          await Advertiser.updateOne(
+            { _id: id },
+            {
+              $inc: { currentbalance: amount },
+            }
+          );
+          return res.status(200).json({
+            success: true,
+          });
+        } else {
+          res.status(400).json({ success: false })
+        }
       }
     }
   } catch (e) {
@@ -1615,21 +1660,21 @@ exports.audget = async (req, res) => {
   }
 };
 
-exports.getuser = async (req,res) => {
-  console.log("runnded") 
-  const {id}= req.params
+exports.getuser = async (req, res) => {
+  console.log("runnded")
+  const { id } = req.params
   console.log(id)
   try {
     const user = await User.findById(id)
     console.log(user)
-    if(!user){
-      return res.status(404).json({success:false,message:"user not found"})
-    }else{
-      res.status(200).json({user,success:true})
+    if (!user) {
+      return res.status(404).json({ success: false, message: "user not found" })
+    } else {
+      res.status(200).json({ user, success: true })
     }
-    
+
   } catch (error) {
-    res.status(500).json({message:"internal server error",success:false})
+    res.status(500).json({ message: "internal server error", success: false })
   }
 }
 

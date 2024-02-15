@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
       unique: true,
     },
-    profilepic: {
+    prosite_template: {
       type: String,
     },
     prositepic: { type: String },
@@ -166,7 +166,9 @@ const userSchema = new mongoose.Schema(
         id: { type: String },
       },
     ],
-    collectionss: [{ type: mongoose.Schema.Types.ObjectId, ref: "Collectionss" }],
+    collectionss: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Collectionss" },
+    ],
     adid: { type: Number },
     advertiserid: { type: ObjectId, ref: "Advertiser" },
     address: {
@@ -209,10 +211,12 @@ const userSchema = new mongoose.Schema(
     ],
     totalStoreVisit: { type: Number, default: 0 },
     salesCount: { type: Number, default: 0 },
-    storeStats: [{
-      Dates: { type: Date },
-      Sales: { type: Number },
-    }],
+    storeStats: [
+      {
+        Dates: { type: Date },
+        Sales: { type: Number },
+      },
+    ],
     storeDemographics: {
       age: {
         "18-24": { type: Number, default: 0 },
@@ -275,18 +279,21 @@ const userSchema = new mongoose.Schema(
         gstamount: { type: Number },
       },
     },
-    activeSubscription: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Subscriptions"
-    }],
+    activeSubscription: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Subscriptions",
+      },
+    ],
+    contents: [{ type: String }],
     bank: {
       bankname: { type: String },
       branchname: { type: String },
       accountno: { type: String },
       IFSCcode: {
-        type: String
-      }
-    }
+        type: String,
+      },
+    },
     // for workspace membership
   },
 
