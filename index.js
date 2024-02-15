@@ -88,8 +88,8 @@ const connectDB = async () => {
     console.log(err);
   }
 };
-connectDB();
 
+connectDB();
 
 const connectApp = () => {
   try {
