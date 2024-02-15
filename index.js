@@ -32,6 +32,7 @@ const testRoutes = require("./routes/test");
 const workRoutes = require("./routes/workspace");
 const adRoutes = require("./routes/Ads");
 const memRoutes = require("./routes/membership");
+const prosRoutes = require("./routes/pros");
 const workspacev1 = require("./routes/WorkspaceV1");
 const Community = require("./models/community");
 // const Order = require("./models/orders");
@@ -69,6 +70,7 @@ app.use("/api", testRoutes);
 app.use("/api", workRoutes);
 app.use("/api", adRoutes);
 app.use("/api/v1", workspacev1);
+app.use("/api/v1", prosRoutes)
 
 //connect to DB
 const connectDB = async () => {

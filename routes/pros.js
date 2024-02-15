@@ -96,7 +96,7 @@ router.post("/savetemplate/:id", async (req, res) => {
 	}
 });
 
-router.post("/v1/getprosite", async (req, res) => {
+router.post("/getprosite", async (req, res) => {
 	try {
 		const { username } = req.body;
 		const atIndex = username.indexOf("@");
