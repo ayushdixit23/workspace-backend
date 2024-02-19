@@ -17,6 +17,8 @@ const PostSchema = new mongoose.Schema(
     sender: { type: ObjectId, ref: "User" },
     isverified: { type: Boolean, default: false },
     commpic: { type: ObjectId, ref: "Community" },
+    isPromoted: { type: Boolean, default: false },
+    promoid: [{ type: String }],
     post: [
       {
         content: { type: String },
@@ -25,6 +27,7 @@ const PostSchema = new mongoose.Schema(
         thumbnail: { type: String },
       },
     ],
+    kind: { type: String, default: "post" },
     contenttype: { type: [String] },
     user: { type: String },
     date: { type: Date, default: Date.now() },

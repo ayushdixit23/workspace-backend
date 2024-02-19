@@ -4,10 +4,16 @@ const Minio = require("minio");
 const Verification = require("../models/Veriification");
 const Transaction = require("../models/AdTransactions");
 const Order = require("../models/orders")
+const Community = require("../models/community")
 const Product = require("../models/product")
 const Razorpay = require("razorpay");
 const jwt = require("jsonwebtoken")
+const aesjs = require("aes-js");
+const Adbyloccategory = require("../models/Adbyloccategory")
+require("dotenv").config();
 const uuid = require("uuid").v4;
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/cloudfront-signer");
 const {
   validatePaymentVerification,
   validateWebhookSignature,
@@ -22,6 +28,8 @@ const minioClient = new Minio.Client({
   secretKey: "shreyansh379",
 });
 const Advertiser = require("../models/Advertiser");
+const Post = require("../models/post");
+const Topic = require("../models/topic");
 
 function generateSessionId() {
   return Date.now().toString() + Math.random().toString(36).substring(2);
@@ -42,6 +50,35 @@ async function generatePresignedUrl(bucketName, objectName, expiry = 604800) {
   }
 }
 
+const encryptaes = (data) => {
+  try {
+    const textBytes = aesjs.utils.utf8.toBytes(data);
+    const aesCtr = new aesjs.ModeOfOperation.ctr(
+      JSON.parse(process.env.key),
+      new aesjs.Counter(5)
+    );
+    const encryptedBytes = aesCtr.encrypt(textBytes);
+    const encryptedHex = aesjs.utils.hex.fromBytes(encryptedBytes);
+    return encryptedHex;
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+const BUCKET_NAME = process.env.BUCKET_NAME;
+const PRODUCT_BUCKET = process.env.PRODUCT_BUCKET;
+const POST_BUCKET = process.env.POST_BUCKET;
+const AD_BUCKET = process.env.AD_BUCKET;
+
+const s3 = new S3Client({
+  region: process.env.BUCKET_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+  },
+});
+
+
 function generateAccessToken(data) {
   const access_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
     expiresIn: "1h",
@@ -57,7 +94,7 @@ function generateRefreshToken(data) {
 }
 
 // refresh and access token generation
-exports.refresh = async (req, res) => {
+exports.refreshingsAdsTokens = async (req, res) => {
   try {
     const { refresh_token } = req.body;
 
@@ -113,7 +150,7 @@ exports.refresh = async (req, res) => {
           res.status(200).json({ success: true, access_token });
         } catch (err) {
           console.log(err);
-          res.status(400).json({ success: true });
+          res.status(400).json({ success: false });
         }
       }
     );
@@ -145,7 +182,6 @@ exports.checkaccount = async (req, res) => {
       });
     }
     if (advertiser) {
-      console.log(advertiser)
       const dp = await generatePresignedUrl(
         "images",
         advertiser.image,
@@ -221,10 +257,14 @@ exports.createadvacc = async (req, res) => {
   } = req.body;
 
   try {
-    const finduser = await User.findOne({
+    const advertiser = await Advertiser.findOne({
       $or: [{ email: email }, { phone: phone }],
-    });
-    if (!finduser) {
+    })
+    const user = await User.findOne({
+      $or: [{ email: email }, { phone: phone }],
+    })
+    if (!advertiser && !user) {
+      // if (!finduser) {
       const advid = generateUniqueID();
       const uuidString = uuid();
       const image = req.file;
@@ -250,6 +290,7 @@ exports.createadvacc = async (req, res) => {
         retypepassword,
       });
 
+      console.log("runnded not user not advertiser")
       await sharp(image.buffer)
         .jpeg({ quality: 60 })
         .toBuffer()
@@ -260,7 +301,7 @@ exports.createadvacc = async (req, res) => {
           console.log(err.message, "-error");
         });
 
-      await adv.save();
+      const adsver = await adv.save();
 
       //generate random username
       const generateRandomUsername = () => {
@@ -288,21 +329,24 @@ exports.createadvacc = async (req, res) => {
       const user = new User({
         fullname: firstname + " " + lastname,
         username: username,
+        email: email,
+        passw: encryptaes(password),
         phone: phone,
         profilepic: objectName,
         desc: "Hi, I am on Grovyo",
         address: finaladdress,
         adid: advid,
+        advertiserid: adsver._id
       });
-      await user.save();
+      const thisScopeUser = await user.save();
 
       await Advertiser.updateOne(
-        { _id: advid._id },
+        { _id: adsver._id },
         {
-          $set: { userid: user._id },
+          $set: { userid: thisScopeUser._id },
         }
       );
-    } else {
+    } else if (!advertiser && user) {
       const advid = generateUniqueID();
       const uuidString = uuid();
       const image = req.file;
@@ -344,7 +388,7 @@ exports.createadvacc = async (req, res) => {
       await User.updateOne(
         { _id: finduser._id },
         {
-          $set: { adid: adv._id },
+          $set: { adid: adv._id, advertiserid: user._id },
         }
       );
     }
@@ -356,7 +400,7 @@ exports.createadvacc = async (req, res) => {
 };
 
 exports.newad = async (req, res) => {
-  const { id } = req.params;
+  const { id, userId } = req.params;
   const {
     adname,
     startdate,
@@ -380,110 +424,421 @@ exports.newad = async (req, res) => {
     adid,
     gender,
     advertiserid,
+    communityName,
+    communityDesc,
+    communityCategory,
   } = req.body;
+
+  console.log(req.body, "body")
+  console.log(req.files, "file")
 
   try {
     const user = await Advertiser.findById(id);
+    const userauth = await User.findById(userId)
+
+    let pos = [];
+
     const uuidString = uuid();
     if (!user) {
       res.status(404).json({ message: "No user found!", success: false });
     } else {
-      if (contenttype === "image") {
-        const image = req.files[0];
-        const bucketName = "ads";
-        const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
 
-        await sharp(image.buffer)
-          .jpeg({ quality: 60 })
-          .toBuffer()
-          .then(async (data) => {
-            await minioClient.putObject(bucketName, objectName, data);
-          })
-          .catch((err) => {
-            console.log(err.message, "-error");
-          });
-        const contents = {
-          extension: image.mimetype,
-          name: objectName,
-        };
-        const newAd = new Ads({
-          adname,
-          startdate,
-          enddate,
-          cta,
-          ctalink,
-          goal,
-          headline,
-          desc,
-          preferedsection,
-          tags,
-          location,
-          agerange,
-          maxage,
-          minage,
-          totalbudget,
-          dailybudget,
-          estaudience,
-          category,
-          content: contents,
-
-          adid: adid,
-          gender,
-          advertiserid,
-        });
-        await newAd.save();
-        res.status(200).json({ success: true });
-      } else {
-        const { originalname, buffer, mimetype } = req.files[0];
-
-        const size = buffer.byteLength;
-        const bucketName = "ads";
-        const objectName = `${Date.now()}_${uuidString}_${originalname}`;
-        const contents = {
-          extension: mimetype,
-          name: objectName,
-        };
-        await minioClient.putObject(
-          bucketName,
-          objectName,
-          buffer,
-          size,
-          mimetype
-        );
-        const newAd = new Ads({
-          adname,
-          startdate,
-          enddate,
-          cta,
-          ctalink,
-          goal,
-          headline,
-          desc,
-          preferedsection,
-          tags,
-          location,
-          agerange,
-          maxage,
-          minage,
-          totalbudget,
-          dailybudget,
-          estaudience,
-          category,
-          content: contents,
-
-          adid: adid,
-          gender,
-          advertiserid,
-        });
-        await newAd.save();
-        res.status(200).json({ success: true });
+      //community dp and creation of community
+      let objectName
+      for (let i = 0; i < req.files.length; i++) {
+        if (req.files[i].fieldname === "communityImage") {
+          objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+          a = objectName;
+          const result = await s3.send(
+            new PutObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+        }
       }
+
+      const community = new Community({
+        title: communityName,
+        creator: userId,
+        dp: objectName,
+        desc: communityDesc,
+        category: communityCategory,
+      });
+      const savedcom = await community.save();
+      const topic1 = new Topic({
+        title: "Posts",
+        creator: userId,
+        community: savedcom._id,
+      });
+      await topic1.save();
+
+      const topic2 = new Topic({
+        title: "All",
+        creator: userId,
+        community: savedcom._id,
+      });
+      await topic2.save();
+
+
+      await Community.updateOne(
+        { _id: savedcom._id },
+        {
+          $push: { members: userId, admins: user._id },
+          $inc: { memberscount: 1 },
+        }
+      );
+
+      await Community.updateOne(
+        { _id: savedcom._id },
+        { $push: { topics: [topic1._id, topic2._id] } }
+      );
+
+      await User.findByIdAndUpdate(
+        { _id: userId },
+        {
+          $push: {
+            topicsjoined: [topic1._id, topic2._id],
+            communityjoined: savedcom._id,
+          },
+          $inc: { totaltopics: 3, totalcom: 1 },
+        }
+      );
+
+      let contents
+      for (let i = 0; i < req.files.length; i++) {
+        if (req.files[i].fieldname === "file") {
+          objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+          a = objectName;
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: AD_BUCKET,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: POST_BUCKET,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+          contents = {
+            extension: req.files[i].mimetype,
+            name: objectName,
+          };
+
+
+          //for post
+          pos.push({ content: objectName, type: req.files[i].mimetype });
+        }
+      }
+      const newAd = new Ads({
+        adname,
+        startdate,
+        enddate,
+        cta,
+        ctalink,
+        goal,
+        headline,
+        desc,
+        preferedsection,
+        tags,
+        location,
+        agerange,
+        maxage,
+        minage,
+        totalbudget,
+        dailybudget,
+        estaudience,
+        category,
+        content: contents,
+        adid: adid,
+        gender,
+        advertiserid,
+      });
+      const adSaved = await newAd.save();
+      user.ads.push(adSaved._id)
+      await user.save()
+
+
+      //creating a post of ad
+      const topic = await Topic.find({ community: community._id }).find({
+        title: "Posts",
+      });
+
+      const post = new Post({
+        title: headline,
+        desc: desc,
+        community: community._id,
+        sender: userId,
+        post: pos,
+        tags: community.category,
+        kind: "ad",
+        promoid: adSaved._id
+      });
+      const savedpost = await post.save();
+
+      await Community.updateOne(
+        { _id: community._id },
+        { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
+      );
+
+      await Topic.updateOne(
+        { _id: topic[0]._id.toString() },
+        { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
+      );
+      res.status(200).json({ success: true });
     }
   } catch (e) {
     console.log(e);
     res.status(400).json({ message: e.message, success: false });
   }
 };
+
+exports.createad = async (req, res) => {
+  const { id } = req.params
+  const {
+    adname,
+    startdate,
+    enddate,
+    cta,
+    ctalink,
+    goal,
+    headline,
+    desc,
+    preferedsection,
+    tags,
+    location,
+    agerange,
+    maxage,
+    minage,
+    totalbudget,
+    dailybudget,
+    estaudience,
+    category,
+    adid,
+    gender,
+    advertiserid,
+    comid
+  } = req.body;
+  try {
+    const user = await Advertiser.findById(id)
+    const pos = []
+    const uuidString = uuid();
+    const community = await Community.findById(comid)
+    let contents
+    for (let i = 0; i < req.files.length; i++) {
+      if (req.files[i].fieldname === "file") {
+        objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+        a = objectName;
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: AD_BUCKET,
+            Key: objectName,
+            Body: req.files[i].buffer,
+            ContentType: req.files[i].mimetype,
+          })
+        );
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: POST_BUCKET,
+            Key: objectName,
+            Body: req.files[i].buffer,
+            ContentType: req.files[i].mimetype,
+          })
+        );
+        contents = {
+          extension: req.files[i].mimetype,
+          name: objectName,
+        };
+        //for post
+        pos.push({ content: objectName, type: req.files[i].mimetype });
+      }
+    }
+    const newAd = new Ads({
+      adname,
+      startdate,
+      enddate,
+      cta,
+      ctalink,
+      goal,
+      headline,
+      desc,
+      preferedsection,
+      tags,
+      location,
+      agerange,
+      maxage,
+      minage,
+      totalbudget,
+      dailybudget,
+      estaudience,
+      category,
+      content: contents,
+      adid: adid,
+      gender,
+      advertiserid,
+    });
+    const adSaved = await newAd.save();
+    user.ads.push(adSaved._id)
+    await user.save()
+
+    const topic = await Topic.find({ community: comid }).find({
+      title: "Posts",
+    });
+
+    const post = new Post({
+      title: headline,
+      desc: desc,
+      community: comid,
+      sender: id,
+      post: pos,
+      tags: community.category,
+      kind: "ad",
+      promoid: adSaved._id
+    });
+    const savedpost = await post.save();
+
+    await Community.updateOne(
+      { _id: comid },
+      { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
+    );
+
+    
+    await Topic.updateOne(
+      { _id: topic[0]._id.toString() },
+      { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
+    );
+  } catch (error) {
+    res.status(400).json({ message: error.message, success: false });
+    console.log(error)
+  }
+}
+
+exports.getCommunities = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(id)
+    if (!user) {
+      return res.status(400).json({ message: "User Not Found", success: false })
+    }
+    let communities = []
+    for (let i = 0; i < user.communitycreated?.length; i++) {
+      const community = await Community.findById(user.communitycreated[i]).populate("promotedPosts")
+      if (community) {
+        communities.push(community)
+      }
+    }
+
+    const communityDps = await Promise.all(
+      communities.map(async (d) => {
+        const imageforCommunity =
+          process.env.URL + d.dp;
+
+        return imageforCommunity;
+      })
+    );
+
+    const communitywithDps = communities.map((f, i) => {
+      return { ...f.toObject(), dps: communityDps[i] };
+    });
+    res.status(200).json({ communitywithDps, success: true })
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Errors", success: false })
+    console.log(error)
+  }
+}
+
+exports.promotedposts = async (req, res) => {
+  try {
+    const { id, comid } = req.params
+    const { postid } = req.body
+    const user = await User.findById(id)
+    const post = await Post.findById(postid)
+    if (!post) {
+      return res.status(400).json({ success: false, message: "Post Not found" })
+    }
+    if (!user) {
+      return res.status(400).json({ message: "User not Found", success: false })
+    }
+    const community = await Community.findById(comid)
+    if (!community) {
+      return res.status(400).json({ message: "Community not Found", success: false })
+    }
+    if (community && user) {
+      user.promotedPosts.push(postid)
+      post.isPromoted = true
+      await post.save()
+      await user.save()
+      community.promotedPosts.push(postid)
+      await community.save()
+    }
+    res.status(200).json({ success: true })
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal Server Error" })
+    console.log(error)
+  }
+}
+
+exports.getAllPosts = async (req, res) => {
+  try {
+    const { comid } = req.params
+    const community = await Community.findById(comid).populate("promotedPosts posts")
+    if (!community) {
+      return res.status(400).json({ success: false, message: "Community Not Found" })
+    }
+    let posts = []
+    for (let i = 0; i < community.posts.length; i++) {
+
+      if (community.posts[i].isPromoted === false) {
+        posts.push(community.posts[i])
+      }
+    }
+
+    let eng = []
+    await posts.map((p, i) => {
+      let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
+      eng.push(final)
+    })
+
+    const postsToSend = posts.map((f, i) => {
+      const postdps = process.env.POST_URL + f.post[0].content
+
+      return ({
+        ...f.toObject(),
+        image: postdps,
+        engrate: eng[i]
+      });
+    });
+
+    let engpromoted = []
+    await posts.map((p, i) => {
+      let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
+      engpromoted.push(final)
+    })
+
+    const postsToSendpromoted = community.promotedPosts.map((f, i) => {
+      const postdps = process.env.POST_URL + f.post[0].content
+
+      return ({
+        ...f.toObject(),
+        image: postdps,
+        engrate: engpromoted[i]
+      });
+    });
+
+    res.status(200).json({ success: true, posts: postsToSend, promotedposts: postsToSendpromoted })
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ success: false, message: "Internal Server Error" })
+  }
+}
 
 exports.getad = async (req, res) => {
   const { id } = req.params;
@@ -496,26 +851,18 @@ exports.getad = async (req, res) => {
       const [birthDay, birthMonth, birthYear] = birthdateString
         .split("/")
         .map(Number);
-
-      // Get the current date
       const currentDate = new Date();
-
-      // Get the current day, month, and year
       const currentDay = currentDate.getDate();
-      const currentMonth = currentDate.getMonth() + 1; // Month is zero-based
+      const currentMonth = currentDate.getMonth() + 1;
       const currentYear = currentDate.getFullYear();
-
-      // Calculate the age
       let age = currentYear - birthYear;
       if (
         currentMonth < birthMonth ||
         (currentMonth === birthMonth && currentDay < birthDay)
       ) {
-        age--; // Adjust age if birthday hasn't occurred yet this year
+        age--;
       }
-
       const ads = [];
-
       const ad = await Ads.aggregate([
         {
           $match: {
@@ -526,8 +873,8 @@ exports.getad = async (req, res) => {
         },
         {
           $lookup: {
-            from: "users", // Assuming the collection name for users is "users"
-            localField: "creator", // Assuming the field storing the creator ObjectId is "creator"
+            from: "users",
+            localField: "creator",
             foreignField: "_id",
             as: "creator",
           },
@@ -541,7 +888,7 @@ exports.getad = async (req, res) => {
         },
         {
           $project: {
-            creator: 0, // Exclude the creator field if needed
+            creator: 0,
           },
         },
         { $sample: { size: 1 } },
@@ -582,24 +929,29 @@ exports.getallads = async (req, res) => {
     const user = await Advertiser.findById(id);
     if (user) {
       const content = [];
-
-      const ads = await Ads.find({
-        advertiserid: user.advertiserid.toString(),
-      });
-
+      let ads = []
+      for (let i = 0; i < user.ads.length; i++) {
+        const id = user.ads[i].toString()
+        h = await Ads.findById(id)
+        if (h) {
+          ads.push(h)
+        }
+      }
       for (let i = 0; i < ads.length; i++) {
         const a = await generatePresignedUrl(
           "ads",
-          ads[i].content.toString(),
+          ads[i]?.content[0]?.name ? ads[i]?.content[0]?.name : "",
           60 * 60
         );
         content.push(a);
       }
+
       res.status(200).json({ ads, content, success: true });
     } else {
       res.status(404).json({ message: "User not found", success: false });
     }
   } catch (e) {
+    console.log(e)
     res.status(400).json({ message: e.message, success: false });
   }
 };
@@ -609,6 +961,7 @@ exports.fetchdashboard = async (req, res) => {
   const { id } = req.params;
   try {
     const user = await Advertiser.findById(id);
+
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
     } else {
@@ -1203,448 +1556,445 @@ exports.addata = async (req, res) => {
 
 exports.getData = async (req, res) => {
   try {
-    const PointsCategory = [
-      {
-        name: "Gaming",
-        ctr: 0.02,
-        audienceByCategory: 0.57,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Technology",
-        ctr: 0.018,
-        audienceByCategory: 0.5,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Travel",
-        ctr: 0.016,
-        audienceByCategory: 0.52,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Food",
-        ctr: 0.02,
-        audienceByCategory: 0.55,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Fashion",
-        ctr: 0.019,
-        audienceByCategory: 0.54,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Fitness",
-        ctr: 0.014,
-        audienceByCategory: 0.52,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Lifestyle",
-        ctr: 0.016,
-        audienceByCategory: 0.45,
-        points: 4,
-        selected: false,
-      },
-      {
-        name: "Entertainment",
-        ctr: 0.015,
-        audienceByCategory: 0.49,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Activism",
-        ctr: 0.009,
-        audienceByCategory: 0.3,
-        points: 2,
-        selected: false,
-      },
-      {
-        name: "Education",
-        ctr: 0.019,
-        audienceByCategory: 0.41,
-        points: 4,
-        selected: false,
-      },
-      {
-        name: "Art",
-        ctr: 0.016,
-        audienceByCategory: 0.37,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Business",
-        ctr: 0.02,
-        audienceByCategory: 0.52,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Photography",
-        ctr: 0.014,
-        audienceByCategory: 0.3,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Literature",
-        ctr: 0.009,
-        audienceByCategory: 0.35,
-        points: 2,
-        selected: false,
-      },
-      {
-        name: "Pets",
-        ctr: 0.013,
-        audienceByCategory: 0.37,
-        points: 4,
-        selected: false,
-      },
-      {
-        name: "DIY",
-        ctr: 0.012,
-        audienceByCategory: 0.42,
-        points: 4,
-        selected: false,
-      },
-      {
-        name: "Community",
-        ctr: 0.018,
-        audienceByCategory: 0.48,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Sports",
-        ctr: 0.02,
-        audienceByCategory: 0.55,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Music",
-        ctr: 0.019,
-        audienceByCategory: 0.5,
-        points: 4,
-        selected: false,
-      },
-      {
-        name: "Film",
-        ctr: 0.018,
-        audienceByCategory: 0.47,
-        points: 4,
-        selected: false,
-      },
-      {
-        name: "Health",
-        ctr: 0.016,
-        audienceByCategory: 0.45,
-        points: 4,
-        selected: false,
-      },
-      {
-        name: "Home",
-        ctr: 0.01,
-        audienceByCategory: 0.25,
-        points: 2,
-        selected: false,
-      },
-      {
-        name: "Design",
-        ctr: 0.011,
-        audienceByCategory: 0.35,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Science",
-        ctr: 0.018,
-        audienceByCategory: 0.5,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "History",
-        ctr: 0.015,
-        audienceByCategory: 0.38,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Interests",
-        ctr: 0.012,
-        audienceByCategory: 0.35,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Meditation",
-        ctr: 0.014,
-        audienceByCategory: 0.45,
-        points: 4,
-        selected: false,
-      },
-      {
-        name: "Charity",
-        ctr: 0.012,
-        audienceByCategory: 0.35,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Tech",
-        ctr: 0.02,
-        audienceByCategory: 0.5,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Cars",
-        ctr: 0.016,
-        audienceByCategory: 0.4,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Motivation",
-        ctr: 0.014,
-        audienceByCategory: 0.43,
-        points: 4,
-        selected: false,
-      },
-      {
-        name: "Comedy",
-        ctr: 0.017,
-        audienceByCategory: 0.47,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Finance",
-        ctr: 0.017,
-        audienceByCategory: 0.48,
-        points: 4,
-        selected: false,
-      },
-      {
-        name: "Hiking",
-        ctr: 0.009,
-        audienceByCategory: 0.35,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Astrology",
-        ctr: 0.01,
-        audienceByCategory: 0.35,
-        points: 1,
-        selected: false,
-      },
-      {
-        name: "Spirituality",
-        ctr: 0.012,
-        audienceByCategory: 0.35,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Language",
-        ctr: 0.009,
-        audienceByCategory: 0.3,
-        points: 2,
-        selected: false,
-      },
-      {
-        name: "LGBTQ+",
-        ctr: 0.009,
-        audienceByCategory: 0.25,
-        points: 1,
-        selected: false,
-      },
-      {
-        name: "Startups",
-        ctr: 0.016,
-        audienceByCategory: 0.46,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Virtual Reality",
-        ctr: 0.013,
-        audienceByCategory: 0.39,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Anime",
-        ctr: 0.02,
-        audienceByCategory: 0.55,
-        points: 5,
-        selected: false,
-      },
-      {
-        name: "Cosplay",
-        ctr: 0.012,
-        audienceByCategory: 0.37,
-        points: 3,
-        selected: false,
-      },
-      {
-        name: "Cooking",
-        ctr: 0.016,
-        audienceByCategory: 0.45,
-        points: 3,
-        selected: false,
-      },
-    ];
+    // const PointsCategory = [
+    //   {
+    //     name: "Gaming",
+    //     ctr: 0.02,
+    //     audienceByCategory: 0.57,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Technology",
+    //     ctr: 0.018,
+    //     audienceByCategory: 0.5,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Travel",
+    //     ctr: 0.016,
+    //     audienceByCategory: 0.52,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Food",
+    //     ctr: 0.02,
+    //     audienceByCategory: 0.55,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Fashion",
+    //     ctr: 0.019,
+    //     audienceByCategory: 0.54,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Fitness",
+    //     ctr: 0.014,
+    //     audienceByCategory: 0.52,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Lifestyle",
+    //     ctr: 0.016,
+    //     audienceByCategory: 0.45,
+    //     points: 4,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Entertainment",
+    //     ctr: 0.015,
+    //     audienceByCategory: 0.49,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Activism",
+    //     ctr: 0.009,
+    //     audienceByCategory: 0.3,
+    //     points: 2,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Education",
+    //     ctr: 0.019,
+    //     audienceByCategory: 0.41,
+    //     points: 4,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Art",
+    //     ctr: 0.016,
+    //     audienceByCategory: 0.37,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Business",
+    //     ctr: 0.02,
+    //     audienceByCategory: 0.52,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Photography",
+    //     ctr: 0.014,
+    //     audienceByCategory: 0.3,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Literature",
+    //     ctr: 0.009,
+    //     audienceByCategory: 0.35,
+    //     points: 2,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Pets",
+    //     ctr: 0.013,
+    //     audienceByCategory: 0.37,
+    //     points: 4,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "DIY",
+    //     ctr: 0.012,
+    //     audienceByCategory: 0.42,
+    //     points: 4,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Community",
+    //     ctr: 0.018,
+    //     audienceByCategory: 0.48,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Sports",
+    //     ctr: 0.02,
+    //     audienceByCategory: 0.55,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Music",
+    //     ctr: 0.019,
+    //     audienceByCategory: 0.5,
+    //     points: 4,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Film",
+    //     ctr: 0.018,
+    //     audienceByCategory: 0.47,
+    //     points: 4,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Health",
+    //     ctr: 0.016,
+    //     audienceByCategory: 0.45,
+    //     points: 4,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Home",
+    //     ctr: 0.01,
+    //     audienceByCategory: 0.25,
+    //     points: 2,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Design",
+    //     ctr: 0.011,
+    //     audienceByCategory: 0.35,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Science",
+    //     ctr: 0.018,
+    //     audienceByCategory: 0.5,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "History",
+    //     ctr: 0.015,
+    //     audienceByCategory: 0.38,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Interests",
+    //     ctr: 0.012,
+    //     audienceByCategory: 0.35,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Meditation",
+    //     ctr: 0.014,
+    //     audienceByCategory: 0.45,
+    //     points: 4,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Charity",
+    //     ctr: 0.012,
+    //     audienceByCategory: 0.35,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Tech",
+    //     ctr: 0.02,
+    //     audienceByCategory: 0.5,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Cars",
+    //     ctr: 0.016,
+    //     audienceByCategory: 0.4,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Motivation",
+    //     ctr: 0.014,
+    //     audienceByCategory: 0.43,
+    //     points: 4,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Comedy",
+    //     ctr: 0.017,
+    //     audienceByCategory: 0.47,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Finance",
+    //     ctr: 0.017,
+    //     audienceByCategory: 0.48,
+    //     points: 4,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Hiking",
+    //     ctr: 0.009,
+    //     audienceByCategory: 0.35,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Astrology",
+    //     ctr: 0.01,
+    //     audienceByCategory: 0.35,
+    //     points: 1,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Spirituality",
+    //     ctr: 0.012,
+    //     audienceByCategory: 0.35,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Language",
+    //     ctr: 0.009,
+    //     audienceByCategory: 0.3,
+    //     points: 2,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "LGBTQ+",
+    //     ctr: 0.009,
+    //     audienceByCategory: 0.25,
+    //     points: 1,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Startups",
+    //     ctr: 0.016,
+    //     audienceByCategory: 0.46,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Virtual Reality",
+    //     ctr: 0.013,
+    //     audienceByCategory: 0.39,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Anime",
+    //     ctr: 0.02,
+    //     audienceByCategory: 0.55,
+    //     points: 5,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Cosplay",
+    //     ctr: 0.012,
+    //     audienceByCategory: 0.37,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    //   {
+    //     name: "Cooking",
+    //     ctr: 0.016,
+    //     audienceByCategory: 0.45,
+    //     points: 3,
+    //     selected: false,
+    //   },
+    // ];
 
-    const myLocation = [
-      {
-        name: "Mumbai",
-        audienceNo: 1200,
-        men: 0.54,
-        women: 0.46,
-      },
-      {
-        name: "Delhi",
-        audienceNo: 1000,
-        men: 0.52,
-        women: 0.48,
-      },
-      {
-        name: "Banglore",
-        audienceNo: 900,
-        men: 0.52,
-        women: 0.48,
-      },
-      {
-        name: "Hyderabad",
-        audienceNo: 800,
-        men: 0.51,
-        women: 0.49,
-      },
-      {
-        name: "Chennai",
-        audienceNo: 100,
-        men: 0.503,
-        women: 0.497,
-      },
-      {
-        name: "Kolkata",
-        audienceNo: 600,
-        men: 0.525,
-        women: 0.475,
-      },
-      {
-        name: "Pune",
-        audienceNo: 500,
-        men: 0.52,
-        women: 0.48,
-      },
-      {
-        name: "Ahmedabad",
-        audienceNo: 400,
-        men: 0.53,
-        women: 0.47,
-      },
-      {
-        name: "Jaipur",
-        audienceNo: 300,
-        men: 0.53,
-        women: 0.47,
-      },
-      {
-        name: "Lucknow",
-        audienceNo: 2000,
-        men: 0.52,
-        women: 0.48,
-      },
-      {
-        name: "Kanpur",
-        audienceNo: 3000,
-        men: 0.54,
-        women: 0.46,
-      },
-      {
-        name: "Agra",
-        audienceNo: 300,
-        men: 0.534,
-        women: 0.466,
-      },
-      {
-        name: "Prayagraj",
-        audienceNo: 250,
-        men: 0.53,
-        women: 0.47,
-      },
-      {
-        name: "Meerut",
-        audienceNo: 200,
-        men: 0.53,
-        women: 0.47,
-      },
-      {
-        name: "Ghaziabad",
-        audienceNo: 150,
-        men: 0.53,
-        women: 0.47,
-      },
-      {
-        name: "Noida",
-        audienceNo: 700,
-        men: 0.55,
-        women: 0.45,
-      },
-      {
-        name: "Gorakhpur",
-        audienceNo: 50,
-        men: 0.53,
-        women: 0.47,
-      },
-      {
-        name: "Jhansi",
-        audienceNo: 40,
-        men: 0.53,
-        women: 0.47,
-      },
-      {
-        name: "Aligarh",
-        audienceNo: 30,
-        men: 0.53,
-        women: 0.47,
-      },
-      {
-        name: "Mathura",
-        audienceNo: 10,
-        men: 0.532,
-        women: 0.468,
-      },
-    ];
+    // const myLocation = [
+    //   {
+    //     name: "Mumbai",
+    //     audienceNo: 1200,
+    //     men: 0.54,
+    //     women: 0.46,
+    //   },
+    //   {
+    //     name: "Delhi",
+    //     audienceNo: 1000,
+    //     men: 0.52,
+    //     women: 0.48,
+    //   },
+    //   {
+    //     name: "Banglore",
+    //     audienceNo: 900,
+    //     men: 0.52,
+    //     women: 0.48,
+    //   },
+    //   {
+    //     name: "Hyderabad",
+    //     audienceNo: 800,
+    //     men: 0.51,
+    //     women: 0.49,
+    //   },
+    //   {
+    //     name: "Chennai",
+    //     audienceNo: 100,
+    //     men: 0.503,
+    //     women: 0.497,
+    //   },
+    //   {
+    //     name: "Kolkata",
+    //     audienceNo: 600,
+    //     men: 0.525,
+    //     women: 0.475,
+    //   },
+    //   {
+    //     name: "Pune",
+    //     audienceNo: 500,
+    //     men: 0.52,
+    //     women: 0.48,
+    //   },
+    //   {
+    //     name: "Ahmedabad",
+    //     audienceNo: 400,
+    //     men: 0.53,
+    //     women: 0.47,
+    //   },
+    //   {
+    //     name: "Jaipur",
+    //     audienceNo: 300,
+    //     men: 0.53,
+    //     women: 0.47,
+    //   },
+    //   {
+    //     name: "Lucknow",
+    //     audienceNo: 2000,
+    //     men: 0.52,
+    //     women: 0.48,
+    //   },
+    //   {
+    //     name: "Kanpur",
+    //     audienceNo: 3000,
+    //     men: 0.54,
+    //     women: 0.46,
+    //   },
+    //   {
+    //     name: "Agra",
+    //     audienceNo: 300,
+    //     men: 0.534,
+    //     women: 0.466,
+    //   },
+    //   {
+    //     name: "Prayagraj",
+    //     audienceNo: 250,
+    //     men: 0.53,
+    //     women: 0.47,
+    //   },
+    //   {
+    //     name: "Meerut",
+    //     audienceNo: 200,
+    //     men: 0.53,
+    //     women: 0.47,
+    //   },
+    //   {
+    //     name: "Ghaziabad",
+    //     audienceNo: 150,
+    //     men: 0.53,
+    //     women: 0.47,
+    //   },
+    //   {
+    //     name: "Noida",
+    //     audienceNo: 700,
+    //     men: 0.55,
+    //     women: 0.45,
+    //   },
+    //   {
+    //     name: "Gorakhpur",
+    //     audienceNo: 50,
+    //     men: 0.53,
+    //     women: 0.47,
+    //   },
+    //   {
+    //     name: "Jhansi",
+    //     audienceNo: 40,
+    //     men: 0.53,
+    //     women: 0.47,
+    //   },
+    //   {
+    //     name: "Aligarh",
+    //     audienceNo: 30,
+    //     men: 0.53,
+    //     women: 0.47,
+    //   },
+    //   {
+    //     name: "Mathura",
+    //     audienceNo: 10,
+    //     men: 0.532,
+    //     women: 0.468,
+    //   },
+    // ];
 
-    const datatoSend = {
-      NewLocations: myLocation,
-      Newcategory: PointsCategory,
-    };
+    // const datatoSend = {
+    //   NewLocations: myLocation,
+    //   Newcategory: PointsCategory,
+    // };
 
-    const check = await Adbyloccategory.findOne({});
-
+    const check = await Adbyloccategory.findById("65227169cf69893a9474e73e");
+    console.log(check)
     if (check) {
-      res.json(datatoSend);
-    } else {
-      const newData = new Adbyloccategory(datatoSend);
-      const savedData = await newData.save();
-      res.json(savedData);
+      res.status(200).json(check);
     }
   } catch (err) {
+    res.status(500).json({ message: "galaat chla" })
     console.log(err);
   }
 };

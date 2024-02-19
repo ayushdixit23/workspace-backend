@@ -345,7 +345,7 @@ exports.analyticsuser = async (req, res) => {
       const dps = await Promise.all(
         community.map(async (d) => {
           const a =
-            process.env.POST_URL + d?.dp;
+            process.env.URL + d?.dp;
           // const presignedUrl = await generatePresignedUrl(
           //   "images",
           //   dp,
@@ -393,12 +393,7 @@ exports.analyticsuser = async (req, res) => {
         product.map(async (f) => {
           const dp =
             process.env.PRODUCT_URL + f?.images[0].content;
-          // const dp = f?.images[0].content?.toString();
-          // const presignedUrl = await generatePresignedUrl(
-          //   "products",
-          //   dp,
-          //   60 * 60
-          // );
+
           return dp;
         })
       );
@@ -504,7 +499,7 @@ exports.allcoms = async (req, res) => {
     let avgeng = [];
     for (let i = 0; i < Co.length; i++) {
       const abc =
-        process.env.POST_URL + Co[i].dp;
+        process.env.URL + Co[i].dp;
       // const a = await generatePresignedUrl(
       //   "images",
       //   Co[i].dp.toString(),
@@ -569,7 +564,7 @@ exports.createcom = async (req, res) => {
       a = objectName;
       const result = await s3.send(
         new PutObjectCommand({
-          Bucket: POST_BUCKET,
+          Bucket: BUCKET_NAME,
           Key: objectName,
           Body: image.buffer,
           ContentType: image.mimetype,

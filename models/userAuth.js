@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema(
     resetPasswordLink: {
       data: String,
     },
+    profilepic: { type: String },
     fullname: {
       type: String,
       maxLength: 30,
@@ -130,6 +131,10 @@ const userSchema = new mongoose.Schema(
         comId: { type: ObjectId, ref: "Community" },
       },
     ],
+    promotedPosts: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+    }],
     blockedpeople: [
       {
         time: { type: String, default: Date.now().toString() },

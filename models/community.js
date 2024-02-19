@@ -23,6 +23,7 @@ const communitySchema = new mongoose.Schema(
         //  required: true
       },
     ],
+    promotedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
     totalposts: { type: Number, default: 0 },
     tags: { type: [String] },
     desc: { type: String },
