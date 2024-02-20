@@ -23,6 +23,13 @@ const AdsSchema = new mongoose.Schema(
     maxage: { type: Number },
     minage: { type: Number },
     totalbudget: { type: Number },
+    adsDetails: [{
+      time: { type: Date, default: Date.now },
+      click: { type: Number, default: 0 },
+      impressions: { type: Number, default: 0 },
+      cpc: { type: Number, default: 0 },
+      cost: { type: Number, default: 0 }
+    }],
     dailybudget: { type: Number },
     audiencesize: { type: Number },
     category: { type: String },

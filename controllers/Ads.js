@@ -268,7 +268,7 @@ exports.createadvacc = async (req, res) => {
       const advid = generateUniqueID();
       const uuidString = uuid();
       const image = req.file;
-      const bucketName = "images";
+
       const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
       const adv = new Advertiser({
         firstname,
@@ -291,15 +291,24 @@ exports.createadvacc = async (req, res) => {
       });
 
       console.log("runnded not user not advertiser")
-      await sharp(image.buffer)
-        .jpeg({ quality: 60 })
-        .toBuffer()
-        .then(async (data) => {
-          await minioClient.putObject(bucketName, objectName, data);
+      // await sharp(image.buffer)
+      //   .jpeg({ quality: 60 })
+      //   .toBuffer()
+      //   .then(async (data) => {
+      //     await minioClient.putObject(bucketName, objectName, data);
+      //   })
+      //   .catch((err) => {
+      //     console.log(err.message, "-error");
+      //   });
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: objectName,
+          Body: image.buffer,
+          ContentType: image.mimetype,
         })
-        .catch((err) => {
-          console.log(err.message, "-error");
-        });
+      );
 
       const adsver = await adv.save();
 
@@ -373,22 +382,31 @@ exports.createadvacc = async (req, res) => {
         userid: finduser._id,
       });
 
-      await sharp(image.buffer)
-        .jpeg({ quality: 60 })
-        .toBuffer()
-        .then(async (data) => {
-          await minioClient.putObject(bucketName, objectName, data);
-        })
-        .catch((err) => {
-          console.log(err.message, "-error");
-        });
+      // await sharp(image.buffer)
+      //   .jpeg({ quality: 60 })
+      //   .toBuffer()
+      //   .then(async (data) => {
+      //     await minioClient.putObject(bucketName, objectName, data);
+      //   })
+      //   .catch((err) => {
+      //     console.log(err.message, "-error");
+      //   });
 
-      await adv.save();
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: objectName,
+          Body: image.buffer,
+          ContentType: image.mimetype,
+        })
+      );
+
+      const savedAdv = await adv.save();
 
       await User.updateOne(
         { _id: finduser._id },
         {
-          $set: { adid: adv._id, advertiserid: user._id },
+          $set: { adid: advid, advertiserid: savedAdv._id },
         }
       );
     }
@@ -697,7 +715,7 @@ exports.createad = async (req, res) => {
       title: headline,
       desc: desc,
       community: comid,
-      sender: id,
+      sender: user.userid,
       post: pos,
       tags: community.category,
       kind: "ad",
@@ -710,11 +728,12 @@ exports.createad = async (req, res) => {
       { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
     );
 
-    
+
     await Topic.updateOne(
       { _id: topic[0]._id.toString() },
       { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
     );
+    res.status(200).json({ success: true })
   } catch (error) {
     res.status(400).json({ message: error.message, success: false });
     console.log(error)
@@ -2151,3 +2170,89 @@ exports.finaliseorder = async (req, res) => {
   }
 };
 
+exports.fetchingprosite = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(id)
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found" })
+    }
+    const community = []
+    for (let i = 0; i < user.communitycreated.length; i++) {
+      const id = user.communitycreated[i]
+      comm = await Community.findById(id).populate("members", "dp")
+      community.push(comm)
+    }
+
+    const communityDps = await Promise.all(
+      community.map((d) => {
+        const imageforCommunity =
+          process.env.URL + d.dp;
+
+        return imageforCommunity;
+      })
+    );
+
+    const membersdp = await Promise.all(
+      community.map(async (d) => {
+        const dps = await Promise.all(
+          d.members.map(async (userId) => {
+            const member = await User.findById(userId);
+            const dp = process.env.URL + member.profilepic;
+            return dp;
+          })
+        );
+        return dps;
+      })
+    );
+
+    console.log(membersdp)
+
+    const communitywithDps = community.map((f, i) => {
+      return { ...f.toObject(), dps: communityDps[i], membersdp: membersdp[i] };
+    });
+
+    const products = await Product.find({ creator: id })
+
+    const productdps = await Promise.all(
+      products.map(async (product) => {
+        const a =
+          process.env.PRODUCT_URL + product.images[0].content;
+        return a
+      })
+    );
+
+
+    const productsWithDps = products.map((product, index) => {
+      return {
+        ...product.toObject(),
+        dp: productdps[index],
+      };
+    });
+
+    const userDetails = {
+      bio: user.desc,
+      phone: user.phone,
+      username: user.username,
+      fullname: user.fullname,
+      dp: process.env.URL + user.profilepic,
+      temp: user.prosite_template,
+      email: user.email,
+      links: {
+        insta: user.insta,
+        snap: user.snap,
+        x: user.x,
+        yt: user.yt,
+        linkdin: user.linkdin
+      }
+    }
+    const data = {
+      communitywithDps, productsWithDps, userDetails
+    }
+
+    res.status(200).json({ success: true, data, user })
+  } catch (error) {
+    res.status(500).json({ message: error.message, success: false });
+    console.log(error)
+  }
+}

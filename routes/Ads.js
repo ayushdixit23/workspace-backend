@@ -20,7 +20,7 @@ const {
   refreshingsAdsTokens,
   getCommunities,
   promotedposts,
-  getAllPosts, createad
+  getAllPosts, createad, fetchingprosite
 } = require("../controllers/Ads");
 const router = express.Router();
 const multer = require("multer");
@@ -28,8 +28,8 @@ const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-router.post("/newad/:id", upload.any(), newad);
-router.post("/createad/:id", upload.any(), createad);
+router.post("/newad/:id/:userId", upload.any(), newad);
+router.post("/v1/createad/:id", upload.any(), createad);
 router.get("/getad/:id", getad);
 router.get("/getallads/:id", getallads);
 router.post("/checkadvaccount", checkaccount),
@@ -51,5 +51,6 @@ router.post("/refresh", refreshingsAdsTokens);
 router.get("/getcommunitiesforAd/:id", getCommunities)
 router.post("/promotedposts/:id/:comid", promotedposts)
 router.get("/getAllPostsforAd/:id/:comid", getAllPosts)
+router.get("/getprositedetails/:id", fetchingprosite)
 
 module.exports = router;
