@@ -50,12 +50,6 @@ const minioClient = new Minio.Client({
   secretKey: "shreyansh379",
 });
 
-function generateAccessToken(data) {
-  const access_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
-    expiresIn: "1h",
-  });
-  return access_token;
-}
 
 
 const {
@@ -73,6 +67,12 @@ const instance = new Razorpay({
 //   "key_secret": "bxyQhbzS0bHNBnalbBg9QTDo"
 // });
 
+function generateAccessToken(data) {
+  const access_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
+    expiresIn: "1h",
+  });
+  return access_token;
+}
 function generateRefreshToken(data) {
 
   const refresh_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
@@ -239,7 +239,7 @@ exports.checkemail = async (req, res) => {
     if (!user) {
       res
         .status(203)
-        .json({ message: "User not found", success: true, userexists: false });
+        .json({ message: "User not found", success: false, userexists: false });
     } else {
 
       const dp =
@@ -346,12 +346,6 @@ exports.analyticsuser = async (req, res) => {
         community.map(async (d) => {
           const a =
             process.env.URL + d?.dp;
-          // const presignedUrl = await generatePresignedUrl(
-          //   "images",
-          //   dp,
-          //   60 * 60
-          // );
-
           return a;
         })
       );
