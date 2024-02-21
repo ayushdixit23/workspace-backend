@@ -236,8 +236,10 @@ exports.checkemail = async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email: email, passw: password });
+    console.log(user)
     if (!user) {
-      res
+      console.log("first")
+      return res
         .status(203)
         .json({ message: "User not found", success: false, userexists: false });
     } else {
