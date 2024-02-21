@@ -234,14 +234,11 @@ exports.checkqr = async (req, res) => {
 // email
 exports.checkemail = async (req, res) => {
   const { email, password } = req.body;
-  console.log(req.body)
-  const p = await decryptaes(password)
-  console.log(p)
+  const passw = await encryptaes(password)
   try {
-    const user = await User.findOne({ email: email, passw: password });
+    const user = await User.findOne({ email, passw });
     console.log(user)
     if (!user) {
-      console.log("first")
       return res
         .status(203)
         .json({ message: "User not found", success: false, userexists: false });
