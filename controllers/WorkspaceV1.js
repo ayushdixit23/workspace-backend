@@ -235,6 +235,8 @@ exports.checkqr = async (req, res) => {
 exports.checkemail = async (req, res) => {
   const { email, password } = req.body;
   console.log(req.body)
+  const p = await decryptaes(password)
+  console.log(p)
   try {
     const user = await User.findOne({ email: email, passw: password });
     console.log(user)
