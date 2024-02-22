@@ -34,6 +34,9 @@ const {
   membershipbuy,
   memfinalize,
   addbank,
+  getallposts,
+  fetchwithid,
+  fetchingprosite,
   // base64upload,
   // getimage,
   // colors,
@@ -85,6 +88,7 @@ router.post("/createproduct/:userId/:colid", upload.any(), createproduct);
 router.get("/getaproduct/:id/:productId", getaproduct);
 router.get("/fetchallorders/:id", fetchallorders);
 router.get("/getposts/:id/:comid", getposts);
+router.get("/getallposts/:comid", getallposts);
 router.get("/getprofileinfo/:id", getprofileinfo);
 router.post("/profileinfo/:id", upload.single("image"), profileinfo);
 // router.post("/profilestore/:id", profileStore);
@@ -103,7 +107,8 @@ router.get("/earnings/:id", earnings);
 router.post("/membershipbuy/:id/:memid", membershipbuy)
 router.post("/memfinalize/:id/:orderId", memfinalize)
 router.post("/addbank/:id", addbank)
-
+router.get("/fetchwithid/:id", fetchwithid)
+// router.get("/getprositedetails/:id", fetchingprosite)
 // prosite route
 // router.use("/uploadbase64", base64upload);
 // router.post("/devpost", devpost);

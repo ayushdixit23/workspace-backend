@@ -167,19 +167,13 @@ exports.checkid = async (req, res) => {
       });
 
       res.header("Authorization", `Bearer ${access_token}`);
-      const dat = {
-        dp,
-        fullname: user.fullname,
-        username: user.username,
-        id: user._id.toString(),
-      }
-      const endata = await encryptaes(JSON.stringify(dat));
+
       res
         .status(200)
         .json({
 
           dp,
-          access_token, refresh_token, endata, sessionId, success: true
+          access_token, refresh_token, sessionId, success: true
         });
     } else {
       res.status(404).json({ message: "User not found", success: false });
@@ -189,6 +183,36 @@ exports.checkid = async (req, res) => {
     res.status(400).json({ message: "Something Went Wrong", success: false });
   }
 };
+
+exports.fetchwithid = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(id)
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found" })
+    }
+    const sessionId = generateSessionId();
+    const dp =
+      process.env.URL + user.profilepic;
+    const data = {
+      dp,
+      fullname: user.fullname,
+      username: user.username,
+      id: user._id.toString(),
+      sessionId
+    };
+    console.log(data)
+    const access_token = generateAccessToken(data);
+    const refresh_token = generateRefreshToken(data);
+    res.status(200).json({
+      dp,
+      access_token, refresh_token, sessionId, success: true
+    });
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: "Something Went Wrong", success: false });
+  }
+}
 
 exports.checkqr = async (req, res) => {
   console.log(req.body);
@@ -384,6 +408,7 @@ exports.analyticsuser = async (req, res) => {
           agerange: sendAge
         };
       });
+
       const product = await Product.find({ creator: user._id.toString() }).sort({ itemsold: -1 }).limit(5)
       const productdps = await Promise.all(
         product.map(async (f) => {
@@ -421,15 +446,21 @@ exports.analyticsuser = async (req, res) => {
         "community",
         "title"
       );
+
       const postsdps = await Promise.all(
         posts.map(async (f) => {
-          const dp =
+          if (f?.post.length === 0) {
+            console.log("first", f?.title)
+            return null
+          }
+          let dp =
             process.env.POST_URL + f?.post[0].content;
           // const dp = f?.post[0].content?.toString();
           // const presignedUrl = await generatePresignedUrl("posts", dp, 60 * 60);
           return dp;
         })
       );
+      console.log(postsdps)
 
       // engagement rate
       let eng = []
@@ -496,11 +527,7 @@ exports.allcoms = async (req, res) => {
     for (let i = 0; i < Co.length; i++) {
       const abc =
         process.env.URL + Co[i].dp;
-      // const a = await generatePresignedUrl(
-      //   "images",
-      //   Co[i].dp.toString(),
-      //   60 * 60
-      // );
+
       dps.push(abc);
     }
     const Com = Co.reverse();
@@ -763,8 +790,6 @@ exports.createcom = async (req, res) => {
   }
 };
 
-
-
 exports.getposts = async (req, res) => {
   try {
     const { id, comid } = req.params;
@@ -776,7 +801,7 @@ exports.getposts = async (req, res) => {
       const postdetails = com.posts.map((post) => {
         return {
           post,
-          // like comment share views already present on post itself
+
           community: com.title,
           engagementrate: (post.likes + post.views) / 100,
         };
@@ -790,6 +815,41 @@ exports.getposts = async (req, res) => {
     console.log(err);
   }
 };
+
+exports.getallposts = async (req, res) => {
+  console.log("first")
+  try {
+    const { comid } = req.params
+    const community = await Community.findById(comid).populate("posts")
+    if (!community) {
+      return res.status(400).json({ success: false, message: "No Results Found" })
+    }
+    let postsArr = []
+    for (let i = 0; i < community.posts.length; i++) {
+
+      const postId = community.posts[i]
+      const post = await Post.findById(postId)
+      if (post.kind === "post") {
+        let postdp
+        if (post.post.length === 0) {
+          postdp = null
+        } else {
+          postdp = process.env.POST_URL + post.post[0].content
+        }
+        const postswithdp = {
+          post, postdp
+        }
+        postsArr.push(postswithdp)
+      }
+    }
+
+    const posts = postsArr.reverse()
+    res.status(200).json({ success: true, posts })
+  } catch (error) {
+    res.status(500).json({ message: error.message, success: false });
+    console.log(error)
+  }
+}
 
 // Store API =>
 // store registration
@@ -816,17 +876,6 @@ exports.registerstore = async (req, res) => {
     const uuidString = uuid();
     const bucketName = "products";
     const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
-
-    // await sharp(req.file.buffer)
-    //   .jpeg({ quality: 50 })
-    //   .toBuffer()
-    //   .then(async (data) => {
-    //     await minioClient.putObject(bucketName, objectName, data);
-    //   })
-    //   .catch((err) => {
-    //     console.log(err.message, "-error");
-    //   });
-
     const result = await s3.send(
       new PutObjectCommand({
         Bucket: BUCKET_NAME,
@@ -885,18 +934,8 @@ exports.createCollection = async (req, res) => {
     const user = await User.findById(userId)
     if (req.file) {
       const uuidString = uuid();
-      // const bucketName = "products";
       const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
       console.log(objectName);
-      // await sharp(req.file.buffer)
-      //   .jpeg({ quality: 50 })
-      //   .toBuffer()
-      //   .then(async (data) => {
-      //     await minioClient.putObject(bucketName, objectName, data);
-      //   })
-      //   .catch((err) => {
-      //     console.log(err.message, "-error");
-      //   });
       await s3.send(
         new PutObjectCommand({
           Bucket: BUCKET_NAME,
@@ -1858,3 +1897,88 @@ exports.addbank = async (req, res) => {
     res.status(500).json({ message: error.message, success: false });
   }
 }
+
+// exports.fetchingprosite = async (req, res) => {
+//   try {
+//     const { id } = req.params
+//     const user = await User.findById(id)
+//     if (!user) {
+//       return res.status(400).json({ success: false, message: "User Not Found" })
+//     }
+//     const community = []
+//     const com = await Community.find({ creator: id })
+//     for (let i = 0; i < com.length; i++) {
+//       const id = com[i]
+//       let comm = await Community.findById(id).populate("members", "dp")
+//       community.push(comm)
+//     }
+
+//     const communityDps = await Promise.all(
+//       community.map((d) => {
+//         const imageforCommunity =
+//           process.env.URL + d.dp;
+
+//         return imageforCommunity;
+//       })
+//     );
+
+//     const membersdp = await Promise.all(
+//       community.map(async (d) => {
+//         const dps = await Promise.all(
+//           d.members.map(async (userId) => {
+//             const member = await User.findById(userId);
+//             const dp = process.env.URL + member.profilepic;
+//             return dp;
+//           })
+//         );
+//         return dps;
+//       })
+//     );
+
+//     const communitywithDps = community.map((f, i) => {
+//       return { ...f.toObject(), dps: communityDps[i], membersdp: membersdp[i] };
+//     });
+
+//     const products = await Product.find({ creator: id })
+
+//     const productdps = await Promise.all(
+//       products.map(async (product) => {
+//         const a =
+//           process.env.PRODUCT_URL + product.images[0].content;
+//         return a
+//       })
+//     );
+
+//     const productsWithDps = products.map((product, index) => {
+//       return {
+//         ...product.toObject(),
+//         dp: productdps[index],
+//       };
+//     });
+
+//     const userDetails = {
+//       bio: user.desc,
+//       phone: user.phone,
+//       username: user.username,
+//       fullname: user.fullname,
+//       dp: process.env.URL + user.profilepic,
+//       temp: user.prosite_template,
+//       email: user.email,
+//       links: {
+//         insta: user.insta,
+//         snap: user.snap,
+//         x: user.x,
+//         yt: user.yt,
+//         linkdin: user.linkdin
+//       }
+//     }
+//     const data = {
+//       communitywithDps, productsWithDps, userDetails
+//     }
+
+//     res.status(200).json({ success: true, data, user })
+//   } catch (error) {
+//     res.status(500).json({ message: error.message, success: false });
+//     console.log(error)
+//   }
+// }

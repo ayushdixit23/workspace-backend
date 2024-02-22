@@ -331,9 +331,8 @@ exports.createprosite = async (req, res) => {
       const bucketName = "prosites";
       const imageName = `${Date.now()}_${uuidString}_${image.originalname}`;
       const webimgName = `${Date.now()}_${uuidString}_${webpng.originalname}`;
-      const mobimgName = `${Date.now()}_${uuidString}_${
-        mobilepng.originalname
-      }`;
+      const mobimgName = `${Date.now()}_${uuidString}_${mobilepng.originalname
+        }`;
 
       await sharp(image.buffer)
         .jpeg({ quality: 50 })
@@ -471,9 +470,8 @@ exports.saveprosite = async (req, res) => {
       const bucketName = "prosites";
       const imageName = `${Date.now()}_${uuidString}_${image.originalname}`;
       const webimgName = `${Date.now()}_${uuidString}_${webpng.originalname}`;
-      const mobimgName = `${Date.now()}_${uuidString}_${
-        mobilepng.originalname
-      }`;
+      const mobimgName = `${Date.now()}_${uuidString}_${mobilepng.originalname
+        }`;
 
       await sharp(image.buffer)
         .jpeg({ quality: 50 })
@@ -521,3 +519,4 @@ exports.saveprosite = async (req, res) => {
     res.status(400).json({ message: e.message, success: false });
   }
 };
+

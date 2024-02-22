@@ -1075,16 +1075,15 @@ exports.getallposts = async (req, res) => {
         //   posts[i].post[0].content.toString(),
         //   60 * 60
         // );
+        if (posts[i].post.length === 0) {
+          return null
+        }
         const a =
           process.env.POST_URL + posts[i].post[0].content;
         content.push(a);
       }
       for (let i = 0; i < posts.length; i++) {
-        // const a = await generatePresignedUrl(
-        //   "images",
-        //   posts[i].sender.profilepic.toString(),
-        //   60 * 60
-        // );
+
         const a =
           process.env.POST_URL + posts[i].sender.profilepic;
         dps.push(a);
