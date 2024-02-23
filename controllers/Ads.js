@@ -1280,14 +1280,14 @@ exports.addmoneytowallet = async (req, res) => {
     } else {
       const newid = Date.now();
       const t = new Transaction({
-        amount: amount,
+        amount: amount / 100,
         type: "Wallet",
         transactionid: newid,
       });
-      await t.save();
+      const tId = await t.save();
 
       await Advertiser.updateOne({ _id: id },
-        { $push: { transactions: t._id }, }
+        { $push: { transactions: tId._id }, }
       );
       const instance = new Razorpay({
         key_id: "rzp_test_jXDMq8a2wN26Ss",
@@ -1309,6 +1309,7 @@ exports.addmoneytowallet = async (req, res) => {
           } else {
             res.status(200).json({
               success: true,
+              tid: tId._id,
               order_id: order.id,
             });
           }
@@ -1324,21 +1325,23 @@ exports.addmoneytowallet = async (req, res) => {
 //update transaction status
 exports.updatetransactionstatus = async (req, res) => {
   const { id } = req.params;
-  const { success, tid, amount } = req.body;
+  const { success, tid, amount, order_id, payment_id, razorpay_signature } = req.body;
+  console.log(req.body)
 
   try {
     const user = await Advertiser.findById(id);
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
     } else {
-      const t = await Transaction.findOne({ transactionid: tid });
+      const t = await Transaction.findById(tid);
+      console.log(t)
       if (!t) {
         res
           .status(404)
           .json({ success: false, message: "Transaction not found" });
       } else {
         const isValid = validatePaymentVerification(
-          { order_id: razorpay_order_id, payment_id: razorpay_payment_id },
+          { order_id: order_id, payment_id: payment_id },
           razorpay_signature,
           "bxyQhbzS0bHNBnalbBg9QTDo"
         );
@@ -1348,7 +1351,7 @@ exports.updatetransactionstatus = async (req, res) => {
             { _id: t._id },
             {
               $set: {
-                status: success,
+                status: "completed",
               },
             }
           );
@@ -1362,6 +1365,14 @@ exports.updatetransactionstatus = async (req, res) => {
             success: true,
           });
         } else {
+          await Transaction.updateOne(
+            { _id: t._id },
+            {
+              $set: {
+                status: "failed",
+              },
+            }
+          );
           res.status(400).json({ success: false })
         }
       }

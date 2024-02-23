@@ -1671,18 +1671,10 @@ exports.updatecommunity = async (req, res) => {
         a1 = objectName;
         a2 = req.file.mimetype;
 
-        // await sharp(req.file.buffer)
-        //   .jpeg({ quality: 50 })
-        //   .toBuffer()
-        //   .then(async (data) => {
-        //     await minioClient.putObject(bucketName, objectName, data);
-        //   })
-        //   .catch((err) => {
-        //     console.log(err.message, "-error");
         //   });
         const result = await s3.send(
           new PutObjectCommand({
-            Bucket: POST_BUCKET,
+            Bucket: BUCKET_NAME,
             Key: objectName,
             Body: req.file.buffer,
             ContentType: req.file.mimetype,
