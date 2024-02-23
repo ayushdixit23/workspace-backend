@@ -539,13 +539,13 @@ exports.allcoms = async (req, res) => {
         let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
         eng.push(final)
       })
-      console.log(eng, "eng")
+
       let sum = 0
       for (let i = 0; i < eng.length; i++) {
         sum += eng[i]
       }
       let avg = 0
-      console.log(sum, "sum")
+
       if (eng.length > 0) {
         avg = Math.round(sum / eng.length)
       } else {
@@ -553,9 +553,6 @@ exports.allcoms = async (req, res) => {
       }
       avgeng.push(avg)
     }
-
-    console.log(avgeng, "avgeng")
-
     dps.reverse();
     const dpdata = dps;
     const comData = Com;
@@ -1656,6 +1653,8 @@ exports.updatecommunity = async (req, res) => {
   const { category, title, desc, topicId, message, price, topicname, type } =
     req.body;
   const uuidString = uuid();
+  console.log(req.body)
+  console.log(req.file)
   try {
     const user = await User.findById(userId);
     const com = await Community.findById(comId);
@@ -1665,14 +1664,12 @@ exports.updatecommunity = async (req, res) => {
       res.status(404).json({ message: "Community not found", success: false });
     } else {
       if (req.file) {
-        const bucketName = "images";
+        console.log("do")
         const objectName = `${Date.now()}${uuidString}${req.file.originalname
           } `;
         a1 = objectName;
         a2 = req.file.mimetype;
-
-        //   });
-        const result = await s3.send(
+        await s3.send(
           new PutObjectCommand({
             Bucket: BUCKET_NAME,
             Key: objectName,
