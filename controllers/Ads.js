@@ -143,7 +143,7 @@ exports.refreshingsAdsTokens = async (req, res) => {
             accounttype: advertiser.type,
             taxinfo: advertiser.taxinfo,
             email: advertiser.email,
-            // advid: advertiser.advertiserid,
+            advertiserid: advertiser.advertiserid,
             sessionId
           };
           const access_token = generateAccessToken(data);
@@ -182,11 +182,12 @@ exports.checkaccount = async (req, res) => {
       });
     }
     if (advertiser) {
-      const dp = await generatePresignedUrl(
-        "images",
-        advertiser.image,
-        60 * 60
-      );
+      // const dp = await generatePresignedUrl(
+      //   "images",
+      //   advertiser.image,
+      //   60 * 60
+      // );
+      const dp = process.env.URL + advertiser.image
       const sessionId = generateSessionId();
       const newEditCount = {
         login: Date.now().toString(),
@@ -209,9 +210,10 @@ exports.checkaccount = async (req, res) => {
         accounttype: advertiser.type,
         taxinfo: advertiser.taxinfo,
         email: advertiser.email,
-        // advid: advertiser.advertiserid,
+        advertiserid: advertiser.advertiserid,
         sessionId
       };
+
       const access_token = generateAccessToken(data)
       const refresh_token = generateRefreshToken(data)
       return res.status(200).json({
@@ -264,7 +266,7 @@ exports.createadvacc = async (req, res) => {
       $or: [{ email: email }, { phone: phone }],
     })
     if (!advertiser && !user) {
-      // if (!finduser) {
+
       const advid = generateUniqueID();
       const uuidString = uuid();
       const image = req.file;
@@ -291,16 +293,6 @@ exports.createadvacc = async (req, res) => {
       });
 
       console.log("runnded not user not advertiser")
-      // await sharp(image.buffer)
-      //   .jpeg({ quality: 60 })
-      //   .toBuffer()
-      //   .then(async (data) => {
-      //     await minioClient.putObject(bucketName, objectName, data);
-      //   })
-      //   .catch((err) => {
-      //     console.log(err.message, "-error");
-      //   });
-
       await s3.send(
         new PutObjectCommand({
           Bucket: BUCKET_NAME,
@@ -359,7 +351,7 @@ exports.createadvacc = async (req, res) => {
       const advid = generateUniqueID();
       const uuidString = uuid();
       const image = req.file;
-      const bucketName = "images";
+
       const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
       const adv = new Advertiser({
         firstname,
@@ -382,15 +374,6 @@ exports.createadvacc = async (req, res) => {
         userid: finduser._id,
       });
 
-      // await sharp(image.buffer)
-      //   .jpeg({ quality: 60 })
-      //   .toBuffer()
-      //   .then(async (data) => {
-      //     await minioClient.putObject(bucketName, objectName, data);
-      //   })
-      //   .catch((err) => {
-      //     console.log(err.message, "-error");
-      //   });
 
       await s3.send(
         new PutObjectCommand({
@@ -438,7 +421,7 @@ exports.newad = async (req, res) => {
     dailybudget,
     estaudience,
     category,
-    contenttype,
+
     adid,
     gender,
     advertiserid,
@@ -1141,6 +1124,8 @@ exports.editadvertiser = async (req, res) => {
     if (!advertiser) {
       res.status(404).json({ success: false, message: "User not found" });
     } else {
+      const sessionId = generateSessionId()
+      const dp = process.env.URL + advertiser.image
       const data = {
         userid: advertiser.userid,
         advid: advertiser._id,
@@ -1153,7 +1138,7 @@ exports.editadvertiser = async (req, res) => {
         accounttype: advertiser.type,
         taxinfo: advertiser.taxinfo,
         email: advertiser.email,
-        // advid: advertiser.advertiserid,
+        advertiserid: advertiser.advertiserid,
         sessionId
       };
       const access_token = generateAccessToken(data)
@@ -1178,9 +1163,10 @@ exports.editadvertiser = async (req, res) => {
           $push: { editcount: newEditCount },
         }
       );
-      res.status(200).json({ success: true, access_token, refresh_token });
+      res.status(200).json({ success: true, access_token, refresh_token, sessionId });
     }
   } catch (e) {
+    console.log(e)
     res.status(400).json({ message: "Something went wrong", success: false });
   }
 };
@@ -2266,4 +2252,826 @@ exports.fetchingprosite = async (req, res) => {
     res.status(500).json({ message: error.message, success: false });
     console.log(error)
   }
+}
+
+const locationAndCategory = () => {
+  const locationAndCategoryWorks = [
+    {
+      location: "Uttar Pradesh",
+      categories: [
+        {
+          name: "DIY & Crafts",
+          rate: 0.07
+        },
+        {
+          name: "Movies & Entertainment",
+          rate: 0.09
+        },
+        {
+          name: "News",
+          rate: 0.08
+        },
+        {
+          name: "Gaming",
+          rate: 0.010
+        },
+        {
+          name: "Pet & Animals",
+          rate: 0.07
+        },
+        {
+          name: "Career & Education",
+          rate: 0.075
+        },
+        {
+          name: "Anime & Manga",
+          rate: 0.010
+        },
+        {
+          name: "Humor & Memes",
+          rate: 0.010
+        },
+        {
+          name: "Family & Relationships",
+          rate: 0.09
+        },
+        {
+          name: "Sports",
+          rate: 0.09
+        },
+        {
+          name: "Science & Learning",
+          rate: 0.086
+        },
+        {
+          name: "Music & Podcasts",
+          rate: 0.094
+        },
+        {
+          name: "Beauty & Fashion",
+          rate: 0.079
+        },
+        {
+          name: "Health & Fitness",
+          rate: 0.070
+        },
+        {
+          name: "Food & Cooking",
+          rate: 0.067
+        },
+        {
+          name: "Business & Finance",
+          rate: 0.073
+        },
+        {
+          name: "Photography",
+          rate: 0.071
+        },
+        {
+          name: "Travel & Gadgets",
+          rate: 0.079
+        },
+        {
+          name: "Motivation & Self-Help",
+          rate: 0.076
+        },
+        {
+          name: "Pop Culture",
+          rate: 0.08
+        },
+        {
+          name: "Cars",
+          rate: 0.08
+        },
+      ]
+    },
+    {
+      state: "Maharashtra",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.008" },
+        { name: "Movies & Entertainment", rate: "0.004" },
+        { name: "News", rate: "0.010" },
+        { name: "Gaming", rate: "0.002" },
+        { name: "Pet & Animals", rate: "0.007" },
+        { name: "Career & Education", rate: "0.005" },
+        { name: "Anime & Manga", rate: "0.006" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.009" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.005" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.006" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.009" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Karnataka",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Tamil Nadu",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.009" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.007" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.002" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Rajasthan",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.008" },
+        { name: "Movies & Entertainment", rate: "0.004" },
+        { name: "News", rate: "0.010" },
+        { name: "Gaming", rate: "0.002" },
+        { name: "Pet & Animals", rate: "0.007" },
+        { name: "Career & Education", rate: "0.005" },
+        { name: "Anime & Manga", rate: "0.006" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.009" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.005" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.006" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.009" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Gujarat",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "West Bengal",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Jammu and Kashmir",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Haryana",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.008" },
+        { name: "Movies & Entertainment", rate: "0.004" },
+        { name: "News", rate: "0.010" },
+        { name: "Gaming", rate: "0.002" },
+        { name: "Pet & Animals", rate: "0.007" },
+        { name: "Career & Education", rate: "0.005" },
+        { name: "Anime & Manga", rate: "0.006" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.009" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.005" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.006" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.009" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Punjab",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Uttarakhand",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.005" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Andhra Pradesh",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Arunachal Pradesh",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Assam",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Bihar",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Chhattisgarh",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Goa",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Himachal Pradesh",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Jharkhand",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Kerala",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Madhya Pradesh",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Manipur",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Meghalaya",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Mizoram",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Nagaland",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Odisha",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Sikkim",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Telangana",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.007" },
+        { name: "Movies & Entertainment", rate: "0.002" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+    {
+      state: "Tripura",
+      categories: [
+        { name: "DIY & Crafts", rate: "0.006" },
+        { name: "Movies & Entertainment", rate: "0.003" },
+        { name: "News", rate: "0.008" },
+        { name: "Gaming", rate: "0.004" },
+        { name: "Pet & Animals", rate: "0.009" },
+        { name: "Career & Education", rate: "0.006" },
+        { name: "Anime & Manga", rate: "0.010" },
+        { name: "Humor & Memes", rate: "0.003" },
+        { name: "Family & Relationships", rate: "0.005" },
+        { name: "Sports", rate: "0.001" },
+        { name: "Science & Learning", rate: "0.004" },
+        { name: "Music & Podcasts", rate: "0.008" },
+        { name: "Beauty & Fashion", rate: "0.006" },
+        { name: "Health & Fitness", rate: "0.007" },
+        { name: "Food & Cooking", rate: "0.002" },
+        { name: "Business & Finance", rate: "0.009" },
+        { name: "Photography", rate: "0.010" },
+        { name: "Travel & Gadgets", rate: "0.003" },
+        { name: "Motivation & Self-Help", rate: "0.005" },
+        { name: "Pop Culture", rate: "0.001" },
+        { name: "Cars", rate: "0.004" },
+      ]
+    },
+  ]
 }

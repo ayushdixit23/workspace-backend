@@ -523,13 +523,16 @@ exports.allcoms = async (req, res) => {
       "fullname"
     );
     const dps = [];
+
     let avgeng = [];
     for (let i = 0; i < Co.length; i++) {
+
       const abc =
         process.env.URL + Co[i].dp;
 
       dps.push(abc);
     }
+
     const Com = Co.reverse();
     for (let i = 0; i < Co.length; i++) {
       const posts = await Post.find({ community: Co[i]._id });
@@ -562,6 +565,7 @@ exports.allcoms = async (req, res) => {
       c: comData[i],
       avgeng: avgEngData[i]
     }));
+    console.log(dps)
     res.status(200).json({ merged, success: true });
   } catch (e) {
     console.log(e);
@@ -1653,8 +1657,8 @@ exports.updatecommunity = async (req, res) => {
   const { category, title, desc, topicId, message, price, topicname, type } =
     req.body;
   const uuidString = uuid();
-  console.log(req.body)
-  console.log(req.file)
+
+  const image = req.file
   try {
     const user = await User.findById(userId);
     const com = await Community.findById(comId);
@@ -1663,18 +1667,17 @@ exports.updatecommunity = async (req, res) => {
     } else if (!com) {
       res.status(404).json({ message: "Community not found", success: false });
     } else {
-      if (req.file) {
-        console.log("do")
+      if (image) {
+        //console.log("do")
         const objectName = `${Date.now()}${uuidString}${req.file.originalname
           } `;
-        a1 = objectName;
-        a2 = req.file.mimetype;
-        await s3.send(
+
+        const result = await s3.send(
           new PutObjectCommand({
             Bucket: BUCKET_NAME,
             Key: objectName,
-            Body: req.file.buffer,
-            ContentType: req.file.mimetype,
+            Body: image.buffer,
+            ContentType: image.mimetype,
           })
         );
         await Community.updateOne(
@@ -1689,13 +1692,15 @@ exports.updatecommunity = async (req, res) => {
           }
         );
       }
-      const commun = await Community.findByIdAndUpdate(
+      await Community.updateOne(
         { _id: com._id },
         {
-          $set: { category: category, title: title, desc: desc },
-        },
-        {
-          new: true,
+          $set: {
+            category: category,
+            title: title,
+            desc: desc,
+
+          },
         }
       );
 
