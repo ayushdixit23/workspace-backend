@@ -206,7 +206,7 @@ exports.fetchwithid = async (req, res) => {
     const refresh_token = generateRefreshToken(data);
     res.status(200).json({
       dp,
-      access_token, refresh_token, sessionId, success: true
+      access_token, refresh_token, sessionId, success: true, user
     });
   } catch (error) {
     console.log(error)

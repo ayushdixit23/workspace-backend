@@ -37,6 +37,8 @@ const workspacev1 = require("./routes/WorkspaceV1");
 const Community = require("./models/community");
 // const Order = require("./models/orders");
 const User = require("./models/userAuth");
+const Advertiser = require("./models/Advertiser");
+const Ads = require("./models/Ads");
 
 
 require("dotenv").config();
@@ -103,3 +105,29 @@ const connectApp = () => {
   }
 };
 connectApp();
+
+// function getRandomValue(min, max) {
+//   return Math.floor(Math.random() * (max - min + 1) + min);
+// }
+
+// const data = async () => {
+//   try {
+//     const advertiser = await Ads.findById("65d495d11dacc2529fe383e5")
+//     const adsDetails = Array.from({ length: 6 }, (_, index) => ({
+//       time: Date.now() + index * 24 * 60 * 60 * 1000,
+//       click: getRandomValue(2000, 4000),
+//       impressions: getRandomValue(2000, 3000),
+//       cpc: getRandomValue(1500, 2500),
+//       cost: getRandomValue(4000, 5000)
+//     }));
+
+//     advertiser.adsDetails = adsDetails
+
+//     const a = await advertiser.save()
+//     console.log(a.adsDetails)
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
+
+// data()
