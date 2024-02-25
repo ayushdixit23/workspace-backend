@@ -1148,6 +1148,13 @@ exports.postanything = async (req, res) => {
   const { userId, comId } = req.params;
   console.log(userId, comId)
   try {
+    if (req.fileValidationError) {
+      return res.status(400).json({
+        message: "File size limit exceeded",
+        success: false,
+      });
+    }
+
     const { title, desc, tags } = req.body;
     const tag = tags.split(",");
     const user = await User.findById(userId);
@@ -1195,13 +1202,13 @@ exports.postanything = async (req, res) => {
       res.status(200).json({ savedpost, success: true });
     } else {
       res.status(404).json({
-        message: "User or Community not found or no files where there!",
+        message: "User or Community not found or no files were there!",
         success: false,
       });
     }
   } catch (e) {
     console.log(e);
-    res.status(400).json({ message: "Something went wrong", success: false });
+    res.status(500).json({ message: "Something went wrong", success: false });
   }
 };
 

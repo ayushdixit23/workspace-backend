@@ -20,7 +20,7 @@ const {
 } = require("../controllers/post");
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({ storage: storage, limits: { fileSize: 200000000 } });
 
 router.post("/createphoto/:userId/:commId", upload.any(), createPhoto);
 router.post("/postanything/:userId/:comId", upload.any(), postanything);
