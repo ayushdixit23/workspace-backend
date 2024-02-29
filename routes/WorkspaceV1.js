@@ -36,7 +36,9 @@ const {
   addbank,
   getallposts,
   fetchwithid,
-  fetchingprosite,
+  fetchMemberShip,
+  // fetchingprosite,
+
   // base64upload,
   // getimage,
   // colors,
@@ -58,6 +60,7 @@ const {
   // getprositefull,
   // prosite,
 } = require("../controllers/WorkspaceV1");
+const { middlewareMembership } = require("../helpers/membershipchecker");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -66,7 +69,7 @@ router.post("/checkqr", checkqr);
 router.post("/checkemail", checkemail);
 router.post("/refresh", refresh);
 router.get("/analyticsuser/:userid", analyticsuser);
-router.get("/allcoms/:id", allcoms);
+router.get("/allcoms/:id", middlewareMembership, allcoms);
 router.post("/createcom/:userId", upload.single("image"), createcom);
 router.post(
   "/createCollection/:userId",
@@ -108,6 +111,7 @@ router.post("/membershipbuy/:id/:memid", membershipbuy)
 router.post("/memfinalize/:id/:orderId", memfinalize)
 router.post("/addbank/:id", addbank)
 router.get("/fetchwithid/:id", fetchwithid)
+router.get("/fetchmembership", fetchMemberShip)
 // router.get("/getprositedetails/:id", fetchingprosite)
 // prosite route
 // router.use("/uploadbase64", base64upload);
@@ -130,4 +134,5 @@ router.get("/fetchwithid/:id", fetchwithid)
 // router.post("/lottie", upload.single("lottieFile"), lottie);
 // router.post("/getprositefull", getprositefull);
 // router.post("/postforprosite", prosite);
+
 module.exports = router;

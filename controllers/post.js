@@ -1200,7 +1200,8 @@ exports.postanything = async (req, res) => {
         { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
       );
       res.status(200).json({ savedpost, success: true });
-    } else {
+    } 
+    else {
       res.status(404).json({
         message: "User or Community not found or no files were there!",
         success: false,

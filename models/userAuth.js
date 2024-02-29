@@ -96,6 +96,9 @@ const userSchema = new mongoose.Schema(
     currentmoney: { type: Number, default: 0 },
     paymenthistory: [{ type: ObjectId, ref: "Payment" }],
     moneyearned: { type: Number, default: 0 },
+    topicearning: { type: Number, default: 0 },//topic
+    storeearning: { type: Number, default: 0 },//store
+    adsearning: { type: Number, default: 0 },//store
     pendingpayments: { type: Number, default: 0 },
     revenue: { type: Number, default: 0 },
     cart: [{ type: ObjectId, ref: "Cart" }],
@@ -218,7 +221,7 @@ const userSchema = new mongoose.Schema(
     salesCount: { type: Number, default: 0 },
     storeStats: [
       {
-        Dates: { type: Date },
+        Dates: { type: String },
         Sales: { type: Number },
       },
     ],
@@ -236,34 +239,34 @@ const userSchema = new mongoose.Schema(
       },
     },
     storeLocation: {
-      AndhraPradesh: { type: Number, default: 0 },
-      ArunachalPradesh: { type: Number, default: 0 },
-      Assam: { type: Number, default: 0 },
-      Bihar: { type: Number, default: 0 },
-      Chhattisgarh: { type: Number, default: 0 },
-      Goa: { type: Number, default: 0 },
-      Gujarat: { type: Number, default: 0 },
-      Haryana: { type: Number, default: 0 },
-      HimachalPradesh: { type: Number, default: 0 },
-      Jharkhand: { type: Number, default: 0 },
-      Karnataka: { type: Number, default: 0 },
-      Kerala: { type: Number, default: 0 },
-      MadhyaPradesh: { type: Number, default: 0 },
-      Maharashtra: { type: Number, default: 0 },
-      Manipur: { type: Number, default: 0 },
-      Meghalaya: { type: Number, default: 0 },
-      Mizoram: { type: Number, default: 0 },
-      Nagaland: { type: Number, default: 0 },
-      Odisha: { type: Number, default: 0 },
-      Punjab: { type: Number, default: 0 },
-      Rajasthan: { type: Number, default: 0 },
-      Sikkim: { type: Number, default: 0 },
-      TamilNadu: { type: Number, default: 0 },
-      Telangana: { type: Number, default: 0 },
-      Tripura: { type: Number, default: 0 },
-      UttarPradesh: { type: Number, default: 0 },
-      Uttarakhand: { type: Number, default: 0 },
-      WestBengal: { type: Number, default: 0 },
+      "andhra pradesh": { type: Number, default: 0 },
+      "arunachal pradesh": { type: Number, default: 0 },
+      assam: { type: Number, default: 0 },
+      bihar: { type: Number, default: 0 },
+      chhattisgarh: { type: Number, default: 0 },
+      goa: { type: Number, default: 0 },
+      gujarat: { type: Number, default: 0 },
+      haryana: { type: Number, default: 0 },
+      "himachal pradesh": { type: Number, default: 0 },
+      jharkhand: { type: Number, default: 0 },
+      karnataka: { type: Number, default: 0 },
+      kerala: { type: Number, default: 0 },
+      "madhya pradesh": { type: Number, default: 0 },
+      maharashtra: { type: Number, default: 0 },
+      manipur: { type: Number, default: 0 },
+      meghalaya: { type: Number, default: 0 },
+      mizoram: { type: Number, default: 0 },
+      nagaland: { type: Number, default: 0 },
+      odisha: { type: Number, default: 0 },
+      punjab: { type: Number, default: 0 },
+      rajasthan: { type: Number, default: 0 },
+      sikkim: { type: Number, default: 0 },
+      "tamil nadu": { type: Number, default: 0 },
+      telangana: { type: Number, default: 0 },
+      tripura: { type: Number, default: 0 },
+      "uttar pradesh": { type: Number, default: 0 },
+      uttarakhand: { type: Number, default: 0 },
+      "west bengal": { type: Number, default: 0 },
     },
     // ---
     mesIds: [{ type: Number }],
@@ -274,6 +277,8 @@ const userSchema = new mongoose.Schema(
       },
     ],
     foodLicense: { type: String },
+    ismembershipactive: { type: Boolean, default: false },
+    
     memberships: {
       membership: { type: ObjectId, ref: "membership" },
       status: { type: Boolean, default: true },
@@ -302,7 +307,7 @@ const userSchema = new mongoose.Schema(
     // for workspace membership
   },
 
-  { timestamps: true }
+  { timestamps: false }
 );
 
 userSchema.index({ fullname: "text" });

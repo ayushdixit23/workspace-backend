@@ -58,14 +58,14 @@ const {
 } = require("razorpay/dist/utils/razorpay-utils");
 const Membership = require("../models/membership");
 
-const instance = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
 // const instance = new Razorpay({
-//   "key_id": "rzp_test_jXDMq8a2wN26Ss",
-//   "key_secret": "bxyQhbzS0bHNBnalbBg9QTDo"
+//   key_id: process.env.RAZORPAY_KEY_ID,
+//   key_secret: process.env.RAZORPAY_KEY_SECRET,
 // });
+const instance = new Razorpay({
+  "key_id": "rzp_test_jXDMq8a2wN26Ss",
+  "key_secret": "bxyQhbzS0bHNBnalbBg9QTDo"
+});
 
 function generateAccessToken(data) {
   const access_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
@@ -362,7 +362,6 @@ exports.analyticsuser = async (req, res) => {
     const { userid } = req.params;
     const user = await User.findById(userid);
     if (user) {
-      // const find = await Analytics.findOne({ userid: user._id.toString() });
 
       const community = await Community.find({
         creator: user._id.toString(),
@@ -376,11 +375,38 @@ exports.analyticsuser = async (req, res) => {
         })
       );
 
+      let avgeng = []
+
+      for (let i = 0; i < community.length; i++) {
+        const posts = await Post.find({ community: community[i]._id });
+
+        let eng = []
+        await posts.map((p, i) => {
+          let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
+          eng.push(final)
+        })
+
+        console.log(eng)
+        let sum = 0
+        for (let i = 0; i < eng.length; i++) {
+          sum += eng[i]
+        }
+        let avg = 0
+
+        if (eng.length > 0) {
+          avg = Math.round(sum / eng.length)
+        } else {
+          avg = 0
+        }
+        avgeng.push(avg)
+      }
+
       const commerged = community.map((f, i) => {
         const reversedStats = f?.stats.reverse().slice(0, 8)
         const locationToSend = Object.entries(f.location).map(([state, value]) => ({ state, value }));
         const loc = locationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
         const actualloc = loc.map((d, i) => {
+
           return {
             state: d?.state,
             value: Math.round((d.value / f.memberscount) * 100)
@@ -398,7 +424,7 @@ exports.analyticsuser = async (req, res) => {
           name: f?.title,
           id: f?._id,
           image: dps[i],
-          popularity: f?.popularity,
+          popularity: avgeng[i],
           topic: f?.topics,
           location: actualloc,
           stats: reversedStats,
@@ -408,6 +434,10 @@ exports.analyticsuser = async (req, res) => {
           agerange: sendAge
         };
       });
+
+
+      console.log(avgeng, "avg")
+      console.log(commerged)
 
       const product = await Product.find({ creator: user._id.toString() }).sort({ itemsold: -1 }).limit(5)
       const productdps = await Promise.all(
@@ -455,12 +485,10 @@ exports.analyticsuser = async (req, res) => {
           }
           let dp =
             process.env.POST_URL + f?.post[0].content;
-          // const dp = f?.post[0].content?.toString();
-          // const presignedUrl = await generatePresignedUrl("posts", dp, 60 * 60);
+
           return dp;
         })
       );
-      console.log(postsdps)
 
       // engagement rate
       let eng = []
@@ -516,6 +544,8 @@ exports.authenticateUser = async (req, res, next) => {
 
 // get all community
 exports.allcoms = async (req, res) => {
+
+  // console.log(req.memberships)
   const { id } = req.params;
   try {
     const Co = await Community.find({ creator: id }).populate(
@@ -1306,7 +1336,7 @@ exports.fetchallorders = async (req, res) => {
     const { id } = req.params;
     const user = await User.findById(id);
     if (user) {
-      const orders = await Order.find({ sellerId: user._id })
+      const orders = await Order.find({ sellerId: { $in: [user._id] } })
         .populate("productId")
         .populate("buyerId", "fullname")
         .limit(20);
@@ -1315,7 +1345,7 @@ exports.fetchallorders = async (req, res) => {
         (order) => order.currentStatus === "pending"
       );
       const completedOrders = orders.filter(
-        (order) => order.currentStatus === "completed"
+        (order) => order.currentStatus === "success"
       );
       const cancelled = orders.filter(
         (order) => order.currentStatus === "cancelled"
@@ -1328,6 +1358,7 @@ exports.fetchallorders = async (req, res) => {
       );
       const allorders = orders.length;
       const customers = user?.customers?.length;
+      const earnings = user.storeearning
 
       let image = await Promise.all(
         orders.map(async (d, i) => {
@@ -1336,13 +1367,7 @@ exports.fetchallorders = async (req, res) => {
               d?.productId?.map(async (f, il) => {
                 const a =
                   process.env.PRODUCT_URL + d?.productId[il]?.images[0]?.content;
-
                 return a
-                // generatePresignedUrl(
-                //   "products",
-                //   d?.productId[il]?.images[0]?.content?.toString(),
-                //   60 * 60
-                // );
               })
             );
             return l;
@@ -1365,6 +1390,7 @@ exports.fetchallorders = async (req, res) => {
         cancelled,
         returned,
         damaged,
+        earnings,
         customers,
         orders,
         mergedOrder,
@@ -1754,7 +1780,7 @@ exports.earnings = async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" })
     }
     const earningStats = {
-      earnings: user.moneyearned,
+      earnings: user.storeearning + user.topicearning + user.adsearning,
       pendingpayments: user.pendingpayments,
       bank: user.bank
     }
@@ -1823,6 +1849,7 @@ exports.membershipbuy = async (req, res) => {
           res.status(200).json({
             oid: order.id,
             order: oi,
+            memid: memid,
             orderCreated: order,
             phone: user?.phone,
             email: user?.email,
@@ -1840,7 +1867,7 @@ exports.membershipbuy = async (req, res) => {
 exports.memfinalize = async (req, res) => {
   try {
     const { id, orderId } = req.params
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, status, paymentMethod } = req.body
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, status, paymentMethod, memid } = req.body
     const user = await User.findById(id)
     const subscription = await Subscriptions.findOne({ orderId: orderId })
     const isValid = validatePaymentVerification(
@@ -1862,9 +1889,20 @@ exports.memfinalize = async (req, res) => {
         subscription.currentStatus = "failed"
       }
     }
+    const currentDate = new Date();
+    const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
     subscription.paymentMode = paymentMethod
     const newSub = await subscription.save()
     user.activeSubscription.push(newSub._id)
+    user.ismembershipactive = true
+    user.memberships = {
+      membership: memid,
+      status: true,
+      ending: endDate,
+      paymentdetails: { mode: "online", amount: subscription.amount }
+
+    }
     await user.save()
     res.status(200).json({ success: true })
   } catch (error) {
@@ -1976,3 +2014,372 @@ exports.addbank = async (req, res) => {
 //     console.log(error)
 //   }
 // }
+
+// exports.base64upload = async (req, res) => {
+//   const body = req.body;
+//   try {
+//     const newImage = await Image.create(body);
+//     newImage.save();
+//     res
+//       .status(201)
+//       .json({ message: "new image uploaded", createdPost: newImage });
+//   } catch (error) {
+//     res.status(409).json({
+//       message: error.message,
+//     });
+//   }
+// };
+
+// exports.devpost = async (req, res) => {
+//   const body = req.body;
+//   try {
+//     const newImage = await DevPost.create(body);
+//     newImage.save();
+//     res
+//       .status(201)
+//       .json({ message: "new image uploaded", createdPost: newImage });
+//   } catch (error) {
+//     res.status(409).json({
+//       message: error.message,
+//     });
+//   }
+// };
+
+// exports.getDevpost = async (req, res) => {
+//   try {
+//     const post = await DevPost.find();
+//     res.status(200).json(post);
+//   } catch (error) {
+//     res.status(409).json({
+//       message: error.message,
+//     });
+//   }
+// };
+
+// exports.getimage = async (req, res) => {
+//   try {
+//     const find = await Image.find();
+//     if (find) {
+//       const reverse = find.reverse();
+//       res.json(reverse);
+//     } else {
+//       res.json({ post: "Not Found" });
+//     }
+//   } catch (err) {
+//     res.json({ message: err.message, success: false });
+//     console.log(err);
+//   }
+// };
+
+// exports.colors = async (req, res) => {
+//   const { color } = req.body;
+//   try {
+//     // console.log(color)
+//     const newColor = new Color({
+//       bg: color.c1,
+//       text: color.c2,
+//       button: color.c3,
+//       number: color.no,
+//     });
+
+//     // console.log(newColor)
+//     // Save the new color to your database
+//     await newColor.save();
+
+//     res.status(201).json(newColor);
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.getColors = async (req, res) => {
+//   try {
+//     const data = await Color.findOne({});
+//     if (data) {
+//       // console.log(data)
+//       res.json(data);
+//     } else {
+//       res.json("not found");
+//     }
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.fonts = async (req, res) => {
+//   const { data } = req.body;
+//   try {
+//     // console.log(data)
+//     const newfont = new Font({
+//       fontType: data.fontType,
+//       fontSize: data.fontSize,
+//       fontWeight: data.fontWeight,
+//       textShadow: data.textShadow,
+//     });
+//     // console.log(newfont)
+//     // Save the new color to your database
+//     await newfont.save();
+
+//     res.status(201).json({ newfont, success: true });
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.getFonts = async (req, res) => {
+//   try {
+//     const data = await Font.find();
+//     if (data) {
+//       // console.log(data)
+//       res.json({ data, success: true });
+//     } else {
+//       res.json("not found");
+//     }
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.button = async (req, res) => {
+//   const { data } = req.body;
+//   try {
+//     // console.log(data)
+//     const newButton = new Button({
+//       backgroundColor: data.backgroundColor,
+//       Color: data.Color,
+//       borderTop: data.borderTop,
+//       borderBottom: data.borderBottom,
+//       borderRight: data.borderRight,
+//       borderLeft: data.borderLeft,
+//       paddingX: data.paddingX,
+//       paddingY: data.paddingY,
+//       borderRadiusTop: data.borderRadiusTop,
+//       borderRadiusBottom: data.borderRadiusBottom,
+//       borderRadiusRight: data.borderRadiusRight,
+//       borderRadiusLeft: data.borderRadiusLeft,
+//       boxShadow: data.boxShadow,
+//       fontBold: data.fontBold,
+//     });
+
+//     // console.log(newButton)
+//     // Save the new color to your database
+//     await newButton.save();
+
+//     res.status(201).json({ newButton, success: true });
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.getButton = async (req, res) => {
+//   try {
+//     const data = await Button.find();
+//     if (data) {
+//       console.log(data);
+//       res.json({ data, success: true });
+//     } else {
+//       res.json("not found");
+//     }
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.background = async (req, res) => {
+//   const body = req.body;
+//   try {
+//     const newImage = await BackGround.create(body);
+//     newImage.save();
+//     res
+//       .status(201)
+//       .json({ message: "new image uploaded", createImage: newImage });
+//   } catch (error) {
+//     res.status(409).json({
+//       message: error.message,
+//     });
+//   }
+// };
+
+// exports.getBackground = async (req, res) => {
+//   try {
+//     const find = await BackGround.find();
+//     if (find) {
+//       res.json({ find, success: true });
+//     } else {
+//       res.json({ message: "Not Found" });
+//     }
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.backColor = async (req, res) => {
+//   try {
+//     const body = req.body;
+//     const createcolor = new BackColor(body);
+//     const savethis = await createcolor.save();
+//     res.json(savethis);
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.getbackColor = async (req, res) => {
+//   try {
+//     const find = await BackColor.find();
+//     if (find) {
+//       res.json(find);
+//     }
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.temp = async (req, res) => {
+//   try {
+//     const { post, idd, setNm } = req.body;
+//     const iddd = await Temp.findOne({ idd });
+
+//     if (!iddd) {
+//       const neww = new Temp({ post, idd, setNm });
+//       await neww.save();
+//       res.status(201).json(neww);
+//     } else {
+//       await Temp.findOneAndUpdate({ idd }, { post }, { setNm });
+//       res.status(200).json({ message: "Temp updated successfully" });
+//     }
+//   } catch (error) {
+//     console.error("Error occurred", error);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// };
+
+// exports.fetchData = async (req, res) => {
+//   try {
+//     const mew = await Temp.findOne();
+//     res.status(201).json(mew);
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({ error: "Server error", message: error.message });
+//   }
+// };
+
+// exports.lottie = async (req, res) => {
+//   try {
+//     const file = req.file;
+//     // console.log(req.file)
+//     const newLottie = new Lottie({
+//       lottieFile: file.buffer,
+//     });
+//     await newLottie.save();
+//     res.json({
+//       newLottie,
+//       message: "File uploaded successfully",
+//       success: true,
+//     });
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.getLottie = async (req, res) => {
+//   try {
+//     const findlottie = await Lottie.find();
+//     if (findlottie) {
+//       res.json({ findlottie, success: true });
+//     } else {
+//       res.json({ success: false });
+//     }
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+// exports.getprositefull = async (req, res) => {
+//   try {
+//     const { username } = req.body;
+//     console.log(username);
+//     const atIndex = username.indexOf("@");
+
+//     if (atIndex === -1) {
+//       res
+//         .status(400)
+//         .json({ message: "Invalid username format", success: false });
+//       return;
+//     }
+//     const u = username.substring(atIndex + 1);
+
+//     const user = await User.findOne({ username: u }).populate(
+//       "prositeid",
+//       "htmlcontent"
+//     );
+//     if (!user) {
+//       res.status(404).json({ message: "User not found", success: false });
+//     } else {
+//       res
+//         .status(200)
+//         .json({ success: true, prosite: user?.prositeid?.htmlcontent });
+//     }
+//   } catch (e) {
+//     console.log(e);
+//     res
+//       .status(500)
+//       .json({ message: "Something went wrong...", success: false });
+//   }
+// };
+
+// exports.prosite = async (req, res) => {
+//   try {
+//     const { data, id } = req.body;
+//     const user = await User.findOne({ _id: id });
+//     const prosite = await Prosite.findOne({ creator: id });
+
+//     if (user) {
+//       if (prosite) {
+//         prosite.htmlcontent = data;
+//         await prosite.save();
+//         await User.updateOne(
+//           { _id: id },
+//           { $set: { prositeid: prosite._id } },
+//           { new: true }
+//         );
+//       } else {
+//         const newprosite = new Prosite({
+//           creator: id,
+//           htmlcontent: data,
+//         });
+//         const saved = await newprosite.save();
+//         await User.updateOne(
+//           { _id: id },
+//           { $set: { prositeid: saved._id } },
+//           { new: true }
+//         );
+//       }
+//       res.status(200).json({ success: true });
+//     } else {
+//       res.status(404).json({ message: "User not found", success: false });
+//     }
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
+exports.fetchMemberShip = async (req, res) => {
+  try {
+    const memberships = await Membership.find()
+    if (!memberships) {
+      return res.status(400).json({ success: false, message: "Membership Id Not Found" })
+    }
+
+    const ids = {
+      free: "65671e5204b7d0d07ef0e796",
+      pro: "65671ded04b7d0d07ef0e794",
+      premium: "65671e6004b7d0d07ef0e798"
+    }
+
+    res.status(200).json({ success: true, memberships, ids })
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ success: false, message: "Something Went Wrong!" })
+  }
+}

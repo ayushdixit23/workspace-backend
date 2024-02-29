@@ -39,6 +39,7 @@ const Community = require("./models/community");
 const User = require("./models/userAuth");
 const Advertiser = require("./models/Advertiser");
 const Ads = require("./models/Ads");
+const Posts = require("./models/post");
 
 
 require("dotenv").config();
@@ -131,3 +132,22 @@ connectApp();
 // }
 
 // data()
+
+// const deleteCommunityPosts = async () => {
+//   try {
+//     const communityId = "65d0f8176a4e4ae4c6e8ff6f";
+//     const community = await Community.findById(communityId).populate("posts");
+//     const posts = community.posts;
+//     for (const post of posts) {
+//       if (post.kind === 'ad') {
+//         await Posts.findByIdAndDelete(post._id);
+//         console.log(`Deleted post with _id: ${post._id} ${post.title} ${post.kind}`);
+//       }
+//     }
+//     console.log("Ad posts deleted successfully");
+//   } catch (error) {
+//     console.log(error);
+//   }
+// };
+
+// deleteCommunityPosts()
