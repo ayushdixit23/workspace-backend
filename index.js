@@ -107,20 +107,30 @@ const connectApp = () => {
 };
 connectApp();
 
-// const changeMembership = async () => {
-//   try {
-//     const id = "65b68725750001cd4dc81483"
-//     const user = await User.findById(id)
-//     const currentDate = new Date();
-//     const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000); // Add 30 days in milliseconds
+const changeMembership = async () => {
+  try {
+    // const id = "65314cd99db37d9109914f3f"
+    const users = await User.find()
+    const currentDate = new Date();
+    const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000); // Add 30 days in milliseconds
 
-//     console.log(endDate);
-//     user.ismembershipactive = true
-//     user.memberships.membership = "65671e5204b7d0d07ef0e796"
-//     user.memberships.ending = endDate
-//     user.memberships.status = true
-//     await user.save()
-//   } catch (error) {
-//     console.log(error)
-//   }
-// }
+    console.log(endDate);
+    // for (let i = 0; i < users.length; i++) {
+    //   if (typeof users[i].orders !== 'object') {
+    //     console.log(users[i].fullname)
+    //   }
+    // }
+    for (let i = 0; i < users.length; i++) {
+      users[i].ismembershipactive = true
+      users[i].memberships.membership = "65671e5204b7d0d07ef0e796"
+      users[i].memberships.ending = endDate
+      users[i].memberships.status = true
+      await users[i].save()
+
+    }
+    users.map((d) => console.log(d.memberships))
+  } catch (error) {
+    console.log(error)
+  }
+}
+// changeMembership()

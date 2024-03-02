@@ -19,6 +19,7 @@ const PostSchema = new mongoose.Schema(
     commpic: { type: ObjectId, ref: "Community" },
     isPromoted: { type: Boolean, default: false },
     promoid: [{ type: String }],
+    topicId: { type: ObjectId, ref: "Topic" },
     post: [
       {
         content: { type: String },
@@ -37,9 +38,12 @@ const PostSchema = new mongoose.Schema(
       enum: ["Unblock", "Block"],
     },
     sharescount: { type: Number, default: 0 },
+    adtype: { type: String },
+    cta: { type: String },
+    ctalink: { type: String },
     type: { type: String, default: "Post" },
   },
-  { timestamps: true }
+  { timestamps: false, strict: false }
 );
 
 PostSchema.index({ title: "text" });

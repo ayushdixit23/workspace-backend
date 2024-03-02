@@ -158,20 +158,6 @@ exports.checkid = async (req, res) => {
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
-      res.cookie(`excktn${sessionId}`, access_token, {
-        httpOnly: true,
-        // secure: true,
-      });
-      res.cookie(`frhktn${sessionId}`, refresh_token, {
-        httpOnly: true,
-        // secure: true,
-      });
-      res.cookie(`sessionId_${sessionId}`, sessionId, {
-        httpOnly: true,
-        // secure: true,
-      });
-
-      res.header("Authorization", `Bearer ${access_token}`);
 
       res
         .status(200)
@@ -242,16 +228,6 @@ exports.checkqr = async (req, res) => {
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
-
-
-      res.header("Authorization", `Bearer ${access_token}`);
-      const dat = {
-        dp,
-        fullname: user.fullname,
-        username: user.username,
-        id: user._id.toString(),
-      };
-      const endata = await encryptaes(JSON.stringify(dat));
       return res
         .status(200)
         .json({ dp, access_token, refresh_token, sessionId, endata, success: true });
@@ -1932,8 +1908,21 @@ exports.memfinalize = async (req, res) => {
       paymentdetails: { mode: "online", amount: subscription.amount }
 
     }
-    await user.save()
-    res.status(200).json({ success: true })
+    const membership = await Membership.findById(memid)
+    const saveduser = await user.save()
+    const dp =
+      process.env.URL + saveduser.profilepic;
+    const data = {
+      dp,
+      fullname: saveduser.fullname,
+      username: saveduser.username,
+      id: saveduser._id.toString(),
+      sessionId,
+      memberships: membership.title
+    };
+    const access_token = generateAccessToken(data);
+    const refresh_token = generateRefreshToken(data);
+    res.status(200).json({ success: true, refresh_token, access_token })
   } catch (error) {
     console.log(error)
   }
@@ -2081,7 +2070,7 @@ exports.customMembership = async (req, res) => {
     );
     const membership = await Membership.findById(memid)
     membership.broughtby.push(userId)
-    await membership.save()
+    const membershipsForTitle = await membership.save()
     if (!subscription) {
       return res.status(400).json({ success: false })
     }
@@ -2112,8 +2101,20 @@ exports.customMembership = async (req, res) => {
     user.limits = {
       productlimit, topiclimit, communitylimit, collectionlimit
     }
-    await user.save()
-    res.status(200).json({ success: true })
+    const saveduser = await user.save()
+    const dp =
+      process.env.URL + saveduser.profilepic;
+    const data = {
+      dp,
+      fullname: saveduser.fullname,
+      username: saveduser.username,
+      id: saveduser._id.toString(),
+      sessionId,
+      memberships: membershipsForTitle.title
+    };
+    const access_token = generateAccessToken(data);
+    const refresh_token = generateRefreshToken(data);
+    res.status(200).json({ success: true, access_token, refresh_token })
   } catch (error) {
     console.log(error)
   }

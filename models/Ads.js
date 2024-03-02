@@ -7,6 +7,7 @@ const AdsSchema = new mongoose.Schema(
     status: { type: String, default: "review" },
     engagementrate: { type: String },
     amountspent: [{ type: String }],
+    postid: { type: ObjectId, ref: "Post" },
     advertiserid: { type: String },
     startdate: { type: String },
     enddate: { type: String },
@@ -15,7 +16,7 @@ const AdsSchema = new mongoose.Schema(
     cta: { type: String },
     ctalink: { type: String },
     content: [{ extension: { type: String }, name: { type: String } }],
-    preferedsection: { type: String },
+    type: { type: String },
     tags: [{ type: String }],
     location: [{ type: String }],
     gender: { type: String },
@@ -41,8 +42,11 @@ const AdsSchema = new mongoose.Schema(
         number: { type: String, default: 0 },
       },
     ],
+    creation: { type: Number },
+    headline: { type: String },
+    desc: { type: String }
   },
-  { timestamps: true }
+  { timestamps: false }
 );
 
 AdsSchema.index({ title: "text" });

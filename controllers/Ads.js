@@ -421,7 +421,7 @@ exports.newad = async (req, res) => {
     dailybudget,
     estaudience,
     category,
-
+    age,
     adid,
     gender,
     advertiserid,
@@ -555,6 +555,7 @@ exports.newad = async (req, res) => {
         maxage,
         minage,
         totalbudget,
+        age,
         dailybudget,
         estaudience,
         category,
@@ -578,10 +579,12 @@ exports.newad = async (req, res) => {
         desc: desc,
         community: community._id,
         sender: userId,
+        topicId: topic[0]._id,
         post: pos,
         tags: community.category,
         kind: "ad",
-        promoid: adSaved._id
+        promoid: adSaved._id,
+        isPromoted: true
       });
       const savedpost = await post.save();
 
@@ -613,7 +616,7 @@ exports.createad = async (req, res) => {
     goal,
     headline,
     desc,
-    preferedsection,
+    age,
     tags,
     location,
     agerange,
@@ -621,6 +624,7 @@ exports.createad = async (req, res) => {
     minage,
     totalbudget,
     dailybudget,
+    type,
     estaudience,
     category,
     adid,
@@ -669,19 +673,22 @@ exports.createad = async (req, res) => {
       cta,
       ctalink,
       goal,
+      type,
       headline,
       desc,
-      preferedsection,
       tags,
       location,
       agerange,
+      type,
       maxage,
       minage,
+      age,
       totalbudget,
       dailybudget,
       estaudience,
       category,
       content: contents,
+      creation: Date.now(),
       adid: adid,
       gender,
       advertiserid,
@@ -700,16 +707,26 @@ exports.createad = async (req, res) => {
       community: comid,
       sender: user.userid,
       post: pos,
+      topicId: topic[0]._id,
       tags: community.category,
       kind: "ad",
+      isPromoted: true,
+      cta,
+      ctalink,
+      adtype: type,
       promoid: adSaved._id
     });
     const savedpost = await post.save();
+
+    const ads = await Ads.findById(adSaved._id)
+    ads.postid = savedpost._id
+    await ads.save()
 
     await Community.updateOne(
       { _id: comid },
       { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
     );
+
 
 
     await Topic.updateOne(
