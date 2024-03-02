@@ -37,6 +37,7 @@ const {
   getallposts,
   fetchwithid,
   fetchMemberShip,
+  customMembership,
   // fetchingprosite,
 
   // base64upload,
@@ -69,10 +70,11 @@ router.post("/checkqr", checkqr);
 router.post("/checkemail", checkemail);
 router.post("/refresh", refresh);
 router.get("/analyticsuser/:userid", analyticsuser);
-router.get("/allcoms/:id", middlewareMembership, allcoms);
-router.post("/createcom/:userId", upload.single("image"), createcom);
+router.get("/allcoms/:id", allcoms);
+router.post("/createcom/:userId", middlewareMembership, upload.single("image"), createcom);
 router.post(
   "/createCollection/:userId",
+  middlewareMembership,
   upload.single("verfication"),
   createCollection
 );
@@ -87,7 +89,7 @@ router.post(
   upload.single("documentfile"),
   registerstore
 );
-router.post("/createproduct/:userId/:colid", upload.any(), createproduct);
+router.post("/createproduct/:userId/:colid", middlewareMembership, upload.any(), createproduct);
 router.get("/getaproduct/:id/:productId", getaproduct);
 router.get("/fetchallorders/:id", fetchallorders);
 router.get("/getposts/:id/:comid", getposts);
@@ -95,8 +97,8 @@ router.get("/getallposts/:comid", getallposts);
 router.get("/getprofileinfo/:id", getprofileinfo);
 router.post("/profileinfo/:id", upload.single("image"), profileinfo);
 // router.post("/profilestore/:id", profileStore);
-router.post("/createtopic/:userId", createtopic);
-router.post("/delete/:comid", deletecom);
+router.post("/createtopic/:userId/:comId", createtopic);
+router.post("/delete/:comId", deletecom);
 router.post("/deletetopic/:userId/:topicId", deletetopic);
 router.post("/edittopic/:id/:topicid", edittopic);
 router.get("/fetchtopic/:id/:comId", fetchtopic);
@@ -112,6 +114,7 @@ router.post("/memfinalize/:id/:orderId", memfinalize)
 router.post("/addbank/:id", addbank)
 router.get("/fetchwithid/:id", fetchwithid)
 router.get("/fetchmembership", fetchMemberShip)
+router.post("/customMembership/:userId/:orderId", customMembership)
 // router.get("/getprositedetails/:id", fetchingprosite)
 // prosite route
 // router.use("/uploadbase64", base64upload);

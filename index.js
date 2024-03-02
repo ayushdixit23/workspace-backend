@@ -107,47 +107,20 @@ const connectApp = () => {
 };
 connectApp();
 
-// function getRandomValue(min, max) {
-//   return Math.floor(Math.random() * (max - min + 1) + min);
-// }
-
-// const data = async () => {
+// const changeMembership = async () => {
 //   try {
-//     const advertiser = await Ads.findById("65d495d11dacc2529fe383e5")
-//     const adsDetails = Array.from({ length: 6 }, (_, index) => ({
-//       time: Date.now() + index * 24 * 60 * 60 * 1000,
-//       click: getRandomValue(2000, 4000),
-//       impressions: getRandomValue(2000, 3000),
-//       cpc: getRandomValue(1500, 2500),
-//       cost: getRandomValue(4000, 5000)
-//     }));
+//     const id = "65b68725750001cd4dc81483"
+//     const user = await User.findById(id)
+//     const currentDate = new Date();
+//     const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000); // Add 30 days in milliseconds
 
-//     advertiser.adsDetails = adsDetails
-
-//     const a = await advertiser.save()
-//     console.log(a.adsDetails)
+//     console.log(endDate);
+//     user.ismembershipactive = true
+//     user.memberships.membership = "65671e5204b7d0d07ef0e796"
+//     user.memberships.ending = endDate
+//     user.memberships.status = true
+//     await user.save()
 //   } catch (error) {
 //     console.log(error)
 //   }
 // }
-
-// data()
-
-// const deleteCommunityPosts = async () => {
-//   try {
-//     const communityId = "65d0f8176a4e4ae4c6e8ff6f";
-//     const community = await Community.findById(communityId).populate("posts");
-//     const posts = community.posts;
-//     for (const post of posts) {
-//       if (post.kind === 'ad') {
-//         await Posts.findByIdAndDelete(post._id);
-//         console.log(`Deleted post with _id: ${post._id} ${post.title} ${post.kind}`);
-//       }
-//     }
-//     console.log("Ad posts deleted successfully");
-//   } catch (error) {
-//     console.log(error);
-//   }
-// };
-
-// deleteCommunityPosts()

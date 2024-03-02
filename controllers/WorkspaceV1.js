@@ -24,6 +24,7 @@ const Order = require("../models/orders");
 // const Lottie = require("../models/Lottie");
 const mongoose = require("mongoose");
 const Subscriptions = require("../models/Subscriptions");
+// const Subscriptions = require("../models/Subscriptions");
 // const Prosite = require("../models/prosite");
 const Razorpay = require("razorpay");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
@@ -138,7 +139,10 @@ exports.checkid = async (req, res) => {
   try {
     const { phone } = req.body;
     const dphone = await decryptaes(phone);
-    const user = await User.findOne({ phone: dphone });
+    const user = await User.findOne({ phone: dphone })
+
+    const memberships = await Membership.findById(user.memberships.membership)
+    console.log(memberships)
     if (user) {
       const sessionId = generateSessionId();
 
@@ -149,7 +153,8 @@ exports.checkid = async (req, res) => {
         fullname: user.fullname,
         username: user.username,
         id: user._id.toString(),
-        sessionId
+        sessionId,
+        memberships: memberships.title
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
@@ -191,6 +196,7 @@ exports.fetchwithid = async (req, res) => {
     if (!user) {
       return res.status(400).json({ success: false, message: "User Not Found" })
     }
+    const memberships = await Membership.findById(user.memberships.membership)
     const sessionId = generateSessionId();
     const dp =
       process.env.URL + user.profilepic;
@@ -199,7 +205,8 @@ exports.fetchwithid = async (req, res) => {
       fullname: user.fullname,
       username: user.username,
       id: user._id.toString(),
-      sessionId
+      sessionId,
+      memberships: memberships.title
     };
     console.log(data)
     const access_token = generateAccessToken(data);
@@ -218,7 +225,9 @@ exports.checkqr = async (req, res) => {
   console.log(req.body);
   try {
     const { id } = req.body;
-    const user = await User.findById(id);
+    const user = await User.findById(id)
+    const memberships = await Membership.findById(user.memberships.membership)
+
     if (user) {
       const sessionId = generateSessionId();
       const dp =
@@ -228,7 +237,8 @@ exports.checkqr = async (req, res) => {
         fullname: user.fullname,
         username: user.username,
         id: user._id.toString(),
-        sessionId
+        sessionId,
+        memberships: memberships.title
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
@@ -260,14 +270,17 @@ exports.checkemail = async (req, res) => {
   const { email, password } = req.body;
   const passw = await encryptaes(password)
   try {
-    const user = await User.findOne({ email, passw });
-    console.log(user)
+    // const user = await User.findOne({ email, passw }).populate("memberships.membership");
+    const user = await User.findOne({ email: email, passw: passw })
+
     if (!user) {
       return res
         .status(203)
         .json({ message: "User not found", success: false, userexists: false });
     } else {
 
+      const memberships = await Membership.findById(user.memberships.membership)
+      console.log(memberships)
       const dp =
         process.env.URL + user.profilepic;
       const sessionId = generateSessionId()
@@ -276,7 +289,8 @@ exports.checkemail = async (req, res) => {
         fullname: user.fullname,
         username: user.username,
         id: user._id.toString(),
-        sessionId
+        sessionId,
+        memberships: memberships.title
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
@@ -544,8 +558,6 @@ exports.authenticateUser = async (req, res, next) => {
 
 // get all community
 exports.allcoms = async (req, res) => {
-
-  // console.log(req.memberships)
   const { id } = req.params;
   try {
     const Co = await Community.find({ creator: id }).populate(
@@ -608,216 +620,221 @@ exports.createcom = async (req, res) => {
   const { userId } = req.params;
   const image = req.file;
   const uuidString = uuid();
-  if (!image) {
-    res.status(400).json({ message: "Please upload an image", success: false });
-  } else if (iddata != undefined) {
-    try {
-      const user = await User.findById(userId);
-      // const bucketName = "images";
-      const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
-      a = objectName;
-      const result = await s3.send(
-        new PutObjectCommand({
-          Bucket: BUCKET_NAME,
-          Key: objectName,
-          Body: image.buffer,
-          ContentType: image.mimetype,
-        })
-      );
-      const community = new Community({
-        title,
-        creator: userId,
-        dp: objectName,
-        desc: desc,
-        category: category,
-      });
-      const savedcom = await community.save();
-      const topic1 = new Topic({
-        title: "Posts",
-        creator: userId,
-        community: savedcom._id,
-      });
-      await topic1.save();
+  if (req.canCreateCommunity) {
+    if (!image) {
+      res.status(400).json({ message: "Please upload an image", success: false });
+    } else if (iddata != undefined) {
+      try {
+        const user = await User.findById(userId);
+        // const bucketName = "images";
+        const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
+        a = objectName;
+        const result = await s3.send(
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: objectName,
+            Body: image.buffer,
+            ContentType: image.mimetype,
+          })
+        );
+        const community = new Community({
+          title,
+          creator: userId,
+          dp: objectName,
+          desc: desc,
+          category: category,
+        });
+        const savedcom = await community.save();
+        const topic1 = new Topic({
+          title: "Posts",
+          creator: userId,
+          community: savedcom._id,
+        });
+        await topic1.save();
 
-      const topic2 = new Topic({
-        title: "All",
-        creator: userId,
-        community: savedcom._id,
-      });
-      await topic2.save();
+        const topic2 = new Topic({
+          title: "All",
+          creator: userId,
+          community: savedcom._id,
+        });
+        await topic2.save();
 
-      // const topic3 = new Topic({
-      // 	title: topic,
-      // 	creator: userId,
-      // 	community: savedcom._id,
-      // 	type: type,
-      // 	price: price,
-      // });
-      // await topic3.save();
+        // const topic3 = new Topic({
+        // 	title: topic,
+        // 	creator: userId,
+        // 	community: savedcom._id,
+        // 	type: type,
+        // 	price: price,
+        // });
+        // await topic3.save();
 
-      await Community.updateOne(
-        { _id: savedcom._id },
-        {
-          $push: { members: userId, admins: user._id },
-          $inc: { memberscount: 1 },
-        }
-      );
-
-      await Community.updateOne(
-        { _id: savedcom._id },
-        { $push: { topics: [topic1._id, topic2._id] } }
-      );
-
-      await User.findByIdAndUpdate(
-        { _id: userId },
-        {
-          $push: {
-            topicsjoined: [topic1._id, topic2._id],
-            communityjoined: savedcom._id,
-            communitycreated: savedcom._id,
-          },
-          $inc: { totaltopics: 3, totalcom: 1 },
-        }
-      );
-
-      for (let i = 0; i < iddata.length; i++) {
-        const topicIdToStore = mongoose.Types.ObjectId(iddata[i]);
         await Community.updateOne(
           { _id: savedcom._id },
-          { $push: { topics: topicIdToStore } }
+          {
+            $push: { members: userId, admins: user._id },
+            $inc: { memberscount: 1 },
+          }
         );
+
+        await Community.updateOne(
+          { _id: savedcom._id },
+          { $push: { topics: [topic1._id, topic2._id] } }
+        );
+
         await User.findByIdAndUpdate(
           { _id: userId },
-          { $push: { topicsjoined: topicIdToStore } }
+          {
+            $push: {
+              topicsjoined: [topic1._id, topic2._id],
+              communityjoined: savedcom._id,
+              communitycreated: savedcom._id,
+            },
+            $inc: { totaltopics: 3, totalcom: 1 },
+          }
         );
+
+        for (let i = 0; i < iddata.length; i++) {
+          const topicIdToStore = mongoose.Types.ObjectId(iddata[i]);
+          await Community.updateOne(
+            { _id: savedcom._id },
+            { $push: { topics: topicIdToStore } }
+          );
+          await User.findByIdAndUpdate(
+            { _id: userId },
+            { $push: { topicsjoined: topicIdToStore } }
+          );
+        }
+        // await Community.updateMany(
+        //   { _id: savedcom._id },
+        //   {
+        //     $push: { topics: [topic1._id, topic2._id, topic3._id] },
+        //     $inc: { totaltopics: 1 },
+        //   }
+        // );
+
+        // await Topic.updateOne(
+        //   { _id: topic1._id },
+        //   { $push: { members: user._id }, $inc: { memberscount: 1 } }
+        // );
+        // await Topic.updateOne(
+        //   { _id: topic2._id },
+        //   { $push: { members: user._id }, $inc: { memberscount: 1 } }
+        // );
+        // await Topic.updateOne(
+        //   { _id: topic3._id },
+        //   { $push: { members: user._id }, $inc: { memberscount: 1 } }
+        // );
+        // await Topic.updateOne(
+        //   { _id: topic1._id },
+        //   { $push: { notifications: user._id } }
+        // );
+        // await Topic.updateOne(
+        //   { _id: topic2._id },
+        //   { $push: { notifications: user._id } }
+        // );
+        // await Topic.updateOne(
+        //   { _id: topic3._id },
+        //   { $push: { notifications: user._id } }
+        // );
+
+        // await User.updateMany(
+        //   { _id: userId },
+        //   {
+        //     $push: {
+        //       topicsjoined: [topic1._id, topic2._id, topic3._id],
+        //       communityjoined: savedcom._id,
+        //     },
+        //     $inc: { totaltopics: 3, totalcom: 1 },
+        //   }
+        // );
+        res.status(200).json({ community: savedcom, success: true });
+      } catch (e) {
+        console.log(e);
+        res.status(400).json({ message: e.message, success: false });
       }
-      // await Community.updateMany(
-      //   { _id: savedcom._id },
-      //   {
-      //     $push: { topics: [topic1._id, topic2._id, topic3._id] },
-      //     $inc: { totaltopics: 1 },
-      //   }
-      // );
+    } else {
+      try {
+        console.log("first");
+        const user = await User.findById(userId);
+        const bucketName = "images";
+        const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
+        a = objectName;
+        const result = await s3.send(
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: objectName,
+            Body: image.buffer,
+            ContentType: image.mimetype,
+          })
+        );
+        const community = new Community({
+          title,
+          creator: userId,
+          dp: objectName,
+          desc: desc,
+          category: category,
+        });
+        const savedcom = await community.save();
+        const topic1 = new Topic({
+          title: "Posts",
+          creator: userId,
+          community: savedcom._id,
+        });
+        await topic1.save();
+        const topic2 = new Topic({
+          title: "All",
+          creator: userId,
+          community: savedcom._id,
+        });
+        await topic2.save();
 
-      // await Topic.updateOne(
-      //   { _id: topic1._id },
-      //   { $push: { members: user._id }, $inc: { memberscount: 1 } }
-      // );
-      // await Topic.updateOne(
-      //   { _id: topic2._id },
-      //   { $push: { members: user._id }, $inc: { memberscount: 1 } }
-      // );
-      // await Topic.updateOne(
-      //   { _id: topic3._id },
-      //   { $push: { members: user._id }, $inc: { memberscount: 1 } }
-      // );
-      // await Topic.updateOne(
-      //   { _id: topic1._id },
-      //   { $push: { notifications: user._id } }
-      // );
-      // await Topic.updateOne(
-      //   { _id: topic2._id },
-      //   { $push: { notifications: user._id } }
-      // );
-      // await Topic.updateOne(
-      //   { _id: topic3._id },
-      //   { $push: { notifications: user._id } }
-      // );
+        await Community.updateOne(
+          { _id: savedcom._id },
+          {
+            $push: { members: userId, admins: user._id },
+            $inc: { memberscount: 1 },
+          }
+        );
+        await Community.updateMany(
+          { _id: savedcom._id },
+          { $push: { topics: [topic1._id, topic2._id] } }
+        );
 
-      // await User.updateMany(
-      //   { _id: userId },
-      //   {
-      //     $push: {
-      //       topicsjoined: [topic1._id, topic2._id, topic3._id],
-      //       communityjoined: savedcom._id,
-      //     },
-      //     $inc: { totaltopics: 3, totalcom: 1 },
-      //   }
-      // );
-      res.status(200).json({ community: savedcom, success: true });
-    } catch (e) {
-      console.log(e);
-      res.status(400).json({ message: e.message, success: false });
+        await Topic.updateOne(
+          { _id: topic1._id },
+          { $push: { members: user._id }, $inc: { memberscount: 1 } }
+        );
+        await Topic.updateOne(
+          { _id: topic2._id },
+          { $push: { members: user._id }, $inc: { memberscount: 1 } }
+        );
+        await Topic.updateOne(
+          { _id: topic1._id },
+          { $push: { notifications: user._id } }
+        );
+        await Topic.updateOne(
+          { _id: topic2._id },
+          { $push: { notifications: user._id } }
+        );
+
+        await User.updateMany(
+          { _id: userId },
+          {
+            $push: {
+              topicsjoined: [topic1._id, topic2._id],
+              communityjoined: savedcom._id,
+            },
+            $inc: { totaltopics: 2, totalcom: 1 },
+          }
+        );
+        res.status(200).json({ community: savedcom, success: true });
+      }
+      catch (e) {
+        res.status(400).json({ message: e.message, success: false });
+      }
     }
   } else {
-    try {
-      console.log("first");
-      const user = await User.findById(userId);
-      const bucketName = "images";
-      const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
-      a = objectName;
-      const result = await s3.send(
-        new PutObjectCommand({
-          Bucket: BUCKET_NAME,
-          Key: objectName,
-          Body: image.buffer,
-          ContentType: image.mimetype,
-        })
-      );
-      const community = new Community({
-        title,
-        creator: userId,
-        dp: objectName,
-        desc: desc,
-        category: category,
-      });
-      const savedcom = await community.save();
-      const topic1 = new Topic({
-        title: "Posts",
-        creator: userId,
-        community: savedcom._id,
-      });
-      await topic1.save();
-      const topic2 = new Topic({
-        title: "All",
-        creator: userId,
-        community: savedcom._id,
-      });
-      await topic2.save();
-
-      await Community.updateOne(
-        { _id: savedcom._id },
-        {
-          $push: { members: userId, admins: user._id },
-          $inc: { memberscount: 1 },
-        }
-      );
-      await Community.updateMany(
-        { _id: savedcom._id },
-        { $push: { topics: [topic1._id, topic2._id] } }
-      );
-
-      await Topic.updateOne(
-        { _id: topic1._id },
-        { $push: { members: user._id }, $inc: { memberscount: 1 } }
-      );
-      await Topic.updateOne(
-        { _id: topic2._id },
-        { $push: { members: user._id }, $inc: { memberscount: 1 } }
-      );
-      await Topic.updateOne(
-        { _id: topic1._id },
-        { $push: { notifications: user._id } }
-      );
-      await Topic.updateOne(
-        { _id: topic2._id },
-        { $push: { notifications: user._id } }
-      );
-
-      await User.updateMany(
-        { _id: userId },
-        {
-          $push: {
-            topicsjoined: [topic1._id, topic2._id],
-            communityjoined: savedcom._id,
-          },
-          $inc: { totaltopics: 2, totalcom: 1 },
-        }
-      );
-      res.status(200).json({ community: savedcom, success: true });
-    } catch (e) {
-      res.status(400).json({ message: e.message, success: false });
-    }
+    res.status(203).json({ success: false, message: "Buy Membership To Perform the Action" })
   }
 };
 
@@ -861,6 +878,9 @@ exports.getallposts = async (req, res) => {
       const postId = community.posts[i]
       const post = await Post.findById(postId)
       if (post.kind === "post") {
+
+        let final = post.views <= 0 ? 0 : ((parseInt(post?.sharescount) + parseInt(post?.likes) + parseInt(post?.totalcomments)) / parseInt(post?.views)) * 100;
+
         let postdp
         if (post.post.length === 0) {
           postdp = null
@@ -868,13 +888,14 @@ exports.getallposts = async (req, res) => {
           postdp = process.env.POST_URL + post.post[0].content
         }
         const postswithdp = {
-          post, postdp
+          post, postdp, engrate: Math.round(final)
         }
         postsArr.push(postswithdp)
       }
     }
 
     const posts = postsArr.reverse()
+    console.log(posts)
     res.status(200).json({ success: true, posts })
   } catch (error) {
     res.status(500).json({ message: error.message, success: false });
@@ -963,34 +984,38 @@ exports.createCollection = async (req, res) => {
     const { name, category } = req.body;
     const { userId } = req.params;
     const user = await User.findById(userId)
-    if (req.file) {
-      const uuidString = uuid();
-      const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
-      console.log(objectName);
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: BUCKET_NAME,
-          Key: objectName,
-          Body: req.file.buffer,
-          ContentType: req.file.mimetype,
-        })
-      );
-      user.foodLicense = objectName
+    if (req.canCreateCollection) {
+      if (req.file) {
+        const uuidString = uuid();
+        const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
+        console.log(objectName);
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: objectName,
+            Body: req.file.buffer,
+            ContentType: req.file.mimetype,
+          })
+        );
+        user.foodLicense = objectName
+      }
+      const data = {
+        name,
+        category,
+        creator: userId,
+      }
+      const newCol = new Collection(data);
+      await newCol.save();
+      // await User.updateOne(
+      //   { _id: userId },
+      //   { $push: { collectionss: newCol._id } }
+      // );
+      user.collectionss.push(newCol._id)
+      await user.save()
+      res.status(200).json({ success: true });
+    } else {
+      res.status(203).json({ message: "Collections Limit Exceeded", success: false });
     }
-    const data = {
-      name,
-      category,
-      creator: userId,
-    }
-    const newCol = new Collection(data);
-    await newCol.save();
-    // await User.updateOne(
-    //   { _id: userId },
-    //   { $push: { collectionss: newCol._id } }
-    // );
-    user.collectionss.push(newCol._id)
-    await user.save()
-    res.status(200).json({ success: true });
   } catch (e) {
     console.log(e);
     res.status(400).json({ message: e.message, success: false });
@@ -1086,66 +1111,69 @@ exports.createproduct = async (req, res) => {
     weight,
     type,
   } = req.body;
-
-  const user = await User.findById(userId);
-  if (!user) {
-    res.status(400).json({ message: "User not found", success: false });
-  } else {
-    if (req.files.length < 1) {
-      res.status(400).json({ message: "Must have one image" });
+  if (req.canCreateProduct) {
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(400).json({ message: "User not found", success: false });
     } else {
-      try {
-        let pos = [];
+      if (req.files.length < 1) {
+        res.status(400).json({ message: "Must have one image" });
+      } else {
+        try {
+          let pos = [];
 
-        for (let i = 0; i < req?.files?.length; i++) {
-          const uuidString = uuid();
-          const bucketName = "products";
-          const objectName = `${Date.now()}_${uuidString}`;
-          await s3.send(
-            new PutObjectCommand({
-              Bucket: PRODUCT_BUCKET,
-              Key: objectName,
-              Body: req.files[i].buffer,
-              ContentType: req.files[i].mimetype,
-            })
-          );
-          pos.push({ content: objectName, type: req.files[i].mimetype });
+          for (let i = 0; i < req?.files?.length; i++) {
+            const uuidString = uuid();
+            const bucketName = "products";
+            const objectName = `${Date.now()}_${uuidString}`;
+            await s3.send(
+              new PutObjectCommand({
+                Bucket: PRODUCT_BUCKET,
+                Key: objectName,
+                Body: req.files[i].buffer,
+                ContentType: req.files[i].mimetype,
+              })
+            );
+            pos.push({ content: objectName, type: req.files[i].mimetype });
+          }
+
+
+          const p = new Product({
+            name,
+            brandname,
+            desc,
+            creator: userId,
+            quantity,
+            shippingcost,
+            price,
+            discountedprice,
+            sellername,
+            totalstars,
+            images: pos,
+            weight,
+            type,
+          });
+          const data = await p.save();
+
+          const collection = await Collection.findById(colid);
+          if (!collection) {
+            return res
+              .status(404)
+              .json({ message: "Collection not found", success: false });
+          }
+
+          collection.products.push(data);
+          const actualdata = await collection.save();
+
+          res.status(200).json({ actualdata, success: true });
+        } catch (e) {
+          console.log(e);
+          res.status(500).json({ message: e.message, success: false });
         }
-
-
-        const p = new Product({
-          name,
-          brandname,
-          desc,
-          creator: userId,
-          quantity,
-          shippingcost,
-          price,
-          discountedprice,
-          sellername,
-          totalstars,
-          images: pos,
-          weight,
-          type,
-        });
-        const data = await p.save();
-
-        const collection = await Collection.findById(colid);
-        if (!collection) {
-          return res
-            .status(404)
-            .json({ message: "Collection not found", success: false });
-        }
-
-        collection.products.push(data);
-        const actualdata = await collection.save();
-
-        res.status(200).json({ actualdata, success: true });
-      } catch (e) {
-        console.log(e);
-        res.status(500).json({ message: e.message, success: false });
       }
     }
+  } else {
+    res.status(203).json({ success: false, message: "Product per Collection Limited Exceeded" })
   }
 };
 
@@ -1562,8 +1590,8 @@ exports.getprofileinfo = async (req, res) => {
 
 // create topic
 exports.createtopic = async (req, res) => {
-  const { title, message, type, price, comid } = req.body;
-  const { userId } = req.params;
+  const { title, message, type, price } = req.body;
+  const { userId, comId } = req.params;
   try {
     const topic = new Topic({
       title: title,
@@ -1591,9 +1619,9 @@ exports.createtopic = async (req, res) => {
       { $push: { topicsjoined: topic._id }, $inc: { totaltopics: 1 } }
     );
 
-    if (comid) {
+    if (comId) {
       await Community.findByIdAndUpdate(
-        { _id: comid },
+        { _id: comId },
         { $push: { topics: topic._id } }
       );
     }
@@ -1791,9 +1819,9 @@ exports.earnings = async (req, res) => {
 };
 
 exports.deletecom = async (req, res) => {
-  const { comid } = req.params;
+  const { comId } = req.params;
   try {
-    const find = await Community.findByIdAndDelete(comid);
+    const find = await Community.findByIdAndDelete(comId);
     if (!find) {
       res.status(404).json({ message: "not found", success: false });
     } else {
@@ -1809,6 +1837,7 @@ exports.deletecom = async (req, res) => {
 exports.membershipbuy = async (req, res) => {
   try {
     const { amount } = req.body
+    console.log(amount)
     const { id, memid } = req.params
     const user = await User.findById(id)
     const membership = await Membership.findById(memid)
@@ -2015,355 +2044,6 @@ exports.addbank = async (req, res) => {
 //   }
 // }
 
-// exports.base64upload = async (req, res) => {
-//   const body = req.body;
-//   try {
-//     const newImage = await Image.create(body);
-//     newImage.save();
-//     res
-//       .status(201)
-//       .json({ message: "new image uploaded", createdPost: newImage });
-//   } catch (error) {
-//     res.status(409).json({
-//       message: error.message,
-//     });
-//   }
-// };
-
-// exports.devpost = async (req, res) => {
-//   const body = req.body;
-//   try {
-//     const newImage = await DevPost.create(body);
-//     newImage.save();
-//     res
-//       .status(201)
-//       .json({ message: "new image uploaded", createdPost: newImage });
-//   } catch (error) {
-//     res.status(409).json({
-//       message: error.message,
-//     });
-//   }
-// };
-
-// exports.getDevpost = async (req, res) => {
-//   try {
-//     const post = await DevPost.find();
-//     res.status(200).json(post);
-//   } catch (error) {
-//     res.status(409).json({
-//       message: error.message,
-//     });
-//   }
-// };
-
-// exports.getimage = async (req, res) => {
-//   try {
-//     const find = await Image.find();
-//     if (find) {
-//       const reverse = find.reverse();
-//       res.json(reverse);
-//     } else {
-//       res.json({ post: "Not Found" });
-//     }
-//   } catch (err) {
-//     res.json({ message: err.message, success: false });
-//     console.log(err);
-//   }
-// };
-
-// exports.colors = async (req, res) => {
-//   const { color } = req.body;
-//   try {
-//     // console.log(color)
-//     const newColor = new Color({
-//       bg: color.c1,
-//       text: color.c2,
-//       button: color.c3,
-//       number: color.no,
-//     });
-
-//     // console.log(newColor)
-//     // Save the new color to your database
-//     await newColor.save();
-
-//     res.status(201).json(newColor);
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.getColors = async (req, res) => {
-//   try {
-//     const data = await Color.findOne({});
-//     if (data) {
-//       // console.log(data)
-//       res.json(data);
-//     } else {
-//       res.json("not found");
-//     }
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.fonts = async (req, res) => {
-//   const { data } = req.body;
-//   try {
-//     // console.log(data)
-//     const newfont = new Font({
-//       fontType: data.fontType,
-//       fontSize: data.fontSize,
-//       fontWeight: data.fontWeight,
-//       textShadow: data.textShadow,
-//     });
-//     // console.log(newfont)
-//     // Save the new color to your database
-//     await newfont.save();
-
-//     res.status(201).json({ newfont, success: true });
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.getFonts = async (req, res) => {
-//   try {
-//     const data = await Font.find();
-//     if (data) {
-//       // console.log(data)
-//       res.json({ data, success: true });
-//     } else {
-//       res.json("not found");
-//     }
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.button = async (req, res) => {
-//   const { data } = req.body;
-//   try {
-//     // console.log(data)
-//     const newButton = new Button({
-//       backgroundColor: data.backgroundColor,
-//       Color: data.Color,
-//       borderTop: data.borderTop,
-//       borderBottom: data.borderBottom,
-//       borderRight: data.borderRight,
-//       borderLeft: data.borderLeft,
-//       paddingX: data.paddingX,
-//       paddingY: data.paddingY,
-//       borderRadiusTop: data.borderRadiusTop,
-//       borderRadiusBottom: data.borderRadiusBottom,
-//       borderRadiusRight: data.borderRadiusRight,
-//       borderRadiusLeft: data.borderRadiusLeft,
-//       boxShadow: data.boxShadow,
-//       fontBold: data.fontBold,
-//     });
-
-//     // console.log(newButton)
-//     // Save the new color to your database
-//     await newButton.save();
-
-//     res.status(201).json({ newButton, success: true });
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.getButton = async (req, res) => {
-//   try {
-//     const data = await Button.find();
-//     if (data) {
-//       console.log(data);
-//       res.json({ data, success: true });
-//     } else {
-//       res.json("not found");
-//     }
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.background = async (req, res) => {
-//   const body = req.body;
-//   try {
-//     const newImage = await BackGround.create(body);
-//     newImage.save();
-//     res
-//       .status(201)
-//       .json({ message: "new image uploaded", createImage: newImage });
-//   } catch (error) {
-//     res.status(409).json({
-//       message: error.message,
-//     });
-//   }
-// };
-
-// exports.getBackground = async (req, res) => {
-//   try {
-//     const find = await BackGround.find();
-//     if (find) {
-//       res.json({ find, success: true });
-//     } else {
-//       res.json({ message: "Not Found" });
-//     }
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.backColor = async (req, res) => {
-//   try {
-//     const body = req.body;
-//     const createcolor = new BackColor(body);
-//     const savethis = await createcolor.save();
-//     res.json(savethis);
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.getbackColor = async (req, res) => {
-//   try {
-//     const find = await BackColor.find();
-//     if (find) {
-//       res.json(find);
-//     }
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.temp = async (req, res) => {
-//   try {
-//     const { post, idd, setNm } = req.body;
-//     const iddd = await Temp.findOne({ idd });
-
-//     if (!iddd) {
-//       const neww = new Temp({ post, idd, setNm });
-//       await neww.save();
-//       res.status(201).json(neww);
-//     } else {
-//       await Temp.findOneAndUpdate({ idd }, { post }, { setNm });
-//       res.status(200).json({ message: "Temp updated successfully" });
-//     }
-//   } catch (error) {
-//     console.error("Error occurred", error);
-//     res.status(500).json({ error: "Server error" });
-//   }
-// };
-
-// exports.fetchData = async (req, res) => {
-//   try {
-//     const mew = await Temp.findOne();
-//     res.status(201).json(mew);
-//   } catch (error) {
-//     console.log(error);
-//     res.status(500).json({ error: "Server error", message: error.message });
-//   }
-// };
-
-// exports.lottie = async (req, res) => {
-//   try {
-//     const file = req.file;
-//     // console.log(req.file)
-//     const newLottie = new Lottie({
-//       lottieFile: file.buffer,
-//     });
-//     await newLottie.save();
-//     res.json({
-//       newLottie,
-//       message: "File uploaded successfully",
-//       success: true,
-//     });
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.getLottie = async (req, res) => {
-//   try {
-//     const findlottie = await Lottie.find();
-//     if (findlottie) {
-//       res.json({ findlottie, success: true });
-//     } else {
-//       res.json({ success: false });
-//     }
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
-// exports.getprositefull = async (req, res) => {
-//   try {
-//     const { username } = req.body;
-//     console.log(username);
-//     const atIndex = username.indexOf("@");
-
-//     if (atIndex === -1) {
-//       res
-//         .status(400)
-//         .json({ message: "Invalid username format", success: false });
-//       return;
-//     }
-//     const u = username.substring(atIndex + 1);
-
-//     const user = await User.findOne({ username: u }).populate(
-//       "prositeid",
-//       "htmlcontent"
-//     );
-//     if (!user) {
-//       res.status(404).json({ message: "User not found", success: false });
-//     } else {
-//       res
-//         .status(200)
-//         .json({ success: true, prosite: user?.prositeid?.htmlcontent });
-//     }
-//   } catch (e) {
-//     console.log(e);
-//     res
-//       .status(500)
-//       .json({ message: "Something went wrong...", success: false });
-//   }
-// };
-
-// exports.prosite = async (req, res) => {
-//   try {
-//     const { data, id } = req.body;
-//     const user = await User.findOne({ _id: id });
-//     const prosite = await Prosite.findOne({ creator: id });
-
-//     if (user) {
-//       if (prosite) {
-//         prosite.htmlcontent = data;
-//         await prosite.save();
-//         await User.updateOne(
-//           { _id: id },
-//           { $set: { prositeid: prosite._id } },
-//           { new: true }
-//         );
-//       } else {
-//         const newprosite = new Prosite({
-//           creator: id,
-//           htmlcontent: data,
-//         });
-//         const saved = await newprosite.save();
-//         await User.updateOne(
-//           { _id: id },
-//           { $set: { prositeid: saved._id } },
-//           { new: true }
-//         );
-//       }
-//       res.status(200).json({ success: true });
-//     } else {
-//       res.status(404).json({ message: "User not found", success: false });
-//     }
-//   } catch (err) {
-//     console.log(err);
-//   }
-// };
-
 exports.fetchMemberShip = async (req, res) => {
   try {
     const memberships = await Membership.find()
@@ -2381,5 +2061,60 @@ exports.fetchMemberShip = async (req, res) => {
   } catch (error) {
     console.log(error)
     res.status(500).json({ success: false, message: "Something Went Wrong!" })
+  }
+}
+
+exports.customMembership = async (req, res) => {
+  try {
+    const { productlimit, topiclimit, communitylimit, collectionlimit, razorpay_order_id, razorpay_payment_id, razorpay_signature, status, memid } = req.body
+    const { userId, orderId } = req.params
+    console.log(req.body)
+    const user = await User.findById(userId)
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found" })
+    }
+    const subscription = await Subscriptions.findOne({ orderId: orderId })
+    const isValid = validatePaymentVerification(
+      { order_id: razorpay_order_id, payment_id: razorpay_payment_id },
+      razorpay_signature,
+      "bxyQhbzS0bHNBnalbBg9QTDo"
+    );
+    const membership = await Membership.findById(memid)
+    membership.broughtby.push(userId)
+    await membership.save()
+    if (!subscription) {
+      return res.status(400).json({ success: false })
+    }
+
+    if (isValid) {
+      if (status) {
+        subscription.currentStatus = "completed"
+      }
+    }
+    else {
+      if (status == false) {
+        subscription.currentStatus = "failed"
+      }
+    }
+    const currentDate = new Date();
+    const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    subscription.paymentMode = "Card"
+    const newSub = await subscription.save()
+    user.activeSubscription.push(newSub._id)
+    user.ismembershipactive = true
+    user.memberships = {
+      membership: memid,
+      status: true,
+      ending: endDate,
+      paymentdetails: { mode: "online", amount: subscription.amount }
+    }
+    user.limits = {
+      productlimit, topiclimit, communitylimit, collectionlimit
+    }
+    await user.save()
+    res.status(200).json({ success: true })
+  } catch (error) {
+    console.log(error)
   }
 }

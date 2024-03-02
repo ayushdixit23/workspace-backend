@@ -278,7 +278,7 @@ const userSchema = new mongoose.Schema(
     ],
     foodLicense: { type: String },
     ismembershipactive: { type: Boolean, default: false },
-    
+
     memberships: {
       membership: { type: ObjectId, ref: "membership" },
       status: { type: Boolean, default: true },
@@ -295,6 +295,13 @@ const userSchema = new mongoose.Schema(
         ref: "Subscriptions",
       },
     ],
+    limits: {
+      productlimit: { type: Number },
+      topiclimit: { type: Number },
+      communitylimit: { type: Number },
+      collectionlimit: { type: Number },
+      // prositelimit: { type: Number }
+    },
     contents: [{ type: String }],
     bank: {
       bankname: { type: String },
