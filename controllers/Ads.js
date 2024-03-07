@@ -30,6 +30,8 @@ const minioClient = new Minio.Client({
 const Advertiser = require("../models/Advertiser");
 const Post = require("../models/post");
 const Topic = require("../models/topic");
+const Approvals = require("../models/Approvals");
+const Analytics = require("../models/Analytics");
 
 function generateSessionId() {
   return Date.now().toString() + Math.random().toString(36).substring(2);
@@ -120,17 +122,13 @@ exports.refreshingsAdsTokens = async (req, res) => {
               .status(400)
               .json({ success: false, message: "advertiser not found" });
           }
-          const dp = await generatePresignedUrl(
-            "images",
-            advertiser.image,
-            60 * 60
-          );
-          // const data = {
-          //   id: user._id.toString(),
-          //   advid: user.advertiserid.toString(),
-          //   dp,
-          //   fullname: user.advertiserid.firstname + " " + user.advertiserid.lastname
-          // };
+          // const dp = await generatePresignedUrl(
+          //   "images",
+          //   advertiser.image,
+          //   60 * 60
+          // );
+          const dp = process.env.URL + advertiser.image
+
           const data = {
             userid: advertiser.userid,
             advid: advertiser._id,
@@ -393,7 +391,33 @@ exports.createadvacc = async (req, res) => {
         }
       );
     }
-    res.status(200).json({ success: true });
+
+    const sessionId = generateSessionId()
+
+    const dp = process.env.URL + advertiser.image
+
+    const data = {
+      userid: advertiser.userid,
+      advid: advertiser._id,
+      image: dp,
+      firstname: advertiser.firstname,
+      lastname: advertiser.lastname,
+      country: advertiser.country,
+      city: advertiser.city,
+      address: advertiser.address,
+      accounttype: advertiser.type,
+      taxinfo: advertiser.taxinfo,
+      email: advertiser.email,
+      advertiserid: advertiser.advertiserid,
+      sessionId
+    };
+
+    const access_token = generateAccessToken(data)
+    const refresh_token = generateRefreshToken(data)
+    res.status(200).json({
+      success: true, access_token,
+      refresh_token, sessionId
+    });
   } catch (e) {
     console.log(e);
     res.status(400).json({ message: "Something went wrong", success: false });
@@ -588,6 +612,12 @@ exports.newad = async (req, res) => {
       });
       const savedpost = await post.save();
 
+      const approve = new Approvals({
+        id: adSaved._id,
+        type: "ad"
+      })
+
+      await approve.save()
       await Community.updateOne(
         { _id: community._id },
         { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
@@ -720,14 +750,19 @@ exports.createad = async (req, res) => {
 
     const ads = await Ads.findById(adSaved._id)
     ads.postid = savedpost._id
-    await ads.save()
+    const idofad = await ads.save()
 
     await Community.updateOne(
       { _id: comid },
       { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
     );
 
+    const approve = new Approvals({
+      id: idofad._id,
+      type: "ad"
+    })
 
+    await approve.save()
 
     await Topic.updateOne(
       { _id: topic[0]._id.toString() },
@@ -951,19 +986,28 @@ exports.getallads = async (req, res) => {
       let ads = []
       for (let i = 0; i < user.ads.length; i++) {
         const id = user.ads[i].toString()
-        h = await Ads.findById(id)
+        const h = await Ads.findById(id)
         if (h) {
-          ads.push(h)
+          const analytics = await Analytics.find({ id: id }).sort({ date: -1 }).limit(7);
+          const views = h?.views
+          const clicks = h?.clicks
+          const totalSpent = h?.totalspent
+          const conversion = (clicks / views) * 100
+          const popularity = ((clicks / views) / totalSpent) * 100
+          const adsToPush = {
+            h, analytics, conversion, popularity
+          }
+          ads.push(adsToPush)
         }
       }
-      for (let i = 0; i < ads.length; i++) {
-        const a = await generatePresignedUrl(
-          "ads",
-          ads[i]?.content[0]?.name ? ads[i]?.content[0]?.name : "",
-          60 * 60
-        );
-        content.push(a);
-      }
+      // for (let i = 0; i < ads.length; i++) {
+      //   const a = await generatePresignedUrl(
+      //     "ads",
+      //     ads[i]?.content[0]?.name ? ads[i]?.content[0]?.name : "",
+      //     60 * 60
+      //   );
+      //   content.push(a);
+      // }
 
       res.status(200).json({ ads, content, success: true });
     } else {
@@ -1202,15 +1246,15 @@ exports.verifyadvertiser = async (req, res) => {
       const bucketName = "imp";
       const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
 
-      await sharp(image.buffer)
-        .jpeg({ quality: 60 })
-        .toBuffer()
-        .then(async (data) => {
-          await minioClient.putObject(bucketName, objectName, data);
-        })
-        .catch((err) => {
-          console.log(err.message, "-error");
-        });
+      // await sharp(image.buffer)
+      //   .jpeg({ quality: 60 })
+      //   .toBuffer()
+      //   .then(async (data) => {
+      //     await minioClient.putObject(bucketName, objectName, data);
+      //   })
+      //   .catch((err) => {
+      //     console.log(err.message, "-error");
+      //   });
       const v = new Verification({
         name: name,
         file: objectName,
@@ -2271,6 +2315,21 @@ exports.fetchingprosite = async (req, res) => {
   }
 }
 
+
+exports.feedback = async (req, res) => {
+  try {
+    const { advid } = req.params
+    const { msg } = req.body
+    const advertiser = await Advertiser.findById(advid)
+    advertiser.message.push(msg)
+    await advertiser.save()
+    res.status(200).json({ success: true })
+  } catch (error) {
+    console.log(error)
+    res.status(400).json({ success: false })
+  }
+}
+
 const locationAndCategory = () => {
   const locationAndCategoryWorks = [
     {
@@ -3092,3 +3151,4 @@ const locationAndCategory = () => {
     },
   ]
 }
+

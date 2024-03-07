@@ -43,9 +43,9 @@ const AdvertiserSchema = new mongoose.Schema(
     image: { type: String },
     taxinfo: { type: String },
     editcount: [{
-        date: { type: String, default: Date.now().toString() },
-        number: { type: String, default: 0 },
-      },
+      date: { type: String, default: Date.now().toString() },
+      number: { type: String, default: 0 },
+    },
     ],
     logs: [
       {
@@ -61,6 +61,8 @@ const AdvertiserSchema = new mongoose.Schema(
     moneyearned: { type: Number, default: 0 },
     earningtype: [{ how: { type: String }, when: { type: Number } }],
     userid: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    totalspent: { type: Number, default: 0 },
+    message: [{ type: String }],
   },
   { timestamps: true }
 );

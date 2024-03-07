@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema;
 
 const Approvals = new mongoose.Schema(
-  { id: { type: String }, status: { type: String, default: "pending" } },
+  { id: { type: String }, type: { type: String }, status: { type: String, default: "pending" } },
 
   { timestamps: true }
 );

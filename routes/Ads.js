@@ -19,6 +19,7 @@ const {
   getuser,
   refreshingsAdsTokens,
   getCommunities,
+  feedback,
   promotedposts,
   getAllPosts, createad, fetchingprosite
 } = require("../controllers/Ads");
@@ -51,6 +52,7 @@ router.post("/refresh", refreshingsAdsTokens);
 router.get("/getcommunitiesforAd/:id", getCommunities)
 router.post("/promotedposts/:id/:comid", promotedposts)
 router.get("/getAllPostsforAd/:id/:comid", getAllPosts)
+router.post("/feedback/:advid", feedback)
 router.get("/getprositedetails/:id", fetchingprosite)
 
 module.exports = router;

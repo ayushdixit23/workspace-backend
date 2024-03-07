@@ -105,6 +105,7 @@ const communitySchema = new mongoose.Schema(
       uttarakhand: { type: Number, default: 0 },
       "west bengal": { type: Number, default: 0 },
     },
+    ismonetized: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

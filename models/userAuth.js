@@ -302,6 +302,7 @@ const userSchema = new mongoose.Schema(
       collectionlimit: { type: Number },
       // prositelimit: { type: Number }
     },
+    isStoreVerified: { type: Boolean, default: false },
     contents: [{ type: String }],
     bank: {
       bankname: { type: String },
@@ -310,6 +311,7 @@ const userSchema = new mongoose.Schema(
       IFSCcode: {
         type: String,
       },
+
     },
     // for workspace membership
   },

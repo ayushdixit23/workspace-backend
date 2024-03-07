@@ -7,6 +7,7 @@ const VerificationSchema = new mongoose.Schema(
     status: { type: String, default: "pending" },
     name: { type: String },
     file: { type: String },
+    text: { type: String }
   },
   { timestamps: true }
 );

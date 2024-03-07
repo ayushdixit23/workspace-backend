@@ -40,6 +40,7 @@ const User = require("./models/userAuth");
 const Advertiser = require("./models/Advertiser");
 const Ads = require("./models/Ads");
 const Posts = require("./models/post");
+const Analytics = require("./models/Analytics");
 
 
 require("dotenv").config();
@@ -134,3 +135,51 @@ const changeMembership = async () => {
   }
 }
 // changeMembership()
+
+// const changeverfication = async () => {
+//   try {
+//     // const id = "65314cd99db37d9109914f3f"
+//     const users = await User.find()
+
+//     for (let i = 0; i < users.length; i++) {
+//       users[i].isStoreVerified = false
+
+//       await users[i].save()
+
+//     }
+//     console.log("done")
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
+
+// changeverfication()
+
+// const addData = async () => {
+//   try {
+//     const id = "65d9980cac767b39653b932a"
+//     const analytics = new Analytics({
+//       id,
+//       date: '07/03/2024',
+//       Sales: 87
+//     })
+//     await analytics.save()
+//     console.log("done")
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
+
+// addData()
+
+const latestUser = async () => {
+  try {
+    console.log("first")
+    const user = (await (await User.find()).reverse())
+    console.log(user.map((d) => { return ({ name: d?.fullname, phone: d?.phone, email: d?.email }) }))
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+latestUser()

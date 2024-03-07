@@ -51,13 +51,15 @@ const minioClient = new Minio.Client({
   secretKey: "shreyansh379",
 });
 
-
-
 const {
   validatePaymentVerification,
   validateWebhookSignature,
 } = require("razorpay/dist/utils/razorpay-utils");
 const Membership = require("../models/membership");
+const Error = require("../models/Error");
+const Montenziation = require("../models/Montenziation");
+const Request = require("../models/Request");
+const Analytics = require("../models/Analytics");
 
 // const instance = new Razorpay({
 //   key_id: process.env.RAZORPAY_KEY_ID,
@@ -154,7 +156,7 @@ exports.checkid = async (req, res) => {
         username: user.username,
         id: user._id.toString(),
         sessionId,
-        memberships: memberships.title
+        // memberships: memberships.title
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
@@ -170,7 +172,7 @@ exports.checkid = async (req, res) => {
       res.status(404).json({ message: "User not found", success: false });
     }
   } catch (err) {
-    console.log(err);
+    ;
     res.status(400).json({ message: "Something Went Wrong", success: false });
   }
 };
@@ -202,7 +204,6 @@ exports.fetchwithid = async (req, res) => {
       access_token, refresh_token, sessionId, success: true, user
     });
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: "Something Went Wrong", success: false });
   }
 }
@@ -230,7 +231,7 @@ exports.checkqr = async (req, res) => {
       const refresh_token = generateRefreshToken(data);
       return res
         .status(200)
-        .json({ dp, access_token, refresh_token, sessionId, endata, success: true });
+        .json({ dp, access_token, refresh_token, sessionId, success: true });
     } else {
       return res
         .status(404)
@@ -246,9 +247,7 @@ exports.checkemail = async (req, res) => {
   const { email, password } = req.body;
   const passw = await encryptaes(password)
   try {
-    // const user = await User.findOne({ email, passw }).populate("memberships.membership");
     const user = await User.findOne({ email: email, passw: passw })
-
     if (!user) {
       return res
         .status(203)
@@ -256,7 +255,6 @@ exports.checkemail = async (req, res) => {
     } else {
 
       const memberships = await Membership.findById(user.memberships.membership)
-      console.log(memberships)
       const dp =
         process.env.URL + user.profilepic;
       const sessionId = generateSessionId()
@@ -310,11 +308,6 @@ exports.refresh = async (req, res) => {
           }
           const sessionId = payload.sessionId;
           const user = await User.findById(payload.id);
-          // const dp = await generatePresignedUrl(
-          //   "images",
-          //   user.profilepic.toString(),
-          //   60 * 60
-          // );
 
           const dp =
             process.env.URL + user.profilepic;
@@ -334,13 +327,13 @@ exports.refresh = async (req, res) => {
 
           res.status(200).json({ success: true, access_token });
         } catch (err) {
-          console.log(err);
+          ;
           res.status(400).json({ success: true, access_token });
         }
       }
     );
   } catch (err) {
-    console.log(err);
+    ;
     res.status(400).json({ success: false, message: "Internal server error" });
   }
 };
@@ -364,6 +357,14 @@ exports.analyticsuser = async (req, res) => {
           return a;
         })
       );
+
+      const storeAnalytics = await Analytics.find({ id: userid }).sort({ date: -1 }).limit(7)
+      const sales = storeAnalytics.map((d) => {
+        return ({
+          Dates: d?.date,
+          Sales: d?.Sales
+        })
+      })
 
       let avgeng = []
 
@@ -391,43 +392,99 @@ exports.analyticsuser = async (req, res) => {
         avgeng.push(avg)
       }
 
-      const commerged = community.map((f, i) => {
-        const reversedStats = f?.stats.reverse().slice(0, 8)
-        const locationToSend = Object.entries(f.location).map(([state, value]) => ({ state, value }));
-        const loc = locationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
-        const actualloc = loc.map((d, i) => {
+      // const commerged = community.map(async (f, i) => {
+      //   const anycom = await Analytics.find({ id: f?._id })
+      //   const reversedStats = anycom.map((e) => {
+      //     return ({
+      //       X: e?.X,
+      //       Y1: e?.Y1,
+      //       Y2: e?.Y2
+      //     })
+      //   })
+      //   console.log(reversedStats, "data")
+      //   // const reversedStats = f?.stats.reverse().slice(0, 8)
+      //   const locationToSend = Object.entries(f.location).map(([state, value]) => ({ state, value }));
+      //   const loc = locationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
+      //   const actualloc = loc.map((d, i) => {
 
-          return {
-            state: d?.state,
-            value: Math.round((d.value / f.memberscount) * 100)
+      //     return {
+      //       state: d?.state,
+      //       value: Math.round((d.value / f.memberscount) * 100)
+      //     }
+      //   })
+      //   const obtainAgeArr = Object.entries(f.demographics.age).map(([age, value]) => ({ age, value }))
+      //   const sendAge = obtainAgeArr.map((d, i) => {
+      //     return {
+      //       age: d.age,
+      //       percent: Math.round((d.value / f.memberscount) * 100)
+      //     }
+      //   })
+
+      //   return {
+      //     name: f?.title,
+      //     id: f?._id,
+      //     image: dps[i],
+      //     popularity: avgeng[i],
+      //     topic: f?.topics,
+      //     location: actualloc,
+      //     // stats: reversedStats,
+      //     totalmembers: f?.memberscount,
+      //     visitors: f?.visitors,
+      //     paidmember: f?.paidmemberscount,
+      //     agerange: sendAge
+      //   };
+      // });
+
+      const commerged = await Promise.all(
+        community.map(async (f, i) => {
+          try {
+            const anycom = await Analytics.find({ id: f?._id }).sort({ date: -1 }).limit(7);
+            const reversedStats = anycom.map((e) => ({
+              X: e?.date,
+              Y1: e?.Y1,
+              Y2: e?.Y2,
+            }));
+
+            const locationToSend = Object.entries(f.location).map(([state, value]) => ({
+              state,
+              value,
+            }));
+            const loc = locationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
+            const actualloc = loc.map((d) => ({
+              state: d?.state,
+              value: Math.round((d.value / f.memberscount) * 100),
+            }));
+
+            const obtainAgeArr = Object.entries(f.demographics.age).map(([age, value]) => ({
+              age,
+              value,
+            }));
+
+            const sendAge = obtainAgeArr.map((d) => ({
+              age: d.age,
+              percent: Math.round((d.value / f.memberscount) * 100),
+            }));
+
+            return {
+              name: f?.title,
+              id: f?._id,
+              image: dps[i],
+              popularity: avgeng[i],
+              topic: f?.topics,
+              stats: reversedStats,
+              location: actualloc,
+              totalmembers: f?.memberscount,
+              visitors: f?.visitors,
+              paidmember: f?.paidmemberscount,
+              agerange: sendAge,
+            };
+          } catch (error) {
+            console.error(`Error processing community ${f?._id}: ${error}`);
+            // You can decide whether to return a default/fallback value or rethrow the error
+            throw error;
           }
         })
-        const obtainAgeArr = Object.entries(f.demographics.age).map(([age, value]) => ({ age, value }))
-        const sendAge = obtainAgeArr.map((d, i) => {
-          return {
-            age: d.age,
-            percent: Math.round((d.value / f.memberscount) * 100)
-          }
-        })
-
-        return {
-          name: f?.title,
-          id: f?._id,
-          image: dps[i],
-          popularity: avgeng[i],
-          topic: f?.topics,
-          location: actualloc,
-          stats: reversedStats,
-          totalmembers: f?.memberscount,
-          visitors: f?.visitors,
-          paidmember: f?.paidmemberscount,
-          agerange: sendAge
-        };
-      });
-
-
-      console.log(avgeng, "avg")
-      console.log(commerged)
+      );
 
       const product = await Product.find({ creator: user._id.toString() }).sort({ itemsold: -1 }).limit(5)
       const productdps = await Promise.all(
@@ -467,16 +524,30 @@ exports.analyticsuser = async (req, res) => {
         "title"
       );
 
+      let dp
+      let video
       const postsdps = await Promise.all(
         posts.map(async (f) => {
           if (f?.post.length === 0) {
             console.log("first", f?.title)
             return null
           }
-          let dp =
-            process.env.POST_URL + f?.post[0].content;
+          if (f?.post[0].type.startsWith("video")) {
+            if (!f?.post[0].thumbnail) {
+              dp = process.env.POST_URL + f?.post[0].content
+              video = true
+            } else {
+              dp =
+                process.env.POST_URL + f?.post[0].thumbnail
+              video = false
+            }
+          } else {
+            dp =
+              process.env.POST_URL + f?.post[0].content
+            video = false
+          }
 
-          return dp;
+          return { dp, video };
         })
       );
 
@@ -490,16 +561,18 @@ exports.analyticsuser = async (req, res) => {
       const postmerged = posts.map((f, i) => {
         return {
           ...f.toObject(),
-          dps: postsdps[i],
-          engrate: eng[i]
+          dps: postsdps[i].dp,
+          engrate: eng[i],
+          video: postsdps[i].video
         };
       });
+
       res
         .status(200)
-        .json({ success: true, sales: user.storeStats, storeLocation: actualStoreLoc, pieChart, commerged, promerged, postmerged });
+        .json({ success: true, sales, storeLocation: actualStoreLoc, pieChart, commerged, promerged, postmerged });
     }
   } catch (err) {
-    console.log(err);
+    ;
     res.status(400).json({ message: err.message, success: false });
   }
 };
@@ -835,13 +908,12 @@ exports.getposts = async (req, res) => {
       res.status(400).json({ success: false, message: "Not found" });
     }
   } catch (err) {
-    res.status(400).json({ message: "Cant get following information" });
-    console.log(err);
+    res.status(400).json({ message: "Cant get following information" });;
   }
 };
 
 exports.getallposts = async (req, res) => {
-  console.log("first")
+
   try {
     const { comid } = req.params
     const community = await Community.findById(comid).populate("posts")
@@ -858,13 +930,25 @@ exports.getallposts = async (req, res) => {
         let final = post.views <= 0 ? 0 : ((parseInt(post?.sharescount) + parseInt(post?.likes) + parseInt(post?.totalcomments)) / parseInt(post?.views)) * 100;
 
         let postdp
+        let video
         if (post.post.length === 0) {
           postdp = null
         } else {
-          postdp = process.env.POST_URL + post.post[0].content
+          if (post.post[0].type.startsWith("video")) {
+            if (!post.post[0].thumbnail) {
+              postdp = process.env.POST_URL + post.post[0].content
+              video = true
+            } else {
+              postdp = process.env.POST_URL + post.post[0].thumbnail
+              video = false
+            }
+          } else {
+            postdp = process.env.POST_URL + post.post[0].content
+            video = false
+          }
         }
         const postswithdp = {
-          post, postdp, engrate: Math.round(final)
+          post, postdp, engrate: Math.round(final), video
         }
         postsArr.push(postswithdp)
       }
@@ -875,7 +959,6 @@ exports.getallposts = async (req, res) => {
     res.status(200).json({ success: true, posts })
   } catch (error) {
     res.status(500).json({ message: error.message, success: false });
-    console.log(error)
   }
 }
 
@@ -943,6 +1026,23 @@ exports.registerstore = async (req, res) => {
 
     if (user) {
       user.storeAddress = finaladdress
+      const request = new Request({
+        userid: userId,
+        type: "store",
+        storeDetails: {
+          buildingno: buildingno,
+          city: city,
+          state: state,
+          postal: postal,
+          landmark: landmark,
+          gst: gst ? gst : null,
+          businesscategory: businesscategory,
+          documenttype: documenttype.toString(),
+          documentfile: objectName,
+        }
+      })
+      await request.save()
+      user.isStoreVerified = false
       await user.save()
       res.status(200).json({ success: true });
     } else {
@@ -1066,8 +1166,7 @@ exports.fetchProduct = async (req, res) => {
       res.json({ message: "User Not Found" });
     }
   } catch (err) {
-    res.status(404).json({ message: err.message, success: false });
-    console.log(err);
+    res.status(404).json({ message: err.message, success: false });;
   }
 };
 
@@ -1485,7 +1584,7 @@ exports.profileinfo = async (req, res) => {
       res.status(400).json({ message: "User Not Found", success: false });
     }
   } catch (err) {
-    console.log(err);
+    ;
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -1523,7 +1622,7 @@ exports.profileinfo = async (req, res) => {
 //       res.status(400).json({ message: "User Not Found", success: false });
 //     }
 //   } catch (err) {
-//     console.log(err);
+//;
 //     res.status(500).json({ message: "Internal Server Error" });
 //   }
 // };
@@ -1559,8 +1658,7 @@ exports.getprofileinfo = async (req, res) => {
       res.status(400).json({ success: false, message: "User Not Found" });
     }
   } catch (err) {
-    res.status(400).json({ message: "Internal Server Error" });
-    console.log(err);
+    res.status(400).json({ message: "Internal Server Error" });;
   }
 };
 
@@ -1613,13 +1711,12 @@ exports.fetchtopic = async (req, res) => {
     const { id, comId } = req.params;
     const community = await Community.findById(comId).populate("topics");
     if (!community) {
-      res.json({ message: "Community Not Found" });
-    } else {
-      res.json({ topics: community.topics, success: true });
+      return res.status(400).json({ message: "Community Not Found" });
     }
+    res.status(200).json({ topics: community.topics, success: true });
+
   } catch (err) {
-    res.status(400).json({ message: err.message, success: false });
-    console.log(err);
+    res.status(400).json({ message: err.message, success: false });;
   }
 };
 
@@ -1677,8 +1774,7 @@ exports.edittopic = async (req, res) => {
       res.status(200).json({ updatedTopic, success: true });
     }
   } catch (err) {
-    res.status(500).json({ message: "Internal Server Error", success: false });
-    console.log(err);
+    res.status(500).json({ message: "Internal Server Error", success: false });;
   }
 };
 
@@ -1764,9 +1860,9 @@ exports.checkStore = async (req, res) => {
       const foodlic = user.foodLicense
       const foodLicenceExist = foodlic ? true : false
       if (store > 0) {
-        return res.status(200).json({ exist: true, q: "collection", foodLicenceExist });
+        return res.status(200).json({ exist: true, q: "collection", foodLicenceExist, isverified: user.isStoreVerified });
       } else {
-        return res.status(200).json({ exist: false, q: "store", foodLicenceExist });
+        return res.status(200).json({ exist: false, q: "store", foodLicenceExist, isverified: user.isStoreVerified });
       }
     } else {
       return res.status(400).json({ message: "User Not Found" });
@@ -1790,7 +1886,7 @@ exports.earnings = async (req, res) => {
     }
     res.status(200).json({ success: true, earningStats })
   } catch (err) {
-    console.log(err);
+    ;
   }
 };
 
@@ -1816,6 +1912,23 @@ exports.membershipbuy = async (req, res) => {
     console.log(amount)
     const { id, memid } = req.params
     const user = await User.findById(id)
+
+    if (user.ismembershipactive) {
+      const membership = await Membership.findById(user.memberships.membership)
+      if (membership.title !== "Free") {
+        const currentTime = new Date();
+        const endingTime = new Date(user.memberships.ending);
+
+        if (endingTime > currentTime) {
+          return res.status(400).json({
+            success: false,
+            message: "You already have an active membership.",
+          });
+        }
+      }
+    }
+
+
     const membership = await Membership.findById(memid)
     const newamount = amount.split("₹")[1]
     const parseAmout = Number(newamount)
@@ -1864,7 +1977,6 @@ exports.membershipbuy = async (req, res) => {
       }
     );
   } catch (error) {
-    console.log(error)
     res.status(500).json({ message: error.message, success: false });
   }
 }
@@ -1883,7 +1995,6 @@ exports.memfinalize = async (req, res) => {
     if (!subscription) {
       return res.status(400).json({ success: false })
     }
-    console.log(paymentMethod)
     if (isValid) {
       if (status) {
         subscription.currentStatus = "completed"
@@ -1897,7 +2008,7 @@ exports.memfinalize = async (req, res) => {
     const currentDate = new Date();
     const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    subscription.paymentMode = paymentMethod
+    subscription.paymentMode = "Card"
     const newSub = await subscription.save()
     user.activeSubscription.push(newSub._id)
     user.ismembershipactive = true
@@ -1906,10 +2017,10 @@ exports.memfinalize = async (req, res) => {
       status: true,
       ending: endDate,
       paymentdetails: { mode: "online", amount: subscription.amount }
-
     }
     const membership = await Membership.findById(memid)
     const saveduser = await user.save()
+    const sessionId = generateSessionId()
     const dp =
       process.env.URL + saveduser.profilepic;
     const data = {
@@ -1922,9 +2033,8 @@ exports.memfinalize = async (req, res) => {
     };
     const access_token = generateAccessToken(data);
     const refresh_token = generateRefreshToken(data);
-    res.status(200).json({ success: true, refresh_token, access_token })
+    res.status(200).json({ success: true, refresh_token, sessionId, access_token })
   } catch (error) {
-    console.log(error)
   }
 }
 
@@ -2029,7 +2139,7 @@ exports.addbank = async (req, res) => {
 //     res.status(200).json({ success: true, data, user })
 //   } catch (error) {
 //     res.status(500).json({ message: error.message, success: false });
-//     console.log(error)
+//
 //   }
 // }
 
@@ -2048,7 +2158,6 @@ exports.fetchMemberShip = async (req, res) => {
 
     res.status(200).json({ success: true, memberships, ids })
   } catch (error) {
-    console.log(error)
     res.status(500).json({ success: false, message: "Something Went Wrong!" })
   }
 }
@@ -2102,8 +2211,10 @@ exports.customMembership = async (req, res) => {
       productlimit, topiclimit, communitylimit, collectionlimit
     }
     const saveduser = await user.save()
+    const sessionId = generateSessionId()
     const dp =
       process.env.URL + saveduser.profilepic;
+
     const data = {
       dp,
       fullname: saveduser.fullname,
@@ -2114,8 +2225,74 @@ exports.customMembership = async (req, res) => {
     };
     const access_token = generateAccessToken(data);
     const refresh_token = generateRefreshToken(data);
-    res.status(200).json({ success: true, access_token, refresh_token })
+    res.status(200).json({ success: true, access_token, sessionId, refresh_token })
   } catch (error) {
-    console.log(error)
+  }
+}
+
+exports.errorsDetection = async (req, res) => {
+  try {
+    const { causedBy, causedIn } = req.body;
+    const data = {
+      causedBy,
+      causedIn
+    };
+    let err = await Error.findOne();
+
+    if (!err) {
+      err = new Error({
+        error: [data]
+      });
+    } else {
+      err.error.push(data);
+    }
+    await err.save();
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+exports.fetchCommunityStats = async (req, res) => {
+  try {
+    const { userId } = req.params
+    const user = await User.findById(userId)
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found" })
+    }
+    const community = await Community.find({ creator: userId })
+    if (!community) {
+      return res.status(400).json({ success: false, message: "Community Not Found" })
+    }
+    const communities = community.map((d) => {
+      return ({
+        id: d?._id,
+        name: d?.title,
+        dps: process.env.URL + d?.dp,
+        members: d?.memberscount
+      })
+    })
+    res.status(200).json({ success: true, communities })
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message })
+  }
+}
+
+exports.monetizationWorkSpace = async (req, res) => {
+  try {
+    const { id, comid } = req.params
+    if (!id && !comid) {
+      return res.status(400).json({ success: false, message: "User Or Communnity Not Found" })
+    }
+    const monetization = new Montenziation({
+      creator: id,
+      community: comid,
+      status: "pending"
+    })
+    await monetization.save()
+    res.status(200).json({ success: true })
+  } catch (error) {
+    res.status(400).json({ success: false })
   }
 }

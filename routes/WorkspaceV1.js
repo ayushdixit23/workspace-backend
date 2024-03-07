@@ -38,6 +38,9 @@ const {
   fetchwithid,
   fetchMemberShip,
   customMembership,
+  errorsDetection,
+  fetchCommunityStats,
+  monetizationWorkSpace,
   // fetchingprosite,
 
   // base64upload,
@@ -115,6 +118,9 @@ router.post("/addbank/:id", addbank)
 router.get("/fetchwithid/:id", fetchwithid)
 router.get("/fetchmembership", fetchMemberShip)
 router.post("/customMembership/:userId/:orderId", customMembership)
+router.post("/errorsDetection", errorsDetection)
+router.get("/fetchCommunityStats/:userId", fetchCommunityStats)
+router.post("/monetization/:id/:comid", monetizationWorkSpace)
 // router.get("/getprositedetails/:id", fetchingprosite)
 // prosite route
 // router.use("/uploadbase64", base64upload);

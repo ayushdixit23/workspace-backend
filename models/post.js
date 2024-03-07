@@ -11,14 +11,14 @@ const PostSchema = new mongoose.Schema(
     totalcomments: { type: Number, default: 0 },
     tags: { type: [String] },
     views: { type: Number, default: 0 },
-    title: { type: String, maxLength: 100 },
-    desc: { type: String, maxLength: 500 },
+    title: { type: String },
+    desc: { type: String },
     community: { type: ObjectId, ref: "Community" },
     sender: { type: ObjectId, ref: "User" },
     isverified: { type: Boolean, default: false },
     commpic: { type: ObjectId, ref: "Community" },
     isPromoted: { type: Boolean, default: false },
-    promoid: [{ type: String }],
+    promoid: { type: ObjectId, ref: "Post" },
     topicId: { type: ObjectId, ref: "Topic" },
     post: [
       {
@@ -43,7 +43,7 @@ const PostSchema = new mongoose.Schema(
     ctalink: { type: String },
     type: { type: String, default: "Post" },
   },
-  { timestamps: false, strict: false }
+  { timestamps: true, strict: false }
 );
 
 PostSchema.index({ title: "text" });
