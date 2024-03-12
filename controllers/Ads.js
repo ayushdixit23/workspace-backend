@@ -366,9 +366,8 @@ exports.createadvacc = async (req, res) => {
         gst,
         password,
         retypepassword,
-        userid: finduser._id,
+        userid: user._id,
       });
-
 
       await s3.send(
         new PutObjectCommand({
@@ -382,7 +381,7 @@ exports.createadvacc = async (req, res) => {
       const savedAdv = await adv.save();
 
       await User.updateOne(
-        { _id: finduser._id },
+        { _id: user._id },
         {
           $set: { adid: advid, advertiserid: savedAdv._id },
         }

@@ -199,7 +199,7 @@ const latestUser = async () => {
   }
 }
 
-// latestUser()
+latestUser()
 const picuser = async () => {
   try {
     const user = await User.find()
