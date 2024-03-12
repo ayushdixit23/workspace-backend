@@ -199,7 +199,7 @@ const latestUser = async () => {
   }
 }
 
-latestUser()
+// latestUser()
 const picuser = async () => {
   try {
     const user = await User.find()
@@ -211,3 +211,9 @@ const picuser = async () => {
   }
 }
 // picuser()
+
+function generateUniqueID() {
+  let advertiserID;
+  advertiserID = Date.now();
+  return advertiserID.toString();
+}

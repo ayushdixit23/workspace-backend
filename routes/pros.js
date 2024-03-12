@@ -117,8 +117,10 @@ router.post("/getprosite", async (req, res) => {
 	try {
 		const { username } = req.body;
 		const atIndex = username.indexOf("@");
+	
 
 		if (atIndex === -1) {
+		
 			res
 				.status(400)
 				.json({ message: "Invalid username format", success: false });
@@ -129,7 +131,7 @@ router.post("/getprosite", async (req, res) => {
 		const user = await User.findOne({ username: u });
 
 		if (user) {
-			res.status(200).json({ success: true, prosite: user.prosite_template });
+			res.status(200).json({ success: true, prosite: user.prositemob_template });
 		} else {
 			res.status(404).json({ success: false, message: "User not found!" });
 		}

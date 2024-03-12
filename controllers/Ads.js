@@ -778,27 +778,23 @@ exports.getCommunities = async (req, res) => {
     if (!user) {
       return res.status(400).json({ message: "User Not Found", success: false })
     }
-    let communities = []
-    for (let i = 0; i < user.communitycreated?.length; i++) {
-      const community = await Community.findById(user.communitycreated[i]).populate("promotedPosts")
-      if (community) {
-        communities.push(community)
-      }
-    }
+    const com = await Community.find({ creator: id });
 
-    const communityDps = await Promise.all(
-      communities.map(async (d) => {
-        const imageforCommunity =
-          process.env.URL + d.dp;
+    const communitywithDps = await Promise.all(
+      com.map(async (communityId) => {
+        const community = await Community.findById(communityId).populate("promotedPosts");
 
-        return imageforCommunity;
+        if (community) {
+          const dps = process.env.URL + community.dp;
+          return { ...community.toObject(), dps };
+        }
+
+        return null;
       })
     );
 
-    const communitywithDps = communities.map((f, i) => {
-      return { ...f.toObject(), dps: communityDps[i] };
-    });
-    res.status(200).json({ communitywithDps, success: true })
+    const filteredCommunities = communitywithDps.filter((community) => community !== null);
+    res.status(200).json({ communitywithDps: filteredCommunities, success: true })
   } catch (error) {
     res.status(500).json({ message: "Internal Server Errors", success: false })
     console.log(error)
