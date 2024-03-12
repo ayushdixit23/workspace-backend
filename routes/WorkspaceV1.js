@@ -41,6 +41,8 @@ const {
   errorsDetection,
   fetchCommunityStats,
   monetizationWorkSpace,
+  templates,
+  editPosts,
   // fetchingprosite,
 
   // base64upload,
@@ -100,7 +102,7 @@ router.get("/getallposts/:comid", getallposts);
 router.get("/getprofileinfo/:id", getprofileinfo);
 router.post("/profileinfo/:id", upload.single("image"), profileinfo);
 // router.post("/profilestore/:id", profileStore);
-router.post("/createtopic/:userId/:comId", createtopic);
+router.post("/createtopic/:userId/:comId", middlewareMembership, createtopic);
 router.post("/delete/:comId", deletecom);
 router.post("/deletetopic/:userId/:topicId", deletetopic);
 router.post("/edittopic/:id/:topicid", edittopic);
@@ -121,6 +123,7 @@ router.post("/customMembership/:userId/:orderId", customMembership)
 router.post("/errorsDetection", errorsDetection)
 router.get("/fetchCommunityStats/:userId", fetchCommunityStats)
 router.post("/monetization/:id/:comid", monetizationWorkSpace)
+router.post("/editpost/:userId/:postId", upload.any(), editPosts)
 // router.get("/getprositedetails/:id", fetchingprosite)
 // prosite route
 // router.use("/uploadbase64", base64upload);
@@ -143,5 +146,7 @@ router.post("/monetization/:id/:comid", monetizationWorkSpace)
 // router.post("/lottie", upload.single("lottieFile"), lottie);
 // router.post("/getprositefull", getprositefull);
 // router.post("/postforprosite", prosite);
+
+router.post("/savemytemplate/:id", templates)
 
 module.exports = router;

@@ -36,5 +36,5 @@ router.post("/likepost/:userId/:postId", likepost);
 router.post("/dislikepost/:userId/:postId", dislikepost);
 router.post("/test123", upload.single("video"), test);
 router.post("/updatesettings/:id", updatesettings);
-router.delete("/deletepost/:userId/:postId", deletepost);
+router.delete("/deletepost/:userId/:comId/:postId", deletepost);
 module.exports = router;

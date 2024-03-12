@@ -72,7 +72,7 @@ const instance = new Razorpay({
 
 function generateAccessToken(data) {
   const access_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
-    expiresIn: "1h",
+    expiresIn: "2h",
   });
   return access_token;
 }
@@ -156,7 +156,7 @@ exports.checkid = async (req, res) => {
         username: user.username,
         id: user._id.toString(),
         sessionId,
-        // memberships: memberships.title
+        memberships: memberships.title
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
@@ -308,6 +308,7 @@ exports.refresh = async (req, res) => {
           }
           const sessionId = payload.sessionId;
           const user = await User.findById(payload.id);
+          const memberships = await Membership.findById(user.memberships.membership)
 
           const dp =
             process.env.URL + user.profilepic;
@@ -322,13 +323,13 @@ exports.refresh = async (req, res) => {
             username: user.username,
             id: user._id.toString(),
             sessionId,
+            memberships: memberships.title
           };
           const access_token = generateAccessToken(data);
 
           res.status(200).json({ success: true, access_token });
         } catch (err) {
-          ;
-          res.status(400).json({ success: true, access_token });
+          res.status(400).json({ success: false });
         }
       }
     );
@@ -443,6 +444,7 @@ exports.analyticsuser = async (req, res) => {
               X: e?.date,
               Y1: e?.Y1,
               Y2: e?.Y2,
+              Y3: e?.Y3
             }));
 
             const locationToSend = Object.entries(f.location).map(([state, value]) => ({
@@ -913,7 +915,6 @@ exports.getposts = async (req, res) => {
 };
 
 exports.getallposts = async (req, res) => {
-
   try {
     const { comid } = req.params
     const community = await Community.findById(comid).populate("posts")
@@ -958,6 +959,7 @@ exports.getallposts = async (req, res) => {
     console.log(posts)
     res.status(200).json({ success: true, posts })
   } catch (error) {
+    console.log(error)
     res.status(500).json({ message: error.message, success: false });
   }
 }
@@ -1480,11 +1482,13 @@ exports.fetchallorders = async (req, res) => {
         })
       );
 
-      const mergedOrder = orders.map((d, i) => {
+      const reversedmergedOrder = orders.map((d, i) => {
         return {
           ...d.toObject(), image: image[i]
         }
       })
+
+      const mergedOrder = reversedmergedOrder.reverse()
 
       res.status(200).json({
         pendingOrders,
@@ -1565,17 +1569,15 @@ exports.profileinfo = async (req, res) => {
       const sessionId = generateSessionId()
       const dp =
         process.env.URL + user.profilepic;
-      // const dp = await generatePresignedUrl(
-      //   "images",
-      //   user.profilepic.toString(),
-      //   60 * 60
-      // );
+
+      const memberships = await Membership.findById(user.memberships.membership)
       const data = {
         dp,
         fullname: user.fullname,
         username: user.username,
         id: user._id.toString(),
-        sessionId
+        sessionId,
+        memberships: memberships.title
       };
       const access_token = generateAccessToken(data)
       const refresh_token = generateRefreshToken(data)
@@ -1667,39 +1669,43 @@ exports.createtopic = async (req, res) => {
   const { title, message, type, price } = req.body;
   const { userId, comId } = req.params;
   try {
-    const topic = new Topic({
-      title: title,
-      creator: userId,
-      message: message,
-      type: type,
-      price: price,
-    });
+    if (req.cancreatetopic) {
+      const topic = new Topic({
+        title: title,
+        creator: userId,
+        message: message,
+        type: type,
+        price: price,
+      });
 
-    await topic.save();
+      await topic.save();
 
-    await Topic.updateOne(
-      { _id: topic._id },
-      { $push: { members: userId }, $inc: { memberscount: 1 } }
-    );
-    // await Community.updateOne(
-    //   { _id: comId },
-    //   {
-    //     $push: { topics: topic._id },
-    //     $inc: { totaltopics: 1 },
-    //   }
-    // );
-    await User.updateOne(
-      { _id: userId },
-      { $push: { topicsjoined: topic._id }, $inc: { totaltopics: 1 } }
-    );
-
-    if (comId) {
-      await Community.findByIdAndUpdate(
-        { _id: comId },
-        { $push: { topics: topic._id } }
+      await Topic.updateOne(
+        { _id: topic._id },
+        { $push: { members: userId }, $inc: { memberscount: 1 } }
       );
+      // await Community.updateOne(
+      //   { _id: comId },
+      //   {
+      //     $push: { topics: topic._id },
+      //     $inc: { totaltopics: 1 },
+      //   }
+      // );
+      await User.updateOne(
+        { _id: userId },
+        { $push: { topicsjoined: topic._id }, $inc: { totaltopics: 1 } }
+      );
+
+      if (comId) {
+        await Community.findByIdAndUpdate(
+          { _id: comId },
+          { $push: { topics: topic._id } }
+        );
+      }
+      res.status(200).json({ topic, success: true });
+    } else {
+      res.status(203).json({ success: false, message: "Topic Creation Limit Exceeded" });
     }
-    res.status(200).json({ topic, success: true });
   } catch (e) {
     res.status(400).json({ message: e.message, success: false });
   }
@@ -1881,6 +1887,9 @@ exports.earnings = async (req, res) => {
     }
     const earningStats = {
       earnings: user.storeearning + user.topicearning + user.adsearning,
+      adsearning: user.adsearning,
+      topicearning: user.topicearning,
+      storeearning: user.storeearning,
       pendingpayments: user.pendingpayments,
       bank: user.bank
     }
@@ -2058,90 +2067,97 @@ exports.addbank = async (req, res) => {
   }
 }
 
-// exports.fetchingprosite = async (req, res) => {
-//   try {
-//     const { id } = req.params
-//     const user = await User.findById(id)
-//     if (!user) {
-//       return res.status(400).json({ success: false, message: "User Not Found" })
-//     }
-//     const community = []
-//     const com = await Community.find({ creator: id })
-//     for (let i = 0; i < com.length; i++) {
-//       const id = com[i]
-//       let comm = await Community.findById(id).populate("members", "dp")
-//       community.push(comm)
-//     }
+exports.fetchingprosite = async (req, res) => {
+  try {
+    const { id } = req.params
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "User Not Found" });
+    }
+    const user = await User.findById(id)
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found" })
+    }
+    const community = []
+    const com = await Community.find({ creator: id })
+    for (let i = 0; i < com.length; i++) {
+      const id = com[i]
+      let comm = await Community.findById(id).populate("members", "dp")
+      community.push(comm)
+    }
 
-//     const communityDps = await Promise.all(
-//       community.map((d) => {
-//         const imageforCommunity =
-//           process.env.URL + d.dp;
+    const communityDps = await Promise.all(
+      community.map((d) => {
+        const imageforCommunity =
+          process.env.URL + d.dp;
 
-//         return imageforCommunity;
-//       })
-//     );
+        return imageforCommunity;
+      })
+    );
 
-//     const membersdp = await Promise.all(
-//       community.map(async (d) => {
-//         const dps = await Promise.all(
-//           d.members.map(async (userId) => {
-//             const member = await User.findById(userId);
-//             const dp = process.env.URL + member.profilepic;
-//             return dp;
-//           })
-//         );
-//         return dps;
-//       })
-//     );
+    const membersdp = await Promise.all(
+      community.map(async (d) => {
+        const dps = await Promise.all(
+          d.members.map(async (userId) => {
+            const member = await User.findById(userId);
+            const dp = process.env.URL + member.profilepic;
+            return dp;
+          })
+        );
+        return dps;
+      })
+    );
 
-//     const communitywithDps = community.map((f, i) => {
-//       return { ...f.toObject(), dps: communityDps[i], membersdp: membersdp[i] };
-//     });
+    const communitywithDps = community.map((f, i) => {
+      return { ...f.toObject(), dps: communityDps[i], membersdp: membersdp[i] };
+    });
 
-//     const products = await Product.find({ creator: id })
+    const products = await Product.find({ creator: id })
 
-//     const productdps = await Promise.all(
-//       products.map(async (product) => {
-//         const a =
-//           process.env.PRODUCT_URL + product.images[0].content;
-//         return a
-//       })
-//     );
+    const productdps = await Promise.all(
+      products.map(async (product) => {
+        const a =
+          process.env.PRODUCT_URL + product.images[0].content;
+        return a
+      })
+    );
 
-//     const productsWithDps = products.map((product, index) => {
-//       return {
-//         ...product.toObject(),
-//         dp: productdps[index],
-//       };
-//     });
+    const productsWithDps = products.map((product, index) => {
+      return {
+        ...product.toObject(),
+        dp: productdps[index],
+      };
+    });
 
-//     const userDetails = {
-//       bio: user.desc,
-//       phone: user.phone,
-//       username: user.username,
-//       fullname: user.fullname,
-//       dp: process.env.URL + user.profilepic,
-//       temp: user.prosite_template,
-//       email: user.email,
-//       links: {
-//         insta: user.insta,
-//         snap: user.snap,
-//         x: user.x,
-//         yt: user.yt,
-//         linkdin: user.linkdin
-//       }
-//     }
-//     const data = {
-//       communitywithDps, productsWithDps, userDetails
-//     }
+    const userDetails = {
+      bio: user.desc,
+      phone: user.phone,
+      username: user.username,
+      fullname: user.fullname,
+      dp: process.env.URL + user.profilepic,
+      isStore: user.showStoreSection,
+      isAbout: user.showAboutSection,
+      isCommunity: user.showCommunitySection,
+      temp: user.prositeweb_template,
+      temp1: user.prositemob_template,
+      email: user.email,
+      links: {
+        insta: user.insta,
+        snap: user.snap,
+        x: user.x,
+        yt: user.yt,
+        linkdin: user.linkdin
+      }
+    }
+    const data = {
+      communitywithDps, productsWithDps, userDetails
+    }
 
-//     res.status(200).json({ success: true, data, user })
-//   } catch (error) {
-//     res.status(500).json({ message: error.message, success: false });
-//
-//   }
-// }
+    res.status(200).json({ success: true, data, user })
+  } catch (error) {
+    res.status(500).json({ message: error.message, success: false });
+
+  }
+}
 
 exports.fetchMemberShip = async (req, res) => {
   try {
@@ -2268,6 +2284,7 @@ exports.fetchCommunityStats = async (req, res) => {
     const communities = community.map((d) => {
       return ({
         id: d?._id,
+        topics: d?.topics.length,
         name: d?.title,
         dps: process.env.URL + d?.dp,
         members: d?.memberscount
@@ -2294,5 +2311,123 @@ exports.monetizationWorkSpace = async (req, res) => {
     res.status(200).json({ success: true })
   } catch (error) {
     res.status(400).json({ success: false })
+  }
+}
+
+exports.templates = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+    const { curr_template1, curr_template2, webt } = req.body;
+    console.log(webt)
+
+    if (user) {
+      await User.updateOne(
+        { _id: id },
+        {
+          $set: { prositeweb_template: curr_template1, prositemob_template: curr_template2, recentTempPics: webt },
+        }
+      );
+
+      res.status(200).json({ success: true });
+    } else {
+      res.status(404).json({ message: "User not found", success: false });
+    }
+  } catch (e) {
+    console.log(e)
+    res.status(409).json({
+      message: e.message,
+      success: false,
+    });
+  }
+}
+
+exports.editPosts = async (req, res) => {
+  try {
+    const { userId, postId } = req.params
+    if (req.fileValidationError) {
+      return res.status(400).json({
+        message: "File size limit exceeded",
+        success: false,
+      });
+    }
+    const { title, desc, tags, image, video } = req.body;
+
+    console.log(tags)
+
+    let videoArr
+    if (typeof video == "string") {
+      videoArr = [video];
+    } else {
+      videoArr = video || []
+    }
+
+    let imageArr
+    if (typeof image == "string") {
+      imageArr = [image];
+    } else {
+      imageArr = image || []
+    }
+    let pos = [];
+    let img = []
+    let vid = []
+    for (let i = 0; i < imageArr.length; i++) {
+
+      const s = imageArr[i].split(".net/").pop()
+      img.push(s)
+    }
+    for (let i = 0; i < videoArr.length; i++) {
+
+      const s = videoArr[i].split(".net/").pop()
+      vid.push(s)
+    }
+
+    if (req.files && req.files.length > 0) {
+      for (let i = 0; i < req?.files?.length; i++) {
+        const uuidString = uuid();
+
+        const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+        const objectId = mongoose.Types.ObjectId()
+        const result = await s3.send(
+          new PutObjectCommand({
+            Bucket: POST_BUCKET,
+            Key: objectName,
+            Body: req.files[i].buffer,
+            ContentType: req.files[i].mimetype,
+          })
+        );
+
+        pos.push({ content: objectName, type: req.files[i].mimetype, _id: objectId });
+      }
+    }
+    const post = await Post.findById(postId)
+    for (let i = 0; i < post.post.length; i++) {
+      if (post.post[i].type.startsWith("video")) {
+        for (let j = 0; j < vid.length; j++) {
+          if (vid[j] == post.post[i].content) {
+            pos.push(post.post[i])
+          }
+        }
+      } else if (post.post[i].type.startsWith("image")) {
+        for (let j = 0; j < img.length; j++) {
+          if (img[j] == post.post[i].content) {
+            pos.push(post.post[i])
+          }
+        }
+      }
+    }
+    post.title = title
+    post.desc = desc
+    post.tags = tags
+    post.post = pos
+    await post.save()
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.log(error)
+    res.status(409).json({
+      message: error.message,
+      success: false,
+    });
   }
 }

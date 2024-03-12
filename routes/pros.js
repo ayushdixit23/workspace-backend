@@ -73,28 +73,45 @@ router.get("/uploaddata/:id", async (req, res) => {
 	}
 });
 
-router.post("/savetemplate/:id", async (req, res) => {
+router.post("/savetemplates/:id", async (req, res) => {
+	console.log("first")
 	try {
 		const { id } = req.params;
 		const user = await User.findById(id);
-		console.log(user, id);
+
 		if (user) {
-			const { curr_template } = req.body;
+			const { curr_template1, curr_template2, webt } = req.body;
+
 			await User.updateOne(
 				{ _id: id },
-				{ $set: { prosite_template: curr_template } }
+				{
+					$set: { prositeweb_template: curr_template1, prositemob_template: curr_template2 },
+					$push: { recentTempPics: webt }
+				}
 			);
+
 			res.status(200).json({ success: true });
 		} else {
 			res.status(404).json({ message: "User not found", success: false });
 		}
 	} catch (e) {
+		console.log(e)
 		res.status(409).json({
 			message: e.message,
 			success: false,
 		});
 	}
 });
+
+router.get("/templates/:id", async (req, res) => {
+	try {
+		const { id } = req.params
+		const user = await User.findById(id)
+		res.status(200).json({ success: true, temp: user.recentTempPics })
+	} catch (error) {
+		console.log(error)
+	}
+})
 
 router.post("/getprosite", async (req, res) => {
 	try {

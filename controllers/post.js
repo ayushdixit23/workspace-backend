@@ -918,18 +918,34 @@ exports.dislikepost = async (req, res) => {
 
 //delete a post
 exports.deletepost = async (req, res) => {
-  const { userId, postId } = req.params;
-  const post = await Post.findById(postId);
-  if (!post) {
-    res.status(404).json({ message: "Post not found" });
-  } else if (post.sender.toString() !== userId) {
-    res.status(400).json({ message: "You can't delete others post" });
-  } else {
-    await minioClient.removeObject("posts", post.post[1]);
+  const { userId, postId, comId } = req.params;
+
+  try {
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    if (post.sender.toString() !== userId) {
+      return res.status(400).json({ message: "You can't delete others' posts" });
+    }
+
+    const community = await Community.findById(comId);
+    const postIndex = community.posts.findIndex((p) => p.toString() === postId);
+
+    if (postIndex === -1) {
+      return res.status(404).json({ message: "Post not found in the community" });
+    }
+    community.posts.splice(postIndex, 1);
+    await community.save();
     await Post.findByIdAndDelete(postId);
     res.status(200).json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 //get all posts
 exports.getallposts = async (req, res) => {
@@ -1185,6 +1201,7 @@ exports.postanything = async (req, res) => {
         title,
         desc,
         community: comId,
+        topicId: topic[0]._id,
         sender: userId,
         post: pos,
         tags: tag,
@@ -1200,7 +1217,7 @@ exports.postanything = async (req, res) => {
         { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
       );
       res.status(200).json({ savedpost, success: true });
-    } 
+    }
     else {
       res.status(404).json({
         message: "User or Community not found or no files were there!",

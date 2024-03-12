@@ -21,7 +21,7 @@ const {
   getCommunities,
   feedback,
   promotedposts,
-  getAllPosts, createad, fetchingprosite
+  getAllPosts, createad, fetchingprosite, fetchLocations
 } = require("../controllers/Ads");
 const router = express.Router();
 const multer = require("multer");
@@ -41,6 +41,7 @@ router.get("/gettransactions/:id", gettransactions);
 router.get("/v1/getData", getData)
 router.post("/editcurrentad/:id/:adid", upload.any(), editcurrentad);
 router.post("/editadvertiser/:id", upload.any(), editadvertiser);
+router.get("/v1/fetchLocation", fetchLocations);
 router.post("/v1/addata", addata);
 router.get("/v1/audget", audget);
 router.post("/verifyadvertiser/:id", upload.any(), verifyadvertiser);

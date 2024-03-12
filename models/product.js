@@ -38,6 +38,7 @@ const productSchema = new mongoose.Schema({
   price: {
     type: Number,
   },
+  isverified: { type: String, enum: ["in review", "verified", "rejected"], default: "in review" },
   discountedprice: { type: Number },
   sellername: { type: String },
   images: [

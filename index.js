@@ -8,6 +8,7 @@ const cors = require("cors");
 const Redis = require("ioredis");
 const http = require("http").Server(app);
 const io = require("socket.io")(http);
+const aesjs = require("aes-js");
 
 //import routes
 const userAuth = require("./routes/authRoutes");
@@ -172,14 +173,41 @@ const changeMembership = async () => {
 
 // addData()
 
+const decryptaes = (data) => {
+  try {
+    const encryptedBytes = aesjs.utils.hex.toBytes(data);
+    const aesCtr = new aesjs.ModeOfOperation.ctr(
+      JSON.parse(process.env.key),
+      new aesjs.Counter(5)
+    );
+    const decryptedBytes = aesCtr.decrypt(encryptedBytes);
+    const decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
+    return decryptedText;
+  } catch (e) {
+    console.log(e);
+  }
+};
+
 const latestUser = async () => {
   try {
-    console.log("first")
-    const user = (await (await User.find()).reverse())
-    console.log(user.map((d) => { return ({ name: d?.fullname, phone: d?.phone, email: d?.email }) }))
+    // const alluser = (await (await User.find()).reverse())
+    const alluser = await User.find().sort({ _id: -1 });
+    const user = alluser.slice(0, 10)
+    console.log(user.map((d) => { return ({ id: d?._id, dp: d?.profilepic, name: d?.fullname, username: d?.username, phone: d?.phone, email: d?.email, passw: d?.passw, gr: d?.gr, address: d?.address }) }))
   } catch (error) {
     console.log(error)
   }
 }
 
-latestUser()
+// latestUser()
+const picuser = async () => {
+  try {
+    const user = await User.find()
+    // for (let i = 3000; i < 6000; i++) {
+    //   console.log(user[i].profilepic)
+    // }
+  } catch (error) {
+
+  }
+}
+// picuser()

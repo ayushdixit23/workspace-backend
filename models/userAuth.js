@@ -12,6 +12,9 @@ const userSchema = new mongoose.Schema(
     hashed_password: {
       type: String,
     },
+    gender: {
+      type: String,
+    },
     passw: { type: String },
     otp: { type: String },
     salt: String,
@@ -37,9 +40,13 @@ const userSchema = new mongoose.Schema(
       trim: true,
       unique: true,
     },
-    prosite_template: {
+    prositeweb_template: {
       type: String,
     },
+    prositemob_template: {
+      type: String,
+    },
+    recentTempPics: { type: String },
     prositepic: { type: String },
     links: { type: [String] },
     linkstype: { type: [String] },
@@ -311,8 +318,11 @@ const userSchema = new mongoose.Schema(
       IFSCcode: {
         type: String,
       },
-
     },
+    showStoreSection: { type: Boolean, default: true },
+    showCommunitySection: { type: Boolean, default: true },
+    showAboutSection: { type: Boolean, default: true },
+    gr: { type: Number, default: 0 }
     // for workspace membership
   },
 
