@@ -377,8 +377,6 @@ exports.analyticsuser = async (req, res) => {
           let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
           eng.push(final)
         })
-
-        console.log(eng)
         let sum = 0
         for (let i = 0; i < eng.length; i++) {
           sum += eng[i]
@@ -667,7 +665,7 @@ exports.allcoms = async (req, res) => {
 };
 
 exports.createcom = async (req, res) => {
-  const { title, desc, topic, type, price, category, iddata } = req.body;
+  const { title, desc, type, category, iddata } = req.body;
   const { userId } = req.params;
   const image = req.file;
   const uuidString = uuid();
@@ -694,6 +692,7 @@ exports.createcom = async (req, res) => {
           dp: objectName,
           desc: desc,
           category: category,
+          type: type,
         });
         const savedcom = await community.save();
         const topic1 = new Topic({
@@ -1666,46 +1665,48 @@ exports.getprofileinfo = async (req, res) => {
 
 // create topic
 exports.createtopic = async (req, res) => {
-  const { title, message, type, price } = req.body;
+  const { title, message, type, nature, price } = req.body;
   const { userId, comId } = req.params;
   try {
-    if (req.cancreatetopic) {
-      const topic = new Topic({
-        title: title,
-        creator: userId,
-        message: message,
-        type: type,
-        price: price,
-      });
+    // if (req.cancreatetopic) {
+    const topic = new Topic({
+      title: title,
+      creator: userId,
+      message: message,
+      type: type,
+      community: comId,
+      nature: nature,
+      price: price,
+    });
 
-      await topic.save();
+    await topic.save();
 
-      await Topic.updateOne(
-        { _id: topic._id },
-        { $push: { members: userId }, $inc: { memberscount: 1 } }
+    await Topic.updateOne(
+      { _id: topic._id },
+      { $push: { members: userId }, $inc: { memberscount: 1 } }
+    );
+    // await Community.updateOne(
+    //   { _id: comId },
+    //   {
+    //     $push: { topics: topic._id },
+    //     $inc: { totaltopics: 1 },
+    //   }
+    // );
+    await User.updateOne(
+      { _id: userId },
+      { $push: { topicsjoined: topic._id }, $inc: { totaltopics: 1 } }
+    );
+
+    if (comId) {
+      await Community.findByIdAndUpdate(
+        { _id: comId },
+        { $push: { topics: topic._id } }
       );
-      // await Community.updateOne(
-      //   { _id: comId },
-      //   {
-      //     $push: { topics: topic._id },
-      //     $inc: { totaltopics: 1 },
-      //   }
-      // );
-      await User.updateOne(
-        { _id: userId },
-        { $push: { topicsjoined: topic._id }, $inc: { totaltopics: 1 } }
-      );
-
-      if (comId) {
-        await Community.findByIdAndUpdate(
-          { _id: comId },
-          { $push: { topics: topic._id } }
-        );
-      }
-      res.status(200).json({ topic, success: true });
-    } else {
-      res.status(203).json({ success: false, message: "Topic Creation Limit Exceeded" });
     }
+    res.status(200).json({ topic, success: true });
+    // } else {
+    //   res.status(203).json({ success: false, message: "Topic Creation Limit Exceeded" });
+    // }
   } catch (e) {
     res.status(400).json({ message: e.message, success: false });
   }
@@ -1786,7 +1787,7 @@ exports.edittopic = async (req, res) => {
 
 exports.updatecommunity = async (req, res) => {
   const { comId, userId } = req.params;
-  const { category, title, desc, topicId, message, price, topicname, type } =
+  const { category, title, desc, type } =
     req.body;
   const uuidString = uuid();
 
@@ -1819,6 +1820,7 @@ exports.updatecommunity = async (req, res) => {
               category: category,
               title: title,
               desc: desc,
+              type: type,
               dp: objectName,
             },
           }
@@ -1831,24 +1833,24 @@ exports.updatecommunity = async (req, res) => {
             category: category,
             title: title,
             desc: desc,
-
+            type: type,
           },
         }
       );
 
-      if (topicname) {
-        await Topic.updateOne(
-          { _id: topicId },
-          {
-            $set: {
-              title: topicname,
-              message: message,
-              price: price,
-              type: type,
-            },
-          }
-        );
-      }
+      // if (topicname) {
+      //   await Topic.updateOne(
+      //     { _id: topicId },
+      //     {
+      //       $set: {
+      //         title: topicname,
+      //         message: message,
+      //         price: price,
+      //         type: type,
+      //       },
+      //     }
+      //   );
+      // }
       res.status(200).json({ success: true });
     }
   } catch (e) {
@@ -2281,16 +2283,63 @@ exports.fetchCommunityStats = async (req, res) => {
     if (!community) {
       return res.status(400).json({ success: false, message: "Community Not Found" })
     }
-    const communities = community.map((d) => {
+
+    let topic = []
+    for (let i = 0; i < community.length; i++) {
+      const top = await Topic.find({ community: community[i]._id })
+      const topics = top.map((d) => {
+        return {
+          title: d?.title,
+          earnings: d?.earnings,
+          type: d?.type
+        }
+      })
+      topic.push(topics)
+    }
+
+    let avgeng = []
+
+    for (let i = 0; i < community.length; i++) {
+      const posts = await Post.find({ community: community[i]._id });
+
+      let eng = []
+      await posts.map((p, i) => {
+        let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
+        eng.push(final)
+      })
+
+      let sum = 0
+      for (let i = 0; i < eng.length; i++) {
+        sum += eng[i]
+      }
+      let avg = 0
+
+      if (eng.length > 0) {
+        avg = Math.round(sum / eng.length)
+      } else {
+        avg = 0
+      }
+      avgeng.push(avg)
+    }
+
+    const communities = community.map((d, i) => {
       return ({
         id: d?._id,
         topics: d?.topics.length,
+        ismonetized: d?.ismonetized || false,
+        post: d?.posts.length,
+        topic: topic[i],
         name: d?.title,
+        desc: d?.desc,
+        category: d?.category,
         dps: process.env.URL + d?.dp,
-        members: d?.memberscount
+        members: d?.memberscount,
+        engagementrate: avgeng[i]
       })
     })
-    res.status(200).json({ success: true, communities })
+
+    const store = user.storeAddress.length > 0 ? true : false
+    res.status(200).json({ success: true, communities, store })
   } catch (error) {
     res.status(400).json({ success: false, message: error.message })
   }

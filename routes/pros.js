@@ -103,24 +103,15 @@ router.post("/savetemplates/:id", async (req, res) => {
 	}
 });
 
-router.get("/templates/:id", async (req, res) => {
-	try {
-		const { id } = req.params
-		const user = await User.findById(id)
-		res.status(200).json({ success: true, temp: user.recentTempPics })
-	} catch (error) {
-		console.log(error)
-	}
-})
 
 router.post("/getprosite", async (req, res) => {
 	try {
 		const { username } = req.body;
 		const atIndex = username.indexOf("@");
-	
+
 
 		if (atIndex === -1) {
-		
+
 			res
 				.status(400)
 				.json({ message: "Invalid username format", success: false });

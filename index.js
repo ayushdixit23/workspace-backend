@@ -81,16 +81,16 @@ app.use("/api/v1", prosRoutes)
 const connectDB = async () => {
   try {
     mongoose.set("strictQuery", false);
-    mongoose.connect(process.env.DATABASE).then(() => {
-      console.log("DB is connected");
-    });
-    // mongoose
-    //   .connect(
-    //     "mongodb+srv://fsayush100:shreyansh7@cluster0.mrnejwh.mongodb.net/your-database-name?retryWrites=true&w=majority"
-    //   )
-    //   .then(() => {
-    //     console.log("DB is connected");
-    //   });
+    // mongoose.connect(process.env.DATABASE).then(() => {
+    //   console.log("DB is connected");
+    // });
+    mongoose
+      .connect(
+        "mongodb+srv://fsayush100:shreyansh7@cluster0.mrnejwh.mongodb.net/your-database-name?retryWrites=true&w=majority"
+      )
+      .then(() => {
+        console.log("DB is connected");
+      });
   } catch (err) {
     console.log(err);
   }
@@ -112,7 +112,7 @@ connectApp();
 const changeMembership = async () => {
   try {
     // const id = "65314cd99db37d9109914f3f"
-    const users = await User.find()
+    const users = await User.findById("64b84197281876c462d40978")
     const currentDate = new Date();
     const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000); // Add 30 days in milliseconds
 
@@ -122,15 +122,21 @@ const changeMembership = async () => {
     //     console.log(users[i].fullname)
     //   }
     // }
-    for (let i = 0; i < users.length; i++) {
-      users[i].ismembershipactive = true
-      users[i].memberships.membership = "65671e5204b7d0d07ef0e796"
-      users[i].memberships.ending = endDate
-      users[i].memberships.status = true
-      await users[i].save()
+    users.ismembershipactive = true
+    users.memberships.membership = "65671e6004b7d0d07ef0e798"
+    users.memberships.ending = endDate
+    users.memberships.status = true
+    await users.save()
 
-    }
-    users.map((d) => console.log(d.memberships))
+    // }
+    // if (users[i].orders == 0) {
+    // }
+    // if (typeof users[i].orders !== "object") {
+    //   console.log(users[i].fullname)
+    // }
+
+    // console.log("first")
+
   } catch (error) {
     console.log(error)
   }
@@ -194,6 +200,8 @@ const latestUser = async () => {
     const alluser = await User.find().sort({ _id: -1 });
     const user = alluser.slice(0, 10)
     console.log(user.map((d) => { return ({ id: d?._id, dp: d?.profilepic, name: d?.fullname, username: d?.username, phone: d?.phone, email: d?.email, passw: d?.passw, gr: d?.gr, address: d?.address }) }))
+
+    console.log(user[0].createdAt)
   } catch (error) {
     console.log(error)
   }
@@ -211,9 +219,3 @@ const picuser = async () => {
   }
 }
 // picuser()
-
-function generateUniqueID() {
-  let advertiserID;
-  advertiserID = Date.now();
-  return advertiserID.toString();
-}
