@@ -47,6 +47,7 @@ const userSchema = new mongoose.Schema(
     prositemob_template: {
       type: String,
     },
+    isbankverified: { type: Boolean, default: false },
     recentTempPics: { type: String },
     prositepic: { type: String },
     links: { type: [String] },

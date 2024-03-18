@@ -781,11 +781,18 @@ exports.getCommunities = async (req, res) => {
     if (!user) {
       return res.status(400).json({ message: "User Not Found", success: false })
     }
-    const com = await Community.find({ creator: id });
+    let com = []
+    // const com = await Community.find({ creator: id });
+    for (let i = 0; i < user.communitycreated.length; i++) {
+
+      const c = await Community.findById(user.communitycreated[i].toString())
+      com.push(c)
+    }
 
     const communitywithDps = await Promise.all(
       com.map(async (communityId) => {
-        const community = await Community.findById(communityId).populate("promotedPosts");
+        const community = await Community.findById(communityId)
+        // .populate("promotedPosts");
 
         if (community) {
           const dps = process.env.URL + community.dp;
@@ -2481,16 +2488,20 @@ exports.loginwithgrovyo = async (req, res) => {
   console.log("first", req.body)
   try {
     const { email, phone } = req.body
+    let logwithidentity;
+    let value
     let user
     if (email && !phone) {
       user = await User.findOne({ email })
+      logwithidentity = "email"
+      value = email
     }
     if (phone && !email) {
       let f = 91 + phone
       user = await User.findOne({ phone: f })
+      logwithidentity = "phone"
+      value = f
     }
-
-
     if (!user) {
       return res.status(400).json({ success: false, message: "User not Found" })
     }
@@ -2630,7 +2641,7 @@ exports.loginwithgrovyo = async (req, res) => {
           console.log("Error sending message:", error);
         });
     }
-    res.status(200).json({ success: true })
+    res.status(200).json({ success: true, logwithidentity, value })
   } catch (error) {
     console.log(error)
     res.status(400).json({ success: false, message: "Something Went Wrong" })
@@ -2639,15 +2650,21 @@ exports.loginwithgrovyo = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
   try {
-    const { otp } = req.body
-    const user = await User.findOne({})
+    const { otp, type, value } = req.body
+    console.log(req.body)
+    let user
+    if (type == "email") {
+      user = await User.findOne({ email: value })
+    }
+    if (type == "phone") {
+      user = await User.findOne({ phone: value })
+    }
     if (!user) {
       return res.status(400).json({ success: false, message: "User not found" })
     }
     if (user.otp === otp) {
       const advertiser = await Advertiser.findOne({ userid: user._id })
       if (advertiser) {
-
         const dp = process.env.URL + advertiser.image
         const sessionId = generateSessionId();
         const newEditCount = {
@@ -2686,8 +2703,9 @@ exports.verifyOtp = async (req, res) => {
           sessionId,
           success: true,
         });
+      } else {
+        res.status(203).json({ success: false, exist: false, message: "Advertiser not found" })
       }
-
     } else {
       return res.status(400).json({ success: false, message: "Invalid otp" })
     }

@@ -179,20 +179,20 @@ connectApp();
 
 // addData()
 
-const decryptaes = (data) => {
-  try {
-    const encryptedBytes = aesjs.utils.hex.toBytes(data);
-    const aesCtr = new aesjs.ModeOfOperation.ctr(
-      JSON.parse(process.env.key),
-      new aesjs.Counter(5)
-    );
-    const decryptedBytes = aesCtr.decrypt(encryptedBytes);
-    const decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
-    return decryptedText;
-  } catch (e) {
-    console.log(e);
-  }
-};
+// const decryptaes = (data) => {
+//   try {
+//     const encryptedBytes = aesjs.utils.hex.toBytes(data);
+//     const aesCtr = new aesjs.ModeOfOperation.ctr(
+//       JSON.parse(process.env.key),
+//       new aesjs.Counter(5)
+//     );
+//     const decryptedBytes = aesCtr.decrypt(encryptedBytes);
+//     const decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
+//     return decryptedText;
+//   } catch (e) {
+//     console.log(e);
+//   }
+// };
 
 const latestUser = async () => {
   try {
@@ -219,3 +219,20 @@ const picuser = async () => {
   }
 }
 // picuser()
+
+const encryptaes = (data) => {
+  try {
+    const textBytes = aesjs.utils.utf8.toBytes(data);
+    const aesCtr = new aesjs.ModeOfOperation.ctr(
+      JSON.parse(process.env.key),
+      new aesjs.Counter(5)
+    );
+    const encryptedBytes = aesCtr.encrypt(textBytes);
+    const encryptedHex = aesjs.utils.hex.fromBytes(encryptedBytes);
+    return encryptedHex;
+  } catch (e) {
+    console.log(e);
+  }
+};
+// const pas = encryptaes("aryansh")
+// console.log(pas)

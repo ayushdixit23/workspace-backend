@@ -61,15 +61,16 @@ const Error = require("../models/Error");
 const Montenziation = require("../models/Montenziation");
 const Request = require("../models/Request");
 const Analytics = require("../models/Analytics");
+const Approvals = require("../models/Approvals");
 
-// const instance = new Razorpay({
-//   key_id: process.env.RAZORPAY_KEY_ID,
-//   key_secret: process.env.RAZORPAY_KEY_SECRET,
-// });
 const instance = new Razorpay({
-  "key_id": "rzp_test_jXDMq8a2wN26Ss",
-  "key_secret": "bxyQhbzS0bHNBnalbBg9QTDo"
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
+// const instance = new Razorpay({
+//   "key_id": "rzp_test_jXDMq8a2wN26Ss",
+//   "key_secret": "bxyQhbzS0bHNBnalbBg9QTDo"
+// });
 
 function generateAccessToken(data) {
   const access_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
@@ -2066,6 +2067,26 @@ exports.memfinalize = async (req, res) => {
   }
 }
 
+exports.approvalrequestbank = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(id)
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found" })
+    }
+    user.isbankverified = false
+    await user.save()
+    const approval = await Approvals({
+      id,
+      type: "bank",
+    })
+    await approval.save()
+    res.status(200).json()
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something went Wrong!" })
+  }
+}
+
 exports.addbank = async (req, res) => {
   try {
     const { id } = req.params
@@ -2304,10 +2325,10 @@ exports.fetchCommunityStats = async (req, res) => {
     let topic = []
     for (let i = 0; i < community.length; i++) {
       const top = (await Topic.find({ community: community[i]._id })).filter((d) => {
-        //d.title.toLowerCase() != "all" && d.title.toLowerCase() != "posts"
-        d.type.toLocaleLowerCase() === "paid"
-      })
+        return d.type.toLowerCase() === "paid";
+      });
 
+      console.log(top)
       const topics = top.map((d) => {
         return {
           title: d?.title,
