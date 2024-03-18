@@ -81,16 +81,16 @@ app.use("/api/v1", prosRoutes)
 const connectDB = async () => {
   try {
     mongoose.set("strictQuery", false);
-    // mongoose.connect(process.env.DATABASE).then(() => {
-    //   console.log("DB is connected");
-    // });
-    mongoose
-      .connect(
-        "mongodb+srv://fsayush100:shreyansh7@cluster0.mrnejwh.mongodb.net/your-database-name?retryWrites=true&w=majority"
-      )
-      .then(() => {
-        console.log("DB is connected");
-      });
+    mongoose.connect(process.env.DATABASE).then(() => {
+      console.log("DB is connected");
+    });
+    // mongoose
+    //   .connect(
+    //     "mongodb+srv://fsayush100:shreyansh7@cluster0.mrnejwh.mongodb.net/your-database-name?retryWrites=true&w=majority"
+    //   )
+    //   .then(() => {
+    //     console.log("DB is connected");
+    //   });
   } catch (err) {
     console.log(err);
   }
@@ -109,38 +109,38 @@ const connectApp = () => {
 };
 connectApp();
 
-const changeMembership = async () => {
-  try {
-    // const id = "65314cd99db37d9109914f3f"
-    const users = await User.findById("64b84197281876c462d40978")
-    const currentDate = new Date();
-    const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000); // Add 30 days in milliseconds
+// const changeMembership = async () => {
+//   try {
+//     // const id = "65314cd99db37d9109914f3f"
+//     const users = await User.findById("64b84197281876c462d40978")
+//     const currentDate = new Date();
+//     const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000); // Add 30 days in milliseconds
 
-    console.log(endDate);
-    // for (let i = 0; i < users.length; i++) {
-    //   if (typeof users[i].orders !== 'object') {
-    //     console.log(users[i].fullname)
-    //   }
-    // }
-    users.ismembershipactive = true
-    users.memberships.membership = "65671e6004b7d0d07ef0e798"
-    users.memberships.ending = endDate
-    users.memberships.status = true
-    await users.save()
+//     console.log(endDate);
+//     // for (let i = 0; i < users.length; i++) {
+//     //   if (typeof users[i].orders !== 'object') {
+//     //     console.log(users[i].fullname)
+//     //   }
+//     // }
+//     users.ismembershipactive = true
+//     users.memberships.membership = "65671e6004b7d0d07ef0e798"
+//     users.memberships.ending = endDate
+//     users.memberships.status = true
+//     await users.save()
 
-    // }
-    // if (users[i].orders == 0) {
-    // }
-    // if (typeof users[i].orders !== "object") {
-    //   console.log(users[i].fullname)
-    // }
+//     // }
+//     // if (users[i].orders == 0) {
+//     // }
+//     // if (typeof users[i].orders !== "object") {
+//     //   console.log(users[i].fullname)
+//     // }
 
-    // console.log("first")
+//     // console.log("first")
 
-  } catch (error) {
-    console.log(error)
-  }
-}
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
 // changeMembership()
 
 // const changeverfication = async () => {
@@ -201,7 +201,7 @@ const latestUser = async () => {
     const user = alluser.slice(0, 10)
     console.log(user.map((d) => { return ({ id: d?._id, dp: d?.profilepic, name: d?.fullname, username: d?.username, phone: d?.phone, email: d?.email, passw: d?.passw, gr: d?.gr, address: d?.address }) }))
 
-    console.log(user[0].createdAt)
+    console.log(user[0]._id)
   } catch (error) {
     console.log(error)
   }

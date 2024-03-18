@@ -24,6 +24,7 @@ const Order = require("../models/orders");
 // const Lottie = require("../models/Lottie");
 const mongoose = require("mongoose");
 const Subscriptions = require("../models/Subscriptions");
+const SellerOrder = require("../models/SellerOrder")
 // const Subscriptions = require("../models/Subscriptions");
 // const Prosite = require("../models/prosite");
 const Razorpay = require("razorpay");
@@ -1440,7 +1441,7 @@ exports.fetchallorders = async (req, res) => {
     const { id } = req.params;
     const user = await User.findById(id);
     if (user) {
-      const orders = await Order.find({ sellerId: { $in: [user._id] } })
+      const orders = await SellerOrder.find({ sellerId: user._id })
         .populate("productId")
         .populate("buyerId", "fullname")
         .limit(20);
@@ -1461,25 +1462,38 @@ exports.fetchallorders = async (req, res) => {
         (order) => order.currentStatus === "damaged"
       );
       const allorders = orders.length;
-      const customers = user?.customers?.length;
+      const customers = user?.uniquecustomers?.length;
       const earnings = user.storeearning
+
+      // let image = await Promise.all(
+      //   orders.map(async (d, i) => {
+      //     if (d?.productId?.length > 0) {
+      //       const l = await Promise.all(
+      //         d?.productId?.map(async (f, il) => {
+      //           const a =
+      //             process.env.PRODUCT_URL + d?.productId[il]?.images[0]?.content;
+      //           return a
+      //         })
+      //       );
+      //       return l;
+      //     } else {
+      //       return null;
+      //     }
+      //   })
+      // );
 
       let image = await Promise.all(
         orders.map(async (d, i) => {
-          if (d?.productId?.length > 0) {
-            const l = await Promise.all(
-              d?.productId?.map(async (f, il) => {
-                const a =
-                  process.env.PRODUCT_URL + d?.productId[il]?.images[0]?.content;
-                return a
-              })
-            );
+          if (d?.productId) {
+            console.log(d.productId?.images[0]?.content)
+            const l = process.env.PRODUCT_URL + d.productId?.images[0]?.content
             return l;
           } else {
             return null;
           }
         })
       );
+
 
       const reversedmergedOrder = orders.map((d, i) => {
         return {
@@ -1488,7 +1502,6 @@ exports.fetchallorders = async (req, res) => {
       })
 
       const mergedOrder = reversedmergedOrder.reverse()
-
       res.status(200).json({
         pendingOrders,
         completedOrders,
@@ -1498,6 +1511,7 @@ exports.fetchallorders = async (req, res) => {
         damaged,
         earnings,
         customers,
+        earnings,
         orders,
         mergedOrder,
       });
@@ -1887,13 +1901,16 @@ exports.earnings = async (req, res) => {
     if (!user) {
       return res.status(400).json({ success: false, message: "User not found" })
     }
+    const prd = await Product.find({ creator: user._id })
+    const final = prd.sort((item1, item2) => { return item2?.itemsold - item1?.itemsold })
     const earningStats = {
       earnings: user.storeearning + user.topicearning + user.adsearning,
       adsearning: user.adsearning,
       topicearning: user.topicearning,
       storeearning: user.storeearning,
       pendingpayments: user.pendingpayments,
-      bank: user.bank
+      bank: user.bank,
+      final
     }
     res.status(200).json({ success: true, earningStats })
   } catch (err) {
@@ -2286,12 +2303,17 @@ exports.fetchCommunityStats = async (req, res) => {
 
     let topic = []
     for (let i = 0; i < community.length; i++) {
-      const top = await Topic.find({ community: community[i]._id })
+      const top = (await Topic.find({ community: community[i]._id })).filter((d) => {
+        //d.title.toLowerCase() != "all" && d.title.toLowerCase() != "posts"
+        d.type.toLocaleLowerCase() === "paid"
+      })
+
       const topics = top.map((d) => {
         return {
           title: d?.title,
           earnings: d?.earnings,
-          type: d?.type
+          type: d?.type,
+          members: d?.memberscount
         }
       })
       topic.push(topics)

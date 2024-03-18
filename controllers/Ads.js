@@ -19,6 +19,7 @@ const {
   validateWebhookSignature,
 } = require("razorpay/dist/utils/razorpay-utils");
 const sharp = require("sharp");
+const admin = require("../fireb")
 const LocationData = require("../models/Data")
 
 const minioClient = new Minio.Client({
@@ -33,6 +34,8 @@ const Post = require("../models/post");
 const Topic = require("../models/topic");
 const Approvals = require("../models/Approvals");
 const Analytics = require("../models/Analytics");
+const Conversation = require("../models/conversation");
+const Message = require("../models/message");
 
 function generateSessionId() {
   return Date.now().toString() + Math.random().toString(36).substring(2);
@@ -2473,3 +2476,222 @@ exports.fetchLocations = async (req, res) => {
 }
 
 // locationofUsers()
+
+exports.loginwithgrovyo = async (req, res) => {
+  console.log("first", req.body)
+  try {
+    const { email, phone } = req.body
+    let user
+    if (email && !phone) {
+      user = await User.findOne({ email })
+    }
+    if (phone && !email) {
+      let f = 91 + phone
+      user = await User.findOne({ phone: f })
+    }
+
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not Found" })
+    }
+
+    function generateOTP() {
+      let otp = Math.floor(100000 + Math.random() * 900000);
+      return otp;
+    }
+
+    function msgid() {
+      return Math.floor(100000 + Math.random() * 900000);
+    }
+    let otp = generateOTP();
+
+    user.otp = otp
+    await user.save()
+
+    const gid = "65a666a3e953a4573e6c7ecf"
+    const grovyo = await User.findById(gid)
+    const convs = await Conversation.findOne({
+      members: { $all: [user._id, gid] },
+    });
+    const senderpic = process.env.URL + grovyo.profilepic;
+    const recpic = process.env.URL + user.profilepic;
+    const timestamp = new Date()
+    const mesId = msgid();
+
+    if (convs) {
+      let data = {
+        conversationId: convs._id,
+        sender: grovyo._id,
+        text: `Your one-time password (OTP) for login is: ${otp}.`,
+        mesId: mesId,
+      };
+      const m = new Message(data);
+      await m.save();
+
+      const msg = {
+        notification: {
+          title: "Grovyo",
+          body: `Your one-time password (OTP) for login is: ${otp}.`,
+        },
+        data: {
+          screen: "Conversation",
+          sender_fullname: `${grovyo?.fullname}`,
+          sender_id: `${grovyo?._id}`,
+          text: `Your one-time password (OTP) for login is: ${otp}.`,
+          convId: `${convs?._id}`,
+          createdAt: `${timestamp}`,
+          mesId: `${mesId}`,
+          typ: 'message',
+          senderuname: `${grovyo?.username}`,
+          senderverification: `${grovyo.isverified}`,
+          senderpic: `${senderpic}`,
+          reciever_fullname: `${user.fullname}`,
+          reciever_username: `${user.username}`,
+          reciever_isverified: `${user.isverified}`,
+          reciever_pic: `${recpic}`,
+          reciever_id: `${user._id}`,
+        },
+        token: user?.notificationtoken,
+      };
+
+      await admin
+        .messaging()
+        .send(msg)
+        .then((response) => {
+          console.log("Successfully sent message");
+        })
+        .catch((error) => {
+          console.log("Error sending message:", error);
+        });
+    } else {
+      const conv = new Conversation({
+        members: [grovyo._id, user._id],
+      });
+      const savedconv = await conv.save();
+      let data = {
+        conversationId: conv._id,
+        sender: grovyo._id,
+        text: `Your one-time password (OTP) for login is: ${otp}.`,
+        mesId: mesId,
+      };
+      await User.updateOne(
+        { _id: grovyo._id },
+        {
+          $addToSet: {
+            conversations: savedconv?._id,
+          },
+        }
+      );
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $addToSet: {
+            conversations: savedconv?._id,
+          },
+        }
+      );
+
+      const m = new Message(data);
+      await m.save();
+
+      const msg = {
+        notification: {
+          title: "Grovyo",
+          body: `Your one-time password (OTP) for login is: ${otp}.`,
+        },
+        data: {
+          screen: "Conversation",
+          sender_fullname: `${user?.fullname}`,
+          sender_id: `${user?._id}`,
+          text: `Your one-time password (OTP) for login is: ${otp}.`,
+          convId: `${convs?._id}`,
+          createdAt: `${timestamp}`,
+          mesId: `${mesId}`,
+          typ: 'message',
+          senderuname: `${user?.username}`,
+          senderverification: `${user.isverified}`,
+          senderpic: `${recpic}`,
+          reciever_fullname: `${grovyo.fullname}`,
+          reciever_username: `${grovyo.username}`,
+          reciever_isverified: `${grovyo.isverified}`,
+          reciever_pic: `${senderpic}`,
+          reciever_id: `${grovyo._id}`,
+        },
+        token: user?.notificationtoken,
+      };
+
+      await admin
+        .messaging()
+        .send(msg)
+        .then((response) => {
+          console.log("Successfully sent message");
+        })
+        .catch((error) => {
+          console.log("Error sending message:", error);
+        });
+    }
+    res.status(200).json({ success: true })
+  } catch (error) {
+    console.log(error)
+    res.status(400).json({ success: false, message: "Something Went Wrong" })
+  }
+}
+
+exports.verifyOtp = async (req, res) => {
+  try {
+    const { otp } = req.body
+    const user = await User.findOne({})
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found" })
+    }
+    if (user.otp === otp) {
+      const advertiser = await Advertiser.findOne({ userid: user._id })
+      if (advertiser) {
+
+        const dp = process.env.URL + advertiser.image
+        const sessionId = generateSessionId();
+        const newEditCount = {
+          login: Date.now().toString(),
+        };
+        await Advertiser.updateOne(
+          { _id: advertiser._id },
+          {
+            $push: { logs: newEditCount },
+          }
+        );
+        const data = {
+          userid: advertiser.userid,
+          advid: advertiser._id,
+          image: dp,
+          firstname: advertiser.firstname,
+          lastname: advertiser.lastname,
+          country: advertiser.country,
+          city: advertiser.city,
+          address: advertiser.address,
+          accounttype: advertiser.type,
+          taxinfo: advertiser.taxinfo,
+          email: advertiser.email,
+          advertiserid: advertiser.advertiserid,
+          sessionId
+        };
+
+        const access_token = generateAccessToken(data)
+        const refresh_token = generateRefreshToken(data)
+        return res.status(200).json({
+          advertiser,
+          access_token,
+          refresh_token,
+          userid: advertiser.userid,
+          dp,
+          sessionId,
+          success: true,
+        });
+      }
+
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid otp" })
+    }
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+  }
+}
