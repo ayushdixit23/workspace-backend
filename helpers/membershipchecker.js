@@ -10,7 +10,6 @@ exports.middlewareMembership = async (req, res, next) => {
 		const user = await User.findById(userId)
 		const membershipid = user.memberships.membership
 		const membership = await Membership.findById(membershipid)
-		console.log(membership)
 		const membershipEndingDate = new Date(user.memberships.ending);
 
 		if (currentDay < membershipEndingDate.getTime()) {
@@ -115,11 +114,16 @@ exports.middlewareMembership = async (req, res, next) => {
 				req.cancreatetopic = cancreatetopic
 				next()
 			}
-			console.log("Membership is still valid.");
+			
 		} else {
-			user.ismembershipactive = false
+			user.ismembershipactive = true,
+				user.memberships = {
+					membership: "65671e5204b7d0d07ef0e796",
+					ending: "infinite",
+					status: true
+				}
 			await user.save()
-			console.log("Membership has expired.");
+			
 			res.status(203).json({ success: false })
 		}
 	} catch (error) {

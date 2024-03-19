@@ -43,6 +43,7 @@ const {
   monetizationWorkSpace,
   templates,
   editPosts,
+  approvalrequestbank,
   // fetchingprosite,
 
   // base64upload,
@@ -148,5 +149,7 @@ router.post("/editpost/:userId/:postId", upload.any(), editPosts)
 // router.post("/postforprosite", prosite);
 
 router.post("/savemytemplate/:id", templates)
+// router.post("/approvalrequestbank/:id", approvalrequestbank)
+
 
 module.exports = router;

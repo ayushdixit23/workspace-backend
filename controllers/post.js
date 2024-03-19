@@ -1026,7 +1026,7 @@ exports.getallposts = async (req, res) => {
       }
       let eng = []
       await posts.map((p, i) => {
-        let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
+        let final = p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
         eng.push(final)
       })
 
@@ -1106,7 +1106,7 @@ exports.getallposts = async (req, res) => {
       }
       let eng = []
       await posts.map((p, i) => {
-        let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
+        let final = p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
         eng.push(final)
       })
       res.status(200).json({

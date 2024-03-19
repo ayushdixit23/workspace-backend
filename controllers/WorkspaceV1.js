@@ -376,9 +376,16 @@ exports.analyticsuser = async (req, res) => {
 
         let eng = []
         await posts.map((p, i) => {
-          let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
+
+          let final = p.views <= 0 ? 0 :
+            (
+              // (parseInt(p?.sharescount) 
+              + parseInt(p?.likes)
+              //  parseInt(p?.totalcomments)) 
+              / parseInt(p?.views)) * 100;
           eng.push(final)
         })
+
         let sum = 0
         for (let i = 0; i < eng.length; i++) {
           sum += eng[i]
@@ -556,7 +563,7 @@ exports.analyticsuser = async (req, res) => {
       // engagement rate
       let eng = []
       await posts.map((p, i) => {
-        let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
+        let final = p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
         eng.push(final)
       })
 
@@ -632,7 +639,7 @@ exports.allcoms = async (req, res) => {
 
       let eng = []
       await posts.map((p, i) => {
-        let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
+        let final = p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
         eng.push(final)
       })
 
@@ -886,7 +893,7 @@ exports.createcom = async (req, res) => {
       }
     }
   } else {
-    res.status(203).json({ success: false, message: "Buy Membership To Perform the Action" })
+    res.status(203).json({ success: false, message: "Max Community Limit Exceeded" })
   }
 };
 
@@ -1817,9 +1824,8 @@ exports.updatecommunity = async (req, res) => {
     } else {
       if (image) {
         //console.log("do")
-        const objectName = `${Date.now()}${uuidString}${req.file.originalname
-          } `;
-
+        const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
+        //a = objectName;
         const result = await s3.send(
           new PutObjectCommand({
             Bucket: BUCKET_NAME,
@@ -1903,6 +1909,23 @@ exports.earnings = async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" })
     }
     const prd = await Product.find({ creator: user._id })
+    const bankapp = await Approvals.findOne({ id: user._id, type: "bank" })
+
+
+    const checkValidity = () => {
+      if (user.bank.IFSCcode && user.bank.accountno && user.bank.bankname && user.bank.branchname && bankapp.status === "approved") {
+        return "approved"
+      } else if (user.bank.IFSCcode && user.bank.accountno && user.bank.bankname && user.bank.branchname && bankapp.status === "pending") {
+        return "pending"
+      } else if (user.bank.IFSCcode && user.bank.accountno && user.bank.bankname && user.bank.branchname && bankapp.status === "rejected") {
+        return "rejected"
+      } else {
+        console.log("rn")
+        return "nothing"
+      }
+    }
+
+
     const final = prd.sort((item1, item2) => { return item2?.itemsold - item1?.itemsold })
     const earningStats = {
       earnings: user.storeearning + user.topicearning + user.adsearning,
@@ -1911,7 +1934,8 @@ exports.earnings = async (req, res) => {
       storeearning: user.storeearning,
       pendingpayments: user.pendingpayments,
       bank: user.bank,
-      final
+      final,
+      isbankverified: checkValidity(),
     }
     res.status(200).json({ success: true, earningStats })
   } catch (err) {
@@ -1949,7 +1973,7 @@ exports.membershipbuy = async (req, res) => {
         const endingTime = new Date(user.memberships.ending);
 
         if (endingTime > currentTime) {
-          return res.status(400).json({
+          return res.status(203).json({
             success: false,
             message: "You already have an active membership.",
           });
@@ -2067,25 +2091,25 @@ exports.memfinalize = async (req, res) => {
   }
 }
 
-exports.approvalrequestbank = async (req, res) => {
-  try {
-    const { id } = req.params
-    const user = await User.findById(id)
-    if (!user) {
-      return res.status(400).json({ success: false, message: "User Not Found" })
-    }
-    user.isbankverified = false
-    await user.save()
-    const approval = await Approvals({
-      id,
-      type: "bank",
-    })
-    await approval.save()
-    res.status(200).json()
-  } catch (error) {
-    res.status(400).json({ success: false, message: "Something went Wrong!" })
-  }
-}
+// exports.approvalrequestbank = async (req, res) => {
+//   try {
+//     const { id } = req.params
+//     const user = await User.findById(id)
+//     if (!user) {
+//       return res.status(400).json({ success: false, message: "User Not Found" })
+//     }
+//     user.isbankverified = false
+//     await user.save()
+//     const approval = await Approvals({
+//       id,
+//       type: "bank",
+//     })
+//     await approval.save()
+//     res.status(200).json({ success: true, message: "Request sent!" })
+//   } catch (error) {
+//     res.status(400).json({ success: false, message: "Something went Wrong!" })
+//   }
+// }
 
 exports.addbank = async (req, res) => {
   try {
@@ -2095,13 +2119,19 @@ exports.addbank = async (req, res) => {
     if (!user) {
       return res.status(400).json({ success: false, message: "User Not Found" })
     }
+    const approval = await Approvals({
+      id,
+      type: "bank",
+    })
+    await approval.save()
+    user.isbankverified = false
     user.bank.bankname = bankname
     user.bank.branchname = branchname
     user.bank.accountno = accountno
     user.bank.IFSCcode = IFSCcode
     const newuser = await user.save()
 
-    res.status(200).json({ success: true, bank: newuser.bank })
+    res.status(200).json({ success: true, bank: newuser.bank, isverified: newuser.isbankverified })
   } catch (error) {
     res.status(500).json({ message: error.message, success: false });
   }
@@ -2347,7 +2377,7 @@ exports.fetchCommunityStats = async (req, res) => {
 
       let eng = []
       await posts.map((p, i) => {
-        let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
+        let final = p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
         eng.push(final)
       })
 
