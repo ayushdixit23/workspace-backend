@@ -46,7 +46,7 @@ router.post("/v1/addata", addata);
 router.get("/v1/audget", audget);
 router.post("/verifyadvertiser/:id", upload.any(), verifyadvertiser);
 router.post("/addmoneytowallet/:id", addmoneytowallet);
-router.post("/updatetransactionstatus/:id", updatetransactionstatus);
+router.post("/updatetransactionstatus/:id/:tid/:amount", updatetransactionstatus);
 router.post("/logoutadv/:id", logoutadv);
 router.get("/getuser/:id", getuser)
 router.post("/refresh", refreshingsAdsTokens);

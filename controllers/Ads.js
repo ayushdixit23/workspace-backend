@@ -21,6 +21,7 @@ const {
 const sharp = require("sharp");
 const admin = require("../fireb")
 const LocationData = require("../models/Data")
+const sha256 = require("sha256")
 
 const minioClient = new Minio.Client({
   endPoint: "minio.grovyo.xyz",
@@ -36,6 +37,7 @@ const Approvals = require("../models/Approvals");
 const Analytics = require("../models/Analytics");
 const Conversation = require("../models/conversation");
 const Message = require("../models/message");
+const { default: axios } = require("axios");
 
 function generateSessionId() {
   return Date.now().toString() + Math.random().toString(36).substring(2);
@@ -484,12 +486,14 @@ exports.newad = async (req, res) => {
         }
       }
 
+
       const community = new Community({
         title: communityName,
         creator: userId,
         dp: objectName,
         desc: communityDesc,
         category: communityCategory,
+        type: "public"
       });
       const savedcom = await community.save();
       const topic1 = new Topic({
@@ -505,7 +509,6 @@ exports.newad = async (req, res) => {
         community: savedcom._id,
       });
       await topic2.save();
-
 
       await Community.updateOne(
         { _id: savedcom._id },
@@ -1338,36 +1341,40 @@ exports.addmoneytowallet = async (req, res) => {
       await Advertiser.updateOne({ _id: id },
         { $push: { transactions: tId._id }, }
       );
-      // const instance = new Razorpay({
-      //   key_id: "rzp_test_jXDMq8a2wN26Ss",
-      //   key_secret: "bxyQhbzS0bHNBnalbBg9QTDo",
-      // });
-      const instance = new Razorpay({
-        key_id: "rzp_live_Ms5I8V8VffSpYq",
-        key_secret: "Sy04bmraRqV9RjLRj81MX0g7",
-      });
-      instance.orders.create(
-        {
-          amount: amount,
-          currency: "INR",
-          receipt: `receipt#${newid}`,
-          notes: {
-            type: "Wallet"
-          }
+      
+      let payload = {
+        "merchantId": process.env.MERCHANT_ID,
+        "merchantTransactionId":tId._id,
+        "merchantUserId": user._id,
+        "amount": amount,
+        "redirectUrl": "http://localhost:3000/main/wallet",
+        "redirectMode": "REDIRECT",
+        "callbackUrl": `https://work.grovyo.xyz/api/updatetransactionstatus/${id}/${tId._id}/${amount}`,
+        "paymentInstrument": {
+          "type": "PAY_PAGE"
+        }
+      }
+      let bufferObj = Buffer.from(JSON.stringify(payload),"utf8")
+    
+      let base64string = bufferObj.toString("base64")
 
-        }, function (err, order) {
-          console.log(err, order);
-          if (err) {
-            res.status(400).json({ err, success: false });
-          } else {
-            res.status(200).json({
-              success: true,
-              tid: tId._id,
-              order_id: order.id,
-            });
-          }
-        })
+      let string = base64string + "/pg/v1/pay" + process.env.PHONE_PAY_KEY
+      let shaString = sha256(string)
 
+      let checkSum = shaString + "###" + process.env.keyIndex
+
+      axios.post("https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay",{"request":base64string},{headers:{
+        "Content-Type":"application/json",
+        "X-VERIFY":checkSum,
+        "accept":"application/json"
+      }}).then((response)=>{
+        console.log(response.data,response.data.data.instrumentResponse.redirectInfo.url)
+        res.status(200).json({success:true,url:response.data.data.instrumentResponse.redirectInfo.url})
+        // res.redirect(response.data.data.instrumentResponse.redirectInfo.url);
+      }).catch((err)=>{
+        console.log(err)
+       return res.status({success:false,message:err.message})
+      })
     }
   } catch (e) {
     console.log(e);
@@ -1375,66 +1382,113 @@ exports.addmoneytowallet = async (req, res) => {
   }
 };
 
-//update transaction status
-exports.updatetransactionstatus = async (req, res) => {
-  const { id } = req.params;
-  const { success, tid, amount, order_id, payment_id, razorpay_signature } = req.body;
-  console.log(req.body)
-
+exports.updatetransactionstatus = async (req,res)=>{
   try {
+    const { id,tid,amount } = req.params;
+    // const { tid, amount } = req.body;
     const user = await Advertiser.findById(id);
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
-    } else {
-      const t = await Transaction.findById(tid);
-      console.log(t)
-      if (!t) {
-        res
-          .status(404)
-          .json({ success: false, message: "Transaction not found" });
-      } else {
-        const isValid = validatePaymentVerification(
-          { order_id: order_id, payment_id: payment_id },
-          razorpay_signature,
-          "bxyQhbzS0bHNBnalbBg9QTDo"
-        );
-        console.log(isValid)
-        if (isValid) {
-          await Transaction.updateOne(
-            { _id: t._id },
-            {
-              $set: {
-                status: "completed",
-              },
-            }
-          );
-          await Advertiser.updateOne(
-            { _id: id },
-            {
-              $inc: { currentbalance: amount },
-            }
-          );
-          return res.status(200).json({
-            success: true,
-          });
-        } else {
-          await Transaction.updateOne(
-            { _id: t._id },
-            {
-              $set: {
-                status: "failed",
-              },
-            }
-          );
-          res.status(400).json({ success: false })
-        }
+    } 
+    const t = await Transaction.findById(tid);
+  const response = await axios.get(`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`)
+      if(response.data.code ==="PAYMENT_SUCCESS"){
+     console.log("Payment Successful")
+     await Transaction.updateOne(
+      { _id: t._id },
+      {
+        $set: {
+          status: "completed",
+        },
       }
-    }
-  } catch (e) {
-    console.log(e);
-    res.status(400).json({ message: "Something went wrong", success: false });
+    );
+    await Advertiser.updateOne(
+      { _id: id },
+      {
+        $inc: { currentbalance: amount },
+      }
+    );
+    return res.status(200).json({
+      success: true,
+    });
+      }else if(response.data.code ==="PAYMENT_ERROR"){
+        console.log("Payment Failed")
+        await Transaction.updateOne(
+          { _id: t._id },
+          {
+            $set: {
+              status: "failed",
+            },
+          }
+        );
+        res.status(400).json({ success: false })
+      }
+   
+  } catch (error) {
+    res.status(400).json({success:false,message: "Something went wrong",})
   }
-};
+}
+
+//update transaction status
+// exports.updatetransactionstatus = async (req, res) => {
+//   const { id } = req.params;
+//   const { success, tid, amount, order_id, payment_id, razorpay_signature } = req.body;
+//   console.log(req.body)
+
+//   try {
+//     const user = await Advertiser.findById(id);
+//     if (!user) {
+//       res.status(404).json({ success: false, message: "User not found" });
+//     } else {
+//       const t = await Transaction.findById(tid);
+//       console.log(t)
+//       if (!t) {
+//         res
+//           .status(404)
+//           .json({ success: false, message: "Transaction not found" });
+//       } else {
+//         const isValid = validatePaymentVerification(
+//           { order_id: order_id, payment_id: payment_id },
+//           razorpay_signature,
+//           "bxyQhbzS0bHNBnalbBg9QTDo"
+//         );
+//         console.log(isValid)
+//         if (isValid) {
+//           await Transaction.updateOne(
+//             { _id: t._id },
+//             {
+//               $set: {
+//                 status: "completed",
+//               },
+//             }
+//           );
+//           await Advertiser.updateOne(
+//             { _id: id },
+//             {
+//               $inc: { currentbalance: amount },
+//             }
+//           );
+//           return res.status(200).json({
+//             success: true,
+//           });
+//         } else {
+//           await Transaction.updateOne(
+//             { _id: t._id },
+//             {
+//               $set: {
+//                 status: "failed",
+//               },
+//             }
+//           );
+//           res.status(400).json({ success: false })
+//         }
+//       }
+//     }
+//   } catch (e) {
+//     console.log(e);
+//     res.status(400).json({ message: "Something went wrong", success: false });
+//   }
+// };
 
 exports.addata = async (req, res) => {
   try {
@@ -2713,3 +2767,11 @@ exports.verifyOtp = async (req, res) => {
     res.status(400).json({ success: false, message: "Something Went Wrong!" })
   }
 }
+
+// exports.paybyphonepay = async (req, res) => {
+//   try {
+    
+//   } catch (error) {
+//     res.status(400).json({ success: false, message: "Something Went Wrong" })
+//   }
+// }

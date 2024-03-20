@@ -53,6 +53,7 @@
     "pdf-creator-node": "^2.3.5",
     "razorpay": "^2.9.2",
     "redis": "^4.6.11",
+    "sha256": "^0.2.0",
     "sharp": "^0.32.1",
     "socket.io": "^4.6.1",
     "stripe": "^12.6.0",
