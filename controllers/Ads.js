@@ -513,7 +513,7 @@ exports.newad = async (req, res) => {
       await Community.updateOne(
         { _id: savedcom._id },
         {
-          $push: { members: userId, admins: user._id },
+          $push: { members: userId, admins: userauth._id },
           $inc: { memberscount: 1 },
         }
       );
@@ -529,6 +529,7 @@ exports.newad = async (req, res) => {
           $push: {
             topicsjoined: [topic1._id, topic2._id],
             communityjoined: savedcom._id,
+            communitycreated:savedcom._id
           },
           $inc: { totaltopics: 3, totalcom: 1 },
         }
@@ -784,13 +785,13 @@ exports.getCommunities = async (req, res) => {
     if (!user) {
       return res.status(400).json({ message: "User Not Found", success: false })
     }
-    let com = []
-    // const com = await Community.find({ creator: id });
-    for (let i = 0; i < user.communitycreated.length; i++) {
+    // let com = []
+    const com = await Community.find({ creator: id });
+    // for (let i = 0; i < user.communitycreated.length; i++) {
 
-      const c = await Community.findById(user.communitycreated[i].toString())
-      com.push(c)
-    }
+    //   // const c = await Community.findById(user.communitycreated[i].toString())
+    //   com.push(c)
+    // }
 
     const communitywithDps = await Promise.all(
       com.map(async (communityId) => {
@@ -807,6 +808,7 @@ exports.getCommunities = async (req, res) => {
     );
 
     const filteredCommunities = communitywithDps.filter((community) => community !== null);
+    console.log(filteredCommunities)
     res.status(200).json({ communitywithDps: filteredCommunities, success: true })
   } catch (error) {
     res.status(500).json({ message: "Internal Server Errors", success: false })
@@ -1013,8 +1015,8 @@ exports.getallads = async (req, res) => {
       //   );
       //   content.push(a);
       // }
-
-      res.status(200).json({ ads, content, success: true });
+const adsreversed = ads.reverse()
+      res.status(200).json({ ads:adsreversed, content, success: true });
     } else {
       res.status(404).json({ message: "User not found", success: false });
     }
@@ -1370,7 +1372,7 @@ exports.addmoneytowallet = async (req, res) => {
       }}).then((response)=>{
         console.log(response.data,response.data.data.instrumentResponse.redirectInfo.url)
         res.status(200).json({success:true,url:response.data.data.instrumentResponse.redirectInfo.url})
-        // res.redirect(response.data.data.instrumentResponse.redirectInfo.url);
+       
       }).catch((err)=>{
         console.log(err)
        return res.status({success:false,message:err.message})
@@ -1385,13 +1387,27 @@ exports.addmoneytowallet = async (req, res) => {
 exports.updatetransactionstatus = async (req,res)=>{
   try {
     const { id,tid,amount } = req.params;
-    // const { tid, amount } = req.body;
     const user = await Advertiser.findById(id);
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
     } 
-    const t = await Transaction.findById(tid);
-  const response = await axios.get(`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`)
+    function generateChecksum(merchantId, merchantTransactionId, saltKey, saltIndex) {
+      const stringToHash = `/pg/v1/status/${merchantId}/${merchantTransactionId}` + saltKey;
+      const shaHash = sha256(stringToHash).toString();
+      const checksum = shaHash + "###" + saltIndex;
+  
+      return checksum;
+    }
+
+  const checksum = generateChecksum(process.env.MERCHANT_ID,tid, process.env.PHONE_PAY_KEY, process.env.keyIndex);
+  const t = await Transaction.findById(tid);
+  const response = await axios.get(`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`,{
+    headers:{
+      "Content-Type":"application/json",
+      "X-VERIFY":checksum,
+     "X-MERCHANT-ID"	:process.env.MERCHANT_ID
+    }
+  })
       if(response.data.code ==="PAYMENT_SUCCESS"){
      console.log("Payment Successful")
      await Transaction.updateOne(
@@ -1402,10 +1418,11 @@ exports.updatetransactionstatus = async (req,res)=>{
         },
       }
     );
+    
     await Advertiser.updateOne(
       { _id: id },
       {
-        $inc: { currentbalance: amount },
+        $inc: { currentbalance: amount*0.01 },
       }
     );
     return res.status(200).json({
@@ -1425,6 +1442,7 @@ exports.updatetransactionstatus = async (req,res)=>{
       }
    
   } catch (error) {
+    console.log(error)
     res.status(400).json({success:false,message: "Something went wrong",})
   }
 }
@@ -2379,7 +2397,6 @@ exports.fetchingprosite = async (req, res) => {
   }
 }
 
-
 exports.feedback = async (req, res) => {
   try {
     const { advid } = req.params
@@ -2393,57 +2410,6 @@ exports.feedback = async (req, res) => {
     res.status(400).json({ success: false })
   }
 }
-
-
-// exports.locationofUsers = async () => {
-// const locationofUsers = async () => {
-//   try {
-//     const location = [
-//       { name: "andra pradesh", total: 0, male: 0, female: 0 },
-//       { name: "assam", total: 0, male: 0, female: 0 },
-//       { name: "bihar", total: 0, male: 0, female: 0 },
-//       { name: "chhattisgarh", total: 0, male: 0, female: 0 },
-//       { name: "goa", total: 0, male: 0, female: 0 },
-//       { name: "gujarat", total: 0, male: 0, female: 0 },
-//       { name: "haryana", total: 0, male: 0, female: 0 },
-//       { name: "himachal pradesh", total: 0, male: 0, female: 0 },
-//       { name: "maharashtra", total: 0, male: 0, female: 0 },
-//       { name: "manipur", total: 0, male: 0, female: 0 },
-//       { name: "meghalaya", total: 0, male: 0, female: 0 },
-//       { name: "mizoram", total: 0, male: 0, female: 0 },
-//       { name: "nagaland", total: 0, male: 0, female: 0 },
-//       { name: "odisha", total: 0, male: 0, female: 0 },
-//       { name: "punjab", total: 0, male: 0, female: 0 },
-//       { name: "rajasthan", total: 0, male: 0, female: 0 },
-//       { name: "sikkim", total: 0, male: 0, female: 0 },
-//       { name: "tamil nadu", total: 0, male: 0, female: 0 },
-//       { name: "telangana", total: 0, male: 0, female: 0 },
-//       { name: "tripura", total: 0, male: 0, female: 0 },
-//       { name: "uttar pradesh", total: 0, male: 0, female: 0 },
-//       { name: "uttarakhand", total: 0, male: 0, female: 0 },
-//       { name: "west bengal", total: 0, male: 0, female: 0 },
-//     ]
-//     const users = await User.find({ gr: 1 })
-//     console.log(users.length)
-
-//     for (let i = 0; i < users.length; i++) {
-
-//       for (let j = 0; j < location.length; j++) {
-
-//         if (users[i].address.state.toLowerCase().trim() === location[j].name.toLowerCase().trim()) {
-//           if (users[i].gender === "male") {
-//             location[j].male++
-//           } else {
-//             location[j].female++
-//           }
-//           location[j].total++
-//         }
-//       }
-//     }
-//   } catch (error) {
-//     console.log(error)
-//   }
-// }
 
 const locationofUsers = async () => {
   try {
@@ -2569,7 +2535,6 @@ exports.loginwithgrovyo = async (req, res) => {
       return Math.floor(100000 + Math.random() * 900000);
     }
     let otp = generateOTP();
-
     user.otp = otp
     await user.save()
 
@@ -2746,19 +2711,36 @@ exports.verifyOtp = async (req, res) => {
           sessionId
         };
 
+        user.otp= undefined
+        await user.save()
         const access_token = generateAccessToken(data)
         const refresh_token = generateRefreshToken(data)
         return res.status(200).json({
           advertiser,
           access_token,
           refresh_token,
+          accountexist:true,
           userid: advertiser.userid,
           dp,
           sessionId,
           success: true,
         });
       } else {
-        res.status(203).json({ success: false, exist: false, message: "Advertiser not found" })
+        const firstname= user.fullname.split(" ")[0]
+        const lastname= user.fullname.split(" ")[1]
+        const dp = process.env.URL + user.profilepic
+        const data = {
+          dp,
+          firstname,
+          lastname,
+          email:user.email,
+          address:user.address.streetaddress,
+          city:user.address.city,
+          state:user.address.state,
+          pincode:user.address.pincode,
+          landmark:user.address.landmark,
+        }
+        res.status(203).json({success:true, accountexist:false,data})
       }
     } else {
       return res.status(400).json({ success: false, message: "Invalid otp" })

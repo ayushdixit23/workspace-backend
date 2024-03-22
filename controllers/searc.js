@@ -163,3 +163,28 @@ exports.recentSearch = async (req, res) => {
     console.log(error)
   }
 }
+
+exports.fetchCom = async (req, res) => {
+  try {
+    const commun = await Community.find().sort({ memberscount: -1 });
+    const communities = commun.slice(0, 10)
+    if (communities.length < 0) {
+      return res.status(400).json({ success: false, message: "Communities not found" })
+    }
+
+    const community = communities.map((d) => {
+      return {
+        image: process.env.URL + d.dp,
+        name: d.title,
+        membersCount: d?.memberscount
+      }
+    })
+
+    console.log(community)
+
+    res.status(200).json({ success: true, community })
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+  }
+}
+

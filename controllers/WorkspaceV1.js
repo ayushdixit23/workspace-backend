@@ -990,6 +990,10 @@ exports.registerstore = async (req, res) => {
       documenttype,
       state,
       city,
+      latitude,
+      longitude,
+      altitude,
+      accuracy,
     } = req.body;
     if (req.file == undefined) {
       return res.status(400).json({ message: "Please upload a document file" });
@@ -1007,7 +1011,7 @@ exports.registerstore = async (req, res) => {
     );
 
     const user = await User.findById(userId);
-    console.log(user, "user")
+
     let finaladdress;
     if (gst) {
       finaladdress = [{
@@ -1020,6 +1024,12 @@ exports.registerstore = async (req, res) => {
         businesscategory: businesscategory,
         documenttype: documenttype.toString(),
         documentfile: objectName,
+        coordinates: {
+          latitude,
+          longitude,
+
+          accuracy,
+        },
       }];
     } else {
       finaladdress = [{
@@ -1031,30 +1041,57 @@ exports.registerstore = async (req, res) => {
         businesscategory: businesscategory,
         documenttype: documenttype.toString(),
         documentfile: objectName,
+        coordinates: {
+          latitude,
+          longitude,
+
+          accuracy,
+        },
       }];
     }
 
+    const data = [];
+    const community = await Community.find({ creator: user._id });
+
+    for (let i = 0; i < community.length; i++) {
+      const post = await Post.find({ community: community[i]._id });
+      data.push({
+        community: community[i].title,
+        posts: post.length
+      });
+    }
+
+    const checkUserv = () => data.some(d => d.community && d.posts > 0);
+    const validToCreateStore = checkUserv()
+
+    console.log(finaladdress, "checking")
+
     if (user) {
-      user.storeAddress = finaladdress
-      const request = new Request({
-        userid: userId,
-        type: "store",
-        storeDetails: {
-          buildingno: buildingno,
-          city: city,
-          state: state,
-          postal: postal,
-          landmark: landmark,
-          gst: gst ? gst : null,
-          businesscategory: businesscategory,
-          documenttype: documenttype.toString(),
-          documentfile: objectName,
-        }
-      })
-      await request.save()
-      user.isStoreVerified = false
-      await user.save()
-      res.status(200).json({ success: true });
+      if (validToCreateStore) {
+
+        user.storeAddress = finaladdress
+        const request = new Request({
+          userid: userId,
+          type: "store",
+          storeDetails: {
+            buildingno: buildingno,
+            city: city,
+            state: state,
+            postal: postal,
+            landmark: landmark,
+            gst: gst ? gst : null,
+            businesscategory: businesscategory,
+            documenttype: documenttype.toString(),
+            documentfile: objectName,
+          }
+        })
+        await request.save()
+        user.isStoreVerified = false
+        await user.save()
+        res.status(200).json({ success: true });
+      } else {
+        res.status(400).json({ success: false, message: "Not Eligable to Create Store Now!" })
+      }
     } else {
       res.status(404).json({ success: false, message: "User Not Found" });
     }
@@ -1193,6 +1230,7 @@ exports.createproduct = async (req, res) => {
     discountedprice,
     sellername,
     totalstars,
+    isphysical,
     weight,
     type,
   } = req.body;
@@ -1234,6 +1272,7 @@ exports.createproduct = async (req, res) => {
             discountedprice,
             sellername,
             totalstars,
+            isphysical,
             images: pos,
             weight,
             type,
@@ -1338,11 +1377,9 @@ exports.getaproduct = async (req, res) => {
 };
 
 // update product
-
-// have to check again
 exports.updateproduct = async (req, res) => {
   try {
-    const { name, price, desc, discountedprice, quality, image } = req.body
+    const { name, price, desc, discountedprice, quality, image, weight, isphysical } = req.body
     const { userId, colid, productId } = req.params;
     let imageArr
     if (typeof image == "string") {
@@ -1432,8 +1469,8 @@ exports.updateproduct = async (req, res) => {
       product.discountedprice = discountedprice
       product.quality = quality
       product.images = pos
-
-      console.log(pos)
+      product.isphysical = isphysical
+      product.weight = weight
       await product.save()
       res.status(200).json({ success: true });
     }
@@ -1442,6 +1479,7 @@ exports.updateproduct = async (req, res) => {
     res.status(400).json({ message: e.message, success: false });
   }
 };
+
 // orders
 //fetch orders
 exports.fetchallorders = async (req, res) => {
@@ -1449,6 +1487,9 @@ exports.fetchallorders = async (req, res) => {
     const { id } = req.params;
     const user = await User.findById(id);
     if (user) {
+      const store = user.storeAddress.length;
+      const storeexistornot = store.length > 0 ? true : false
+      const isStoreVerified = user.isStoreVerified
       const orders = await SellerOrder.find({ sellerId: user._id })
         .populate("productId")
         .populate("buyerId", "fullname")
@@ -1493,7 +1534,6 @@ exports.fetchallorders = async (req, res) => {
       let image = await Promise.all(
         orders.map(async (d, i) => {
           if (d?.productId) {
-            console.log(d.productId?.images[0]?.content)
             const l = process.env.PRODUCT_URL + d.productId?.images[0]?.content
             return l;
           } else {
@@ -1501,7 +1541,6 @@ exports.fetchallorders = async (req, res) => {
           }
         })
       );
-
 
       const reversedmergedOrder = orders.map((d, i) => {
         return {
@@ -1516,6 +1555,8 @@ exports.fetchallorders = async (req, res) => {
         allorders,
         cancelled,
         returned,
+        isStoreVerified,
+        storeexistornot,
         damaged,
         earnings,
         customers,
@@ -1885,13 +1926,27 @@ exports.checkStore = async (req, res) => {
     const { id } = req.params;
     const user = await User.findById(id);
     if (user) {
+      const data = [];
+      const community = await Community.find({ creator: user._id });
+
+      for (let i = 0; i < community.length; i++) {
+        const post = await Post.find({ community: community[i]._id });
+        data.push({
+          community: community[i].title,
+          posts: post.length
+        });
+      }
+
+      const checkUser = () => data.some(d => d.community && d.posts > 0);
+      const validToCreateStore = checkUser()
+
       const store = user.storeAddress.length;
       const foodlic = user.foodLicense
       const foodLicenceExist = foodlic ? true : false
       if (store > 0) {
-        return res.status(200).json({ exist: true, q: "collection", foodLicenceExist, isverified: user.isStoreVerified });
+        return res.status(200).json({ exist: true, q: "collection", foodLicenceExist, validToCreateStore, isverified: user.isStoreVerified });
       } else {
-        return res.status(200).json({ exist: false, q: "store", foodLicenceExist, isverified: user.isStoreVerified });
+        return res.status(200).json({ exist: false, q: "store", foodLicenceExist, validToCreateStore, isverified: user.isStoreVerified });
       }
     } else {
       return res.status(400).json({ message: "User Not Found" });
@@ -1911,7 +1966,6 @@ exports.earnings = async (req, res) => {
     const prd = await Product.find({ creator: user._id })
     const bankapp = await Approvals.findOne({ id: user._id, type: "bank" })
 
-
     const checkValidity = () => {
       if (user.bank.IFSCcode && user.bank.accountno && user.bank.bankname && user.bank.branchname && bankapp.status === "approved") {
         return "approved"
@@ -1925,7 +1979,6 @@ exports.earnings = async (req, res) => {
       }
     }
 
-
     const final = prd.sort((item1, item2) => { return item2?.itemsold - item1?.itemsold })
     const earningStats = {
       earnings: user.storeearning + user.topicearning + user.adsearning,
@@ -1937,7 +1990,7 @@ exports.earnings = async (req, res) => {
       final,
       isbankverified: checkValidity(),
     }
-    res.status(200).json({ success: true, earningStats })
+    res.status(200).json({ success: true, earningStats, length: prd.length })
   } catch (err) {
     ;
   }
@@ -2347,6 +2400,7 @@ exports.fetchCommunityStats = async (req, res) => {
     if (!user) {
       return res.status(400).json({ success: false, message: "User Not Found" })
     }
+    const monetization = await Montenziation.find({ creator: userId })
     const community = await Community.find({ creator: userId })
     if (!community) {
       return res.status(400).json({ success: false, message: "Community Not Found" })
@@ -2396,12 +2450,14 @@ exports.fetchCommunityStats = async (req, res) => {
     }
 
     const communities = community.map((d, i) => {
+      const monStatus = monetization.find((f) => f.comid === d?._id);
       return ({
         id: d?._id,
         topics: d?.topics.length,
         ismonetized: d?.ismonetized || false,
         post: d?.posts.length,
         topic: topic[i],
+        monstatus: monStatus ? monStatus.status : null,
         name: d?.title,
         desc: d?.desc,
         category: d?.category,

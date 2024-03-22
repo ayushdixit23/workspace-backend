@@ -109,38 +109,26 @@ const connectApp = () => {
 };
 connectApp();
 
-// const changeMembership = async () => {
-//   try {
-//     // const id = "65314cd99db37d9109914f3f"
-//     const users = await User.findById("64b84197281876c462d40978")
-//     const currentDate = new Date();
-//     const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000); // Add 30 days in milliseconds
+const changeMembership = async () => {
+  try {
+    // const id = "65314cd99db37d9109914f3f"
+    const users = await User.find()
+    const currentDate = new Date();
+    const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000); // Add 30 days in milliseconds
 
-//     console.log(endDate);
-//     // for (let i = 0; i < users.length; i++) {
-//     //   if (typeof users[i].orders !== 'object') {
-//     //     console.log(users[i].fullname)
-//     //   }
-//     // }
-//     users.ismembershipactive = true
-//     users.memberships.membership = "65671e6004b7d0d07ef0e798"
-//     users.memberships.ending = endDate
-//     users.memberships.status = true
-//     await users.save()
-
-//     // }
-//     // if (users[i].orders == 0) {
-//     // }
-//     // if (typeof users[i].orders !== "object") {
-//     //   console.log(users[i].fullname)
-//     // }
-
-//     // console.log("first")
-
-//   } catch (error) {
-//     console.log(error)
-//   }
-// }
+    console.log(endDate);
+    for (let i = 0; i < users.length; i++) {
+      users[i].ismembershipactive = true
+      users[i].memberships.membership = "65671e5204b7d0d07ef0e796"
+      users[i].memberships.ending = endDate
+      users[i].memberships.status = true
+      await users[i].save()
+    }
+    console.log("first")
+  } catch (error) {
+    console.log(error)
+  }
+}
 // changeMembership()
 
 // const changeverfication = async () => {
@@ -236,3 +224,44 @@ const encryptaes = (data) => {
 };
 // const pas = encryptaes("aryansh")
 // console.log(pas)
+// const adver = async () => {
+//   try {
+//     const advertiser = new Advertiser({
+//       userid: "658ef83e30c7efed39dbb06d",
+//       firstname: "Animal",
+//       lastname: "Janwar",
+//       type: "Individual",
+//       phone: "1234567891",
+//       email: "div@gmail.com",
+//       password: "12345678",
+//       retypepassword: "12345678",
+
+//     })
+//     const ad = await advertiser.save()
+//     const user = await User.findById("658ef83e30c7efed39dbb06d")
+//     user.advertiserid = ad._id
+//     await user.save()
+
+//     console.log("done")
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
+
+// adver()
+
+// exports.userInterest = async (req, res) => {
+//   try {
+//     const { id } = req.params
+//     const user = await User.findById(id)
+//     if (!user) {
+//       return res.status(400).json({ success: false, message: "User not found" })
+//     }
+//     const interest = user.interest
+//     res.status(200).json({ success: true, interest })
+//   } catch (error) {
+//     res.status(400).json({ success: false, message: "Something Went Wrong" })
+//   }
+// }
+
+// router.get("/fetchinterest/:id", userInterest)

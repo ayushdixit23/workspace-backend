@@ -62,6 +62,7 @@ const productSchema = new mongoose.Schema({
   questions: { type: Number, default: 0 },
   type: { type: String },
   tags: { type: [String] },
+  isphysical: { type: Boolean, default: false },
   weight: { type: String },
   reviewed: [{ type: ObjectId, ref: "User" }],
   status: {
