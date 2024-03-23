@@ -946,7 +946,6 @@ exports.deletepost = async (req, res) => {
   }
 };
 
-
 //get all posts
 exports.getallposts = async (req, res) => {
   const { comId, userId } = req.params;

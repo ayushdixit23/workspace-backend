@@ -113,23 +113,19 @@ const changeMembership = async () => {
   try {
     // const id = "65314cd99db37d9109914f3f"
     const users = await User.find()
-    const currentDate = new Date();
-    const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000); // Add 30 days in milliseconds
-
-    console.log(endDate);
     for (let i = 0; i < users.length; i++) {
       users[i].ismembershipactive = true
       users[i].memberships.membership = "65671e5204b7d0d07ef0e796"
-      users[i].memberships.ending = endDate
+      users[i].memberships.ending = "infinite"
       users[i].memberships.status = true
       await users[i].save()
     }
-    console.log("first")
+    // console.log("first")
   } catch (error) {
     console.log(error)
   }
 }
-// changeMembership()
+changeMembership()
 
 // const changeverfication = async () => {
 //   try {

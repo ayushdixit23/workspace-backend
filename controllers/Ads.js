@@ -265,6 +265,7 @@ exports.createadvacc = async (req, res) => {
     const user = await User.findOne({
       $or: [{ email: email }, { phone: phone }],
     })
+    let savedAdv
     if (!advertiser && !user) {
 
       const advid = generateUniqueID();
@@ -302,7 +303,7 @@ exports.createadvacc = async (req, res) => {
         })
       );
 
-      const adsver = await adv.save();
+      savedAdv = await adv.save();
 
       //generate random username
       const generateRandomUsername = () => {
@@ -337,12 +338,12 @@ exports.createadvacc = async (req, res) => {
         desc: "Hi, I am on Grovyo",
         address: finaladdress,
         adid: advid,
-        advertiserid: adsver._id
+        advertiserid: savedAdv._id
       });
       const thisScopeUser = await user.save();
 
       await Advertiser.updateOne(
-        { _id: adsver._id },
+        { _id: savedAdv._id },
         {
           $set: { userid: thisScopeUser._id },
         }
@@ -352,38 +353,47 @@ exports.createadvacc = async (req, res) => {
       const uuidString = uuid();
       const image = req.file;
 
-      const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
+      let objectName
+
+      if(image){
+         objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
+      }else{
+        objectName= user.profilepic
+      }
+
       const adv = new Advertiser({
-        firstname,
-        lastname,
-        city,
-        state,
-        landmark,
-        email,
-        phone,
-        type,
-        pincode,
-        address,
-        advertiserid: advid,
-        image: objectName,
-        organizationname,
-        pan,
-        gst,
-        password,
-        retypepassword,
-        userid: user._id,
-      });
-
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: BUCKET_NAME,
-          Key: objectName,
-          Body: image.buffer,
-          ContentType: image.mimetype,
+          firstname,
+          lastname,
+          city,
+          state,
+          landmark,
+          email,
+          phone,
+          type,
+          pincode,
+          address,
+          advertiserid: advid,
+          image:objectName,
+          organizationname,
+          pan,
+          gst,
+          password,
+          retypepassword,
+          userid: user._id,
         })
-      );
+        
+       if(image){
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: objectName,
+            Body: image.buffer,
+            ContentType: image.mimetype,
+          })
+        );
+      }
 
-      const savedAdv = await adv.save();
+     savedAdv = await adv.save();
 
       await User.updateOne(
         { _id: user._id },
@@ -392,24 +402,23 @@ exports.createadvacc = async (req, res) => {
         }
       );
     }
-
     const sessionId = generateSessionId()
 
-    const dp = process.env.URL + advertiser.image
+    const dp = process.env.URL + savedAdv.image
 
     const data = {
-      userid: advertiser.userid,
-      advid: advertiser._id,
+      userid: savedAdv.userid,
+      advid: savedAdv._id,
       image: dp,
-      firstname: advertiser.firstname,
-      lastname: advertiser.lastname,
-      country: advertiser.country,
-      city: advertiser.city,
-      address: advertiser.address,
-      accounttype: advertiser.type,
-      taxinfo: advertiser.taxinfo,
-      email: advertiser.email,
-      advertiserid: advertiser.advertiserid,
+      firstname: savedAdv.firstname,
+      lastname: savedAdv.lastname,
+      country: savedAdv.country,
+      city: savedAdv.city,
+      address: savedAdv.address,
+      accounttype: savedAdv.type,
+      taxinfo: savedAdv.taxinfo,
+      email: savedAdv.email,
+      advertiserid: savedAdv.advertiserid,
       sessionId
     };
 
@@ -2729,10 +2738,12 @@ exports.verifyOtp = async (req, res) => {
         const firstname= user.fullname.split(" ")[0]
         const lastname= user.fullname.split(" ")[1]
         const dp = process.env.URL + user.profilepic
+        const phoneNumber = user.phone.substring(2)
         const data = {
           dp,
           firstname,
           lastname,
+          phone:phoneNumber,
           email:user.email,
           address:user.address.streetaddress,
           city:user.address.city,
