@@ -12,7 +12,7 @@ exports.middlewareMembership = async (req, res, next) => {
 		const membership = await Membership.findById(membershipid)
 		const membershipEndingDate = new Date(user.memberships.ending);
 
-		if (currentDay < membershipEndingDate.getTime()) {
+		if (currentDay < membershipEndingDate.getTime() || membershipEndingDate === "infinite") {
 			if (membership.title !== "Custom") {
 				const productlimit = membership.productlimit
 				const topiclimit = membership.topiclimit
