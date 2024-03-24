@@ -28,8 +28,10 @@ const SellerOrder = require("../models/SellerOrder")
 // const Subscriptions = require("../models/Subscriptions");
 // const Prosite = require("../models/prosite");
 const Razorpay = require("razorpay");
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/cloudfront-signer");
+const Tag = require("../models/Tag")
+const Interest = require("../models/Interest")
 const fs = require("fs");
 require("dotenv").config();
 
@@ -964,7 +966,6 @@ exports.getallposts = async (req, res) => {
     }
 
     const posts = postsArr.reverse()
-    console.log(posts)
     res.status(200).json({ success: true, posts })
   } catch (error) {
     console.log(error)
@@ -1027,7 +1028,6 @@ exports.registerstore = async (req, res) => {
         coordinates: {
           latitude,
           longitude,
-
           accuracy,
         },
       }];
@@ -2125,6 +2125,9 @@ exports.memfinalize = async (req, res) => {
       paymentdetails: { mode: "online", amount: subscription.amount }
     }
     const membership = await Membership.findById(memid)
+    if (membership.title === "Premium") {
+      user.isverified = true
+    }
     const saveduser = await user.save()
     const sessionId = generateSessionId()
     const dp =
@@ -2303,7 +2306,7 @@ exports.fetchMemberShip = async (req, res) => {
 
 exports.customMembership = async (req, res) => {
   try {
-    const { productlimit, topiclimit, communitylimit, collectionlimit, razorpay_order_id, razorpay_payment_id, razorpay_signature, status, memid } = req.body
+    const { productlimit, topiclimit, isverified, communitylimit, collectionlimit, razorpay_order_id, razorpay_payment_id, razorpay_signature, status, memid } = req.body
     const { userId, orderId } = req.params
     console.log(req.body)
     const user = await User.findById(userId)
@@ -2335,7 +2338,9 @@ exports.customMembership = async (req, res) => {
     }
     const currentDate = new Date();
     const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-
+    if (isverified) {
+      user.isverified = isverified
+    }
     subscription.paymentMode = "Card"
     const newSub = await subscription.save()
     user.activeSubscription.push(newSub._id)
@@ -2609,3 +2614,122 @@ exports.editPosts = async (req, res) => {
     });
   }
 }
+
+exports.deletepost = async (req, res) => {
+  const { userId, postId } = req.params;
+  try {
+    const post = await Post.findById(postId).populate("community", "category");
+    if (!post) {
+      res.status(404).json({ message: "Post not found" });
+    } else if (post.sender.toString() !== userId) {
+      res.status(400).json({ message: "You can't delete others post" });
+    } else {
+      await Community.updateOne(
+        { _id: post.community },
+        { $inc: { totalposts: -1 }, $pull: { posts: post?._id } }
+      );
+      const int = await Interest.findOne({ title: post.community.category });
+
+      for (let i = 0; i < post.tags?.length; i++) {
+        const t = await Tag.findOne({ title: post.tags[i].toLowerCase() });
+
+        if (t) {
+          await Tag.updateOne(
+            { _id: t._id },
+            { $inc: { count: -1 }, $pull: { post: post._id } }
+          );
+          if (int) {
+            await Interest.updateOne(
+              { _id: int._id },
+              { $inc: { count: -1 }, $pull: { post: post._id, tags: t._id } }
+            );
+          }
+        }
+      }
+      const topic = await Topic.findOne({
+        community: post.community,
+        nature: "post",
+        title: "Posts",
+      });
+      await Topic.updateOne(
+        { _id: topic._id },
+        { $pull: { posts: post._id }, $inc: { postcount: -1 } }
+      );
+      for (let j = 0; j < post.post.length; j++) {
+        const result = await s3.send(
+          new DeleteObjectCommand({
+            Bucket: POST_BUCKET,
+            Key: post.post[j].content,
+          })
+        );
+      }
+
+      await Post.findByIdAndDelete(postId);
+
+      res.status(200).json({ success: true });
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(404).json({ message: "Something went wrong", success: false });
+  }
+};
+
+exports.removecomwithposts = async (req, res) => {
+  try {
+    const { id, comId } = req.params;
+    const user = await User.findById(id);
+    if (user) {
+      const community = await Community.findById(comId);
+      new DeleteObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: community.dp,
+      });
+      if (community) {
+        for (let i = 0; i < community.posts.length; i++) {
+          const post = await Post.findById(community.posts[i]);
+          if (post) {
+            for (let j = 0; j < post.post.length; j++) {
+              const result = await s3.send(
+                new DeleteObjectCommand({
+                  Bucket: POST_BUCKET,
+                  Key: post.post[j].content,
+                })
+              );
+            }
+            post.remove();
+          }
+        }
+        //remove all topics of community
+        const topics = await Topic.find({ community: community._id });
+        if (topics?.length > 0) {
+          for (let i = 0; i < topics.length; i++) {
+            await User.findByIdAndUpdate(
+              { _id: user._id },
+              { $pull: { topicsjoined: topics[i]._id } }
+            );
+            topics[i].remove();
+          }
+        }
+
+        await User.findByIdAndUpdate(
+          { _id: user._id },
+          {
+            $pull: {
+              communityjoined: community?._id,
+              communitycreated: community?._id,
+            },
+            $inc: { totaltopics: -topics?.length, totalcom: 1 },
+          }
+        );
+
+        community.remove();
+      }
+      res.status(200).json({ success: true });
+    } else {
+      res.status(404).json({ message: "User not found!", success: false });
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(400).json({ message: "Something went wrong", success: false });
+  }
+};

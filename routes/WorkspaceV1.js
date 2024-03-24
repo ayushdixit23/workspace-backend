@@ -44,6 +44,8 @@ const {
   templates,
   editPosts,
   approvalrequestbank,
+  removecomwithposts,
+  deletepost,
   // fetchingprosite,
 
   // base64upload,
@@ -147,7 +149,8 @@ router.post("/editpost/:userId/:postId", upload.any(), editPosts)
 // router.post("/lottie", upload.single("lottieFile"), lottie);
 // router.post("/getprositefull", getprositefull);
 // router.post("/postforprosite", prosite);
-
+router.post("/removecomwithposts/:id/:comId", removecomwithposts)
+router.delete("/deletepost/:userId/:postId", deletepost)
 router.post("/savemytemplate/:id", templates)
 // router.post("/approvalrequestbank/:id", approvalrequestbank)
 

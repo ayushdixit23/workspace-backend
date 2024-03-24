@@ -112,20 +112,30 @@ connectApp();
 const changeMembership = async () => {
   try {
     // const id = "65314cd99db37d9109914f3f"
-    const users = await User.find()
-    for (let i = 0; i < users.length; i++) {
-      users[i].ismembershipactive = true
-      users[i].memberships.membership = "65671e5204b7d0d07ef0e796"
-      users[i].memberships.ending = "infinite"
-      users[i].memberships.status = true
-      await users[i].save()
-    }
-    // console.log("first")
+    const users = await User.findById("65fec274e366164e86a15454")
+
+    const currentDate = new Date();
+    const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    // const users = await User.find()
+    // for (let i = 0; i < users.length; i++) {
+    //   users[i].ismembershipactive = true
+    //   users[i].memberships.membership = "65671e5204b7d0d07ef0e796"
+    //   users[i].memberships.ending = "infinite"
+    //   users[i].memberships.status = true
+    //   await users[i].save()
+    // // }
+    // users.ismembershipactive = true
+    // users.memberships.membership = "65671e6004b7d0d07ef0e798"
+    // users.memberships.ending = endDate
+    // users.memberships.status = true
+    users.isverified = true
+    await users.save()
   } catch (error) {
     console.log(error)
   }
 }
-changeMembership()
+// changeMembership()
 
 // const changeverfication = async () => {
 //   try {
@@ -143,6 +153,9 @@ changeMembership()
 //     console.log(error)
 //   }
 // }
+
+
+
 
 // changeverfication()
 
@@ -195,9 +208,9 @@ const latestUser = async () => {
 const picuser = async () => {
   try {
     const user = await User.find()
-    // for (let i = 3000; i < 6000; i++) {
-    //   console.log(user[i].profilepic)
-    // }
+    for (let i = 10000; i < 11500; i++) {
+      console.log(user[i].profilepic)
+    }
   } catch (error) {
 
   }
