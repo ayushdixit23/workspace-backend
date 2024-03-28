@@ -976,12 +976,8 @@ exports.getallposts = async (req, res) => {
 // Store API =>
 // store registration
 exports.registerstore = async (req, res) => {
-
   try {
     const { userId } = req.params;
-    console.log(userId, "id", typeof userId)
-    console.log(req.body, "body")
-
     const {
       buildingno,
       postal,
@@ -1044,7 +1040,6 @@ exports.registerstore = async (req, res) => {
         coordinates: {
           latitude,
           longitude,
-
           accuracy,
         },
       }];
@@ -1070,22 +1065,43 @@ exports.registerstore = async (req, res) => {
       if (validToCreateStore) {
 
         user.storeAddress = finaladdress
-        const request = new Request({
-          userid: userId,
-          type: "store",
-          storeDetails: {
-            buildingno: buildingno,
-            city: city,
-            state: state,
-            postal: postal,
-            landmark: landmark,
-            gst: gst ? gst : null,
-            businesscategory: businesscategory,
-            documenttype: documenttype.toString(),
-            documentfile: objectName,
-          }
-        })
+
+        let request = await Request.findOne({ userid: userId })
+
+        if (!request) {
+          request = new Request({
+            userid: userId,
+            type: "store",
+            storeDetails: {
+              buildingno: buildingno,
+              city: city,
+              state: state,
+              postal: postal,
+              landmark: landmark,
+              gst: gst ? gst : null,
+              businesscategory: businesscategory,
+              documenttype: documenttype.toString(),
+              documentfile: objectName,
+            }
+          })
+          await request.save()
+        }
+
+        request.type = "store"
+        request.storeDetails = {
+          buildingno: buildingno,
+          city: city,
+          state: state,
+          postal: postal,
+          landmark: landmark,
+          gst: gst ? gst : null,
+          businesscategory: businesscategory,
+          documenttype: documenttype.toString(),
+          documentfile: objectName,
+        }
+
         await request.save()
+
         user.isStoreVerified = false
         await user.save()
         res.status(200).json({ success: true });
@@ -1488,7 +1504,7 @@ exports.fetchallorders = async (req, res) => {
     const user = await User.findById(id);
     if (user) {
       const store = user.storeAddress.length;
-      const storeexistornot = store.length > 0 ? true : false
+      const storeexistornot = store > 0 ? true : false
       const isStoreVerified = user.isStoreVerified
       const orders = await SellerOrder.find({ sellerId: user._id })
         .populate("productId")
@@ -1992,7 +2008,10 @@ exports.earnings = async (req, res) => {
     }
     res.status(200).json({ success: true, earningStats, length: prd.length })
   } catch (err) {
-    ;
+    res.status(400).json({
+      success: false, message
+        : "Something went wrong"
+    });
   }
 };
 
@@ -2468,6 +2487,7 @@ exports.fetchCommunityStats = async (req, res) => {
         category: d?.category,
         dps: process.env.URL + d?.dp,
         members: d?.memberscount,
+        type: d?.type,
         engagementrate: avgeng[i]
       })
     })

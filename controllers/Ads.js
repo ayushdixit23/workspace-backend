@@ -2532,7 +2532,8 @@ exports.loginwithgrovyo = async (req, res) => {
       value = f
     }
     if (!user) {
-      return res.status(400).json({ success: false, message: "User not Found" })
+      
+      return res.status(404).json({ success: false, message: "User not Found" })
     }
 
     function generateOTP() {
@@ -2566,7 +2567,7 @@ exports.loginwithgrovyo = async (req, res) => {
       };
       const m = new Message(data);
       await m.save();
-
+if(user.notificationtoken){
       const msg = {
         notification: {
           title: "Grovyo",
@@ -2602,6 +2603,7 @@ exports.loginwithgrovyo = async (req, res) => {
         .catch((error) => {
           console.log("Error sending message:", error);
         });
+      }
     } else {
       const conv = new Conversation({
         members: [grovyo._id, user._id],
@@ -2633,6 +2635,7 @@ exports.loginwithgrovyo = async (req, res) => {
       const m = new Message(data);
       await m.save();
 
+      if(user.notificationtoken){
       const msg = {
         notification: {
           title: "Grovyo",
@@ -2667,8 +2670,9 @@ exports.loginwithgrovyo = async (req, res) => {
         })
         .catch((error) => {
           console.log("Error sending message:", error);
-        });
+        });}
     }
+   
     res.status(200).json({ success: true, logwithidentity, value })
   } catch (error) {
     console.log(error)

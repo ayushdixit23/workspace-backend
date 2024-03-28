@@ -81,9 +81,12 @@ app.use("/api/v1", prosRoutes)
 const connectDB = async () => {
   try {
     mongoose.set("strictQuery", false);
-    mongoose.connect(process.env.DATABASE).then(() => {
+    mongoose.connect(process.env.PRODDB).then(() => {
       console.log("DB is connected");
     });
+    // mongoose.connect(process.env.DATABASE).then(() => {
+    //   console.log("DB is connected");
+    // });  
     // mongoose
     //   .connect(
     //     "mongodb+srv://fsayush100:shreyansh7@cluster0.mrnejwh.mongodb.net/your-database-name?retryWrites=true&w=majority"
@@ -153,8 +156,6 @@ const changeMembership = async () => {
 //     console.log(error)
 //   }
 // }
-
-
 
 
 // changeverfication()
@@ -236,18 +237,17 @@ const encryptaes = (data) => {
 // const adver = async () => {
 //   try {
 //     const advertiser = new Advertiser({
-//       userid: "658ef83e30c7efed39dbb06d",
-//       firstname: "Animal",
-//       lastname: "Janwar",
+//       userid: "65a666a3e953a4573e6c7ecf",
+//       firstname: "Grovyo",
+//       lastname: "Ads",
 //       type: "Individual",
 //       phone: "1234567891",
-//       email: "div@gmail.com",
+//       email: "grovyoinc@gmail.com",
 //       password: "12345678",
-//       retypepassword: "12345678",
-
+//       retypepassword: "12345678"
 //     })
 //     const ad = await advertiser.save()
-//     const user = await User.findById("658ef83e30c7efed39dbb06d")
+//     const user = await User.findById("65a666a3e953a4573e6c7ecf")
 //     user.advertiserid = ad._id
 //     await user.save()
 
@@ -274,3 +274,33 @@ const encryptaes = (data) => {
 // }
 
 // router.get("/fetchinterest/:id", userInterest)
+
+const addres = async () => {
+  try {
+    const user = await User.findById("654fdd2a787d1b672bf37231")
+    if (user) {
+      const address = [{
+        buildingno: "Mall road",
+        city: "Kanpur",
+        state: "Uttar Pradesh",
+        postal: 208001,
+        landmark: "Gagan Plaza",
+        gst: "",
+        businesscategory: "Retail",
+        documenttype: "12345678",
+        documentfile: "1710834171653_3b247b84-ac78-4393-83ac-73ee52cb8a68_shopping.jpg",
+        coordinates: {
+          latitude: 20,
+          longitude: 21,
+          altitude: 100,
+        },
+      },]
+      user.storeAddress = address
+      await user.save()
+    }
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// addres()
