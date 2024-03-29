@@ -8,8 +8,8 @@ const Monetization = new mongoose.Schema({
 		type: String,
 		enum: ["pending", "approved", "rejected"],
 		default: "pending",
-	}
-
+	},
+	reapplydate: { type: Date }
 }, { timestamps: true })
 
 module.exports = new mongoose.model("Monetization", Monetization)

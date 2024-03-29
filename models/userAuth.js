@@ -97,7 +97,7 @@ const userSchema = new mongoose.Schema(
     popularity: { type: String, default: "0%" },
     totalmembers: { type: Number, default: 0 },
     badgescount: { type: Number, default: 0 },
-  
+
     currentmoney: { type: Number, default: 0 },
     paymenthistory: [{ type: ObjectId, ref: "Payment" }],
     moneyearned: { type: Number, default: 0 },
@@ -316,6 +316,7 @@ const userSchema = new mongoose.Schema(
     contents: [{ type: String }],
     bank: {
       bankname: { type: String },
+      personname: { type: String },
       branchname: { type: String },
       accountno: { type: String },
       IFSCcode: {

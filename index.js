@@ -42,6 +42,7 @@ const Advertiser = require("./models/Advertiser");
 const Ads = require("./models/Ads");
 const Posts = require("./models/post");
 const Analytics = require("./models/Analytics");
+const Membership = require("./models/membership");
 
 
 require("dotenv").config();
@@ -115,7 +116,7 @@ connectApp();
 const changeMembership = async () => {
   try {
     // const id = "65314cd99db37d9109914f3f"
-    const users = await User.findById("65fec274e366164e86a15454")
+    const users = await User.findById("65b68725750001cd4dc81483")
 
     const currentDate = new Date();
     const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -128,11 +129,11 @@ const changeMembership = async () => {
     //   users[i].memberships.status = true
     //   await users[i].save()
     // // }
-    // users.ismembershipactive = true
-    // users.memberships.membership = "65671e6004b7d0d07ef0e798"
-    // users.memberships.ending = endDate
-    // users.memberships.status = true
-    users.isverified = true
+    users.ismembershipactive = true
+    users.memberships.membership = "65671e5204b7d0d07ef0e796"
+    users.memberships.ending = endDate
+    users.memberships.status = true
+    // users.isverified = true
     await users.save()
   } catch (error) {
     console.log(error)
@@ -160,37 +161,20 @@ const changeMembership = async () => {
 
 // changeverfication()
 
-// const addData = async () => {
-//   try {
-//     const id = "65d9980cac767b39653b932a"
-//     const analytics = new Analytics({
-//       id,
-//       date: '07/03/2024',
-//       Sales: 87
-//     })
-//     await analytics.save()
-//     console.log("done")
-//   } catch (error) {
-//     console.log(error)
-//   }
-// }
-
-// addData()
-
-// const decryptaes = (data) => {
-//   try {
-//     const encryptedBytes = aesjs.utils.hex.toBytes(data);
-//     const aesCtr = new aesjs.ModeOfOperation.ctr(
-//       JSON.parse(process.env.key),
-//       new aesjs.Counter(5)
-//     );
-//     const decryptedBytes = aesCtr.decrypt(encryptedBytes);
-//     const decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
-//     return decryptedText;
-//   } catch (e) {
-//     console.log(e);
-//   }
-// };
+const decryptaes = (data) => {
+  try {
+    const encryptedBytes = aesjs.utils.hex.toBytes(data);
+    const aesCtr = new aesjs.ModeOfOperation.ctr(
+      JSON.parse(process.env.key),
+      new aesjs.Counter(5)
+    );
+    const decryptedBytes = aesCtr.decrypt(encryptedBytes);
+    const decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
+    return decryptedText;
+  } catch (e) {
+    console.log(e);
+  }
+};
 
 const latestUser = async () => {
   try {
@@ -275,32 +259,59 @@ const encryptaes = (data) => {
 
 // router.get("/fetchinterest/:id", userInterest)
 
-const addres = async () => {
+// const addres = async () => {
+//   try {
+//     const user = await User.findById("654fdd2a787d1b672bf37231")
+//     if (user) {
+//       const address = [{
+//         buildingno: "Mall road",
+//         city: "Kanpur",
+//         state: "Uttar Pradesh",
+//         postal: 208001,
+//         landmark: "Gagan Plaza",
+//         gst: "",
+//         businesscategory: "Retail",
+//         documenttype: "12345678",
+//         documentfile: "1710834171653_3b247b84-ac78-4393-83ac-73ee52cb8a68_shopping.jpg",
+//         coordinates: {
+//           latitude: 20,
+//           longitude: 21,
+//           altitude: 100,
+//         },
+//       },]
+//       user.storeAddress = address
+//       await user.save()
+//     }
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
+
+
+// addres()
+
+const members = async () => {
   try {
-    const user = await User.findById("654fdd2a787d1b672bf37231")
-    if (user) {
-      const address = [{
-        buildingno: "Mall road",
-        city: "Kanpur",
-        state: "Uttar Pradesh",
-        postal: 208001,
-        landmark: "Gagan Plaza",
-        gst: "",
-        businesscategory: "Retail",
-        documenttype: "12345678",
-        documentfile: "1710834171653_3b247b84-ac78-4393-83ac-73ee52cb8a68_shopping.jpg",
-        coordinates: {
-          latitude: 20,
-          longitude: 21,
-          altitude: 100,
-        },
-      },]
-      user.storeAddress = address
-      await user.save()
-    }
+    // const s = new Membership({
+    //   title: "Plus",
+    //   productlimit: 5,
+    //   topiclimit: 1,
+    //   communitylimit: 1,
+    //   collectionlimit: 1,
+    //   deliverylimit: 10,
+    // })
+
+    const s = await Membership.findById("65671ded04b7d0d07ef0e794")
+    s.productlimit = 10
+    s.topiclimit = 3
+    s.communitylimit = 3
+    s.deliverylimit = 100
+    s.collectionlimit = 3
+
+    await s.save()
+    console.log("done")
   } catch (error) {
     console.log(error)
   }
 }
-
-// addres()
+// members()

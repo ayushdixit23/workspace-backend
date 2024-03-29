@@ -76,7 +76,7 @@ const instance = new Razorpay({
 
 function generateAccessToken(data) {
   const access_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
-    expiresIn: "2h",
+    expiresIn: "5d",
   });
   return access_token;
 }
@@ -330,8 +330,9 @@ exports.refresh = async (req, res) => {
             memberships: memberships.title
           };
           const access_token = generateAccessToken(data);
+          const refresh_token = generateRefreshToken(data)
 
-          res.status(200).json({ success: true, access_token });
+          res.status(200).json({ success: true, access_token, refresh_token });
         } catch (err) {
           res.status(400).json({ success: false });
         }
@@ -679,6 +680,7 @@ exports.createcom = async (req, res) => {
   const { title, desc, type, category, iddata } = req.body;
   const { userId } = req.params;
   const image = req.file;
+  console.log(type, "type")
   const uuidString = uuid();
   if (req.canCreateCommunity) {
     if (!image) {
@@ -710,6 +712,7 @@ exports.createcom = async (req, res) => {
           title: "Posts",
           creator: userId,
           community: savedcom._id,
+          nature: "post"
         });
         await topic1.save();
 
@@ -717,6 +720,7 @@ exports.createcom = async (req, res) => {
           title: "All",
           creator: userId,
           community: savedcom._id,
+          nature: "chat"
         });
         await topic2.save();
 
@@ -833,6 +837,7 @@ exports.createcom = async (req, res) => {
           creator: userId,
           dp: objectName,
           desc: desc,
+          type: type,
           category: category,
         });
         const savedcom = await community.save();
@@ -840,12 +845,15 @@ exports.createcom = async (req, res) => {
           title: "Posts",
           creator: userId,
           community: savedcom._id,
+          nature: "post"
         });
         await topic1.save();
+
         const topic2 = new Topic({
           title: "All",
           creator: userId,
           community: savedcom._id,
+          nature: "chat"
         });
         await topic2.save();
 
@@ -907,6 +915,7 @@ exports.getposts = async (req, res) => {
       _id: comid,
     }).populate("posts");
     if (com && com.posts) {
+
       const postdetails = com.posts.map((post) => {
         return {
           post,
@@ -937,9 +946,11 @@ exports.getallposts = async (req, res) => {
       const postId = community.posts[i]
       const post = await Post.findById(postId)
       if (post.kind === "post") {
-
-        let final = post.views <= 0 ? 0 : ((parseInt(post?.sharescount) + parseInt(post?.likes) + parseInt(post?.totalcomments)) / parseInt(post?.views)) * 100;
-
+        console.log(
+          post.views, post.sharescount, post.likes, post.totalcomments, "fghjk"
+        )
+        let final = post.views <= 0 ? 0 : (parseInt(post?.likes) / parseInt(post?.views)) * 100;
+        console.log(final)
         let postdp
         let video
         if (post.post.length === 0) {
@@ -964,6 +975,8 @@ exports.getallposts = async (req, res) => {
         postsArr.push(postswithdp)
       }
     }
+
+
 
     const posts = postsArr.reverse()
     res.status(200).json({ success: true, posts })
@@ -1398,19 +1411,23 @@ exports.updateproduct = async (req, res) => {
     const { name, price, desc, discountedprice, quality, image, weight, isphysical } = req.body
     const { userId, colid, productId } = req.params;
     let imageArr
-    if (typeof image == "string") {
-      imageArr = [image];
-    } else {
-      imageArr = image
-    }
-    console.log(imageArr)
+
     let pos = [];
     let im = []
-    for (let i = 0; i < imageArr.length; i++) {
-      // const s = imageArr[i].split("?")[0].split("/").pop()
-      const s = imageArr[i].split("/").pop()
-      im.push(s)
+    if (image) {
+
+      if (typeof image == "string") {
+        imageArr = [image];
+      } else {
+        imageArr = image
+      }
+      for (let i = 0; i < imageArr.length; i++) {
+        // const s = imageArr[i].split("?")[0].split("/").pop()
+        const s = imageArr[i].split("/").pop()
+        im.push(s)
+      }
     }
+
     if (req.files && req.files.length > 0) {
       for (let i = 0; i < req?.files?.length; i++) {
         const uuidString = uuid();
@@ -1638,7 +1655,7 @@ exports.profileinfo = async (req, res) => {
         user.profilepic = objectName
       }
       user.fullname = name;
-      user.phone = newPhone;
+      user.phone = 91 + newPhone;
       user.email = newEmail;
       user.username = newUsername;
       user.desc = bio;
@@ -1983,14 +2000,13 @@ exports.earnings = async (req, res) => {
     const bankapp = await Approvals.findOne({ id: user._id, type: "bank" })
 
     const checkValidity = () => {
-      if (user.bank.IFSCcode && user.bank.accountno && user.bank.bankname && user.bank.branchname && bankapp.status === "approved") {
+      if (user.bank.IFSCcode && user.bank.accountno && user.bank.personname && user.bank.bankname && user.bank.branchname && bankapp.status === "approved") {
         return "approved"
-      } else if (user.bank.IFSCcode && user.bank.accountno && user.bank.bankname && user.bank.branchname && bankapp.status === "pending") {
+      } else if (user.bank.IFSCcode && user.bank.accountno && user.bank.personname && user.bank.bankname && user.bank.branchname && bankapp.status === "pending") {
         return "pending"
-      } else if (user.bank.IFSCcode && user.bank.accountno && user.bank.bankname && user.bank.branchname && bankapp.status === "rejected") {
+      } else if (user.bank.IFSCcode && user.bank.accountno && user.bank.personname && user.bank.bankname && user.bank.branchname && bankapp.status === "rejected") {
         return "rejected"
       } else {
-        console.log("rn")
         return "nothing"
       }
     }
@@ -2052,8 +2068,6 @@ exports.membershipbuy = async (req, res) => {
         }
       }
     }
-
-
     const membership = await Membership.findById(memid)
     const newamount = amount.split("₹")[1]
     const parseAmout = Number(newamount)
@@ -2189,19 +2203,40 @@ exports.memfinalize = async (req, res) => {
 exports.addbank = async (req, res) => {
   try {
     const { id } = req.params
-    const { bankname, branchname, accountno, IFSCcode } = req.body
+    const { bankname, branchname, accountno, IFSCcode, personname } = req.body
     const user = await User.findById(id)
     if (!user) {
       return res.status(400).json({ success: false, message: "User Not Found" })
     }
-    const approval = await Approvals({
-      id,
-      type: "bank",
-    })
-    await approval.save()
+    let approval = await Approvals.findOne({ id })
+    if (!approval) {
+      approval = await Approvals({
+        id,
+        type: "bank",
+        bank: {
+          bankname,
+          personname,
+          branchname,
+          accountno,
+          IFSCcode
+        },
+      })
+      await approval.save()
+    } else {
+      const bank = {
+        bankname,
+        personname,
+        branchname,
+        accountno,
+        IFSCcode
+      }
+      approval.bank = bank
+      await approval.save()
+    }
     user.isbankverified = false
     user.bank.bankname = bankname
     user.bank.branchname = branchname
+    user.bank.personname = personname
     user.bank.accountno = accountno
     user.bank.IFSCcode = IFSCcode
     const newuser = await user.save()
@@ -2360,7 +2395,7 @@ exports.customMembership = async (req, res) => {
     if (isverified) {
       user.isverified = isverified
     }
-    subscription.paymentMode = "Card"
+    // subscription.paymentMode = "Card"
     const newSub = await subscription.save()
     user.activeSubscription.push(newSub._id)
     user.ismembershipactive = true
@@ -2435,8 +2470,6 @@ exports.fetchCommunityStats = async (req, res) => {
       const top = (await Topic.find({ community: community[i]._id })).filter((d) => {
         return d.type.toLowerCase() === "paid";
       });
-
-      console.log(top)
       const topics = top.map((d) => {
         return {
           title: d?.title,
@@ -2474,7 +2507,9 @@ exports.fetchCommunityStats = async (req, res) => {
     }
 
     const communities = community.map((d, i) => {
-      const monStatus = monetization.find((f) => f.comid === d?._id);
+      const monStatus = monetization.find((f) => f.community.toString() === d?._id.toString());
+
+
       return ({
         id: d?._id,
         topics: d?.topics.length,
@@ -2482,6 +2517,8 @@ exports.fetchCommunityStats = async (req, res) => {
         post: d?.posts.length,
         topic: topic[i],
         monstatus: monStatus ? monStatus.status : null,
+        reason: monStatus ? monStatus.text : null,
+        reapplydate: monStatus ? monStatus.reapplydate : null,
         name: d?.title,
         desc: d?.desc,
         category: d?.category,
@@ -2495,6 +2532,7 @@ exports.fetchCommunityStats = async (req, res) => {
     const store = user.storeAddress.length > 0 ? true : false
     res.status(200).json({ success: true, communities, store })
   } catch (error) {
+    console.log(error)
     res.status(400).json({ success: false, message: error.message })
   }
 }
@@ -2505,12 +2543,18 @@ exports.monetizationWorkSpace = async (req, res) => {
     if (!id && !comid) {
       return res.status(400).json({ success: false, message: "User Or Communnity Not Found" })
     }
-    const monetization = new Montenziation({
-      creator: id,
-      community: comid,
-      status: "pending"
-    })
-    await monetization.save()
+    let monetization = await Montenziation.findOne({ community: comid })
+    if (!monetization) {
+      monetization = new Montenziation({
+        creator: id,
+        community: comid,
+        status: "pending"
+      })
+      await monetization.save()
+    } else {
+      monetization.status = "pending"
+      await monetization.save()
+    }
     res.status(200).json({ success: true })
   } catch (error) {
     res.status(400).json({ success: false })

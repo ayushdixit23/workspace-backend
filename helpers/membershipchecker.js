@@ -14,7 +14,7 @@ exports.middlewareMembership = async (req, res, next) => {
 		const membershipEndingDate = new Date(user.memberships.ending);
 
 		if (currentDay < membershipEndingDate.getTime() || end === "infinite") {
-			if (membership.title !== "Custom") {
+			if (membership.title !== "Premium") {
 				const productlimit = membership.productlimit
 				const topiclimit = membership.topiclimit
 				const communitylimit = membership.communitylimit
@@ -63,13 +63,12 @@ exports.middlewareMembership = async (req, res, next) => {
 				req.canCreateProduct = canCreateProduct
 				req.cancreatetopic = cancreatetopic
 				next()
-			} else {
-				console.log("custom hua run")
+			}
+			else {
 				const productlimit = user.limits.productlimit
 				const topiclimit = user.limits.topiclimit
 				const communitylimit = user.limits.communitylimit
 				const collectionlimit = user.limits.collectionlimit
-
 
 				let canCreateCollection;
 				let canCreateProduct;
