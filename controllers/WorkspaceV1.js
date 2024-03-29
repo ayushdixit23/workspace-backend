@@ -2123,7 +2123,7 @@ exports.membershipbuy = async (req, res) => {
 exports.memfinalize = async (req, res) => {
   try {
     const { id, orderId } = req.params
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, status, paymentMethod, memid } = req.body
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, status, paymentMethod, memid, period } = req.body
     const user = await User.findById(id)
     const subscription = await Subscriptions.findOne({ orderId: orderId })
     const isValid = validatePaymentVerification(
@@ -2145,7 +2145,12 @@ exports.memfinalize = async (req, res) => {
       }
     }
     const currentDate = new Date();
-    const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+    let endDate
+    if (period == "year") {
+      endDate = new Date(currentDate.getTime() + (365.25 * 24 * 60 * 60 * 1000));
+    } else {
+      endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
 
     subscription.paymentMode = "Card"
     const newSub = await subscription.save()
