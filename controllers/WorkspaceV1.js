@@ -486,6 +486,10 @@ exports.analyticsuser = async (req, res) => {
               stats: reversedStats,
               location: actualloc,
               totalmembers: f?.memberscount,
+              returningvisitor: f?.returningvisitor,
+              newvisitor: f?.newvisitor,
+              uniquemembers: f?.uniquemembers,
+              activemembers: f?.activemembers,
               visitors: f?.visitors,
               paidmember: f?.paidmemberscount,
               agerange: sendAge,
@@ -2213,7 +2217,7 @@ exports.addbank = async (req, res) => {
     if (!user) {
       return res.status(400).json({ success: false, message: "User Not Found" })
     }
-    let approval = await Approvals.findOne({ id })
+    let approval = await Approvals.findOne({ id, type: "bank" })
     if (!approval) {
       approval = await Approvals({
         id,
