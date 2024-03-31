@@ -43,6 +43,7 @@ const Ads = require("./models/Ads");
 const Posts = require("./models/post");
 const Analytics = require("./models/Analytics");
 const Membership = require("./models/membership");
+const Post = require("./models/post");
 
 
 require("dotenv").config();
@@ -315,3 +316,16 @@ const members = async () => {
   }
 }
 // members()
+
+const ab = async () => {
+  try {
+    const post = await Post.findOne({ title: "test" })
+    console.log("first", post.desc)
+    await post.delete()
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+
+// ab()

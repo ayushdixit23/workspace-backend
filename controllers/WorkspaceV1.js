@@ -218,7 +218,6 @@ exports.checkqr = async (req, res) => {
     const { id } = req.body;
     const user = await User.findById(id)
     const memberships = await Membership.findById(user.memberships.membership)
-
     if (user) {
       const sessionId = generateSessionId();
       const dp =
@@ -630,13 +629,13 @@ exports.allcoms = async (req, res) => {
       "fullname"
     );
     const dps = [];
-
+    const topicPost = []
     let avgeng = [];
     for (let i = 0; i < Co.length; i++) {
-
-      const abc =
-        process.env.URL + Co[i].dp;
-
+      const topic = await Topic.findOne({ community: Co[i]._id, title: "Posts" })
+      const topicId = { topicid: topic._id }
+      topicPost.push(topicId)
+      const abc = process.env.URL + Co[i].dp;
       dps.push(abc);
     }
 
@@ -664,11 +663,13 @@ exports.allcoms = async (req, res) => {
       avgeng.push(avg)
     }
     dps.reverse();
+    const topicPosts = topicPost.reverse()
     const dpdata = dps;
     const comData = Com;
     const avgEngData = avgeng
     const merged = dpdata.map((d, i) => ({
       dps: d,
+      topicId: topicPosts[i],
       c: comData[i],
       avgeng: avgEngData[i]
     }));
@@ -963,9 +964,11 @@ exports.getallposts = async (req, res) => {
           if (post.post[0].type.startsWith("video")) {
             if (!post.post[0].thumbnail) {
               postdp = process.env.POST_URL + post.post[0].content
+              thumbnail = process.env.POST_URL + post.post[0].thumbnail
               video = true
             } else {
               postdp = process.env.POST_URL + post.post[0].thumbnail
+              content = process.env.POST_URL + post.post[0].content
               video = false
             }
           } else {
@@ -974,13 +977,11 @@ exports.getallposts = async (req, res) => {
           }
         }
         const postswithdp = {
-          post, postdp, engrate: Math.round(final), video
+          post, postdp, engrate: Math.round(final), video, content
         }
         postsArr.push(postswithdp)
       }
     }
-
-
 
     const posts = postsArr.reverse()
     res.status(200).json({ success: true, posts })
@@ -2167,9 +2168,7 @@ exports.memfinalize = async (req, res) => {
       paymentdetails: { mode: "online", amount: subscription.amount }
     }
     const membership = await Membership.findById(memid)
-    if (membership.title === "Premium") {
-      user.isverified = true
-    }
+    user.isverified = true
     const saveduser = await user.save()
     const sessionId = generateSessionId()
     const dp =

@@ -12,6 +12,9 @@ const Ads = require("../models/Ads");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/cloudfront-signer");
 const fs = require("fs");
+const admin = require("../fireb")
+const Tag = require("../models/Tag");
+const Interest = require("../models/Interest");
 require("dotenv").config();
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
@@ -1170,7 +1173,7 @@ exports.postanything = async (req, res) => {
       });
     }
 
-    const { title, desc, tags } = req.body;
+    const { title, desc, tags, thumbnail } = req.body;
     const tag = tags.split(",");
     const user = await User.findById(userId);
     const community = await Community.findById(comId);
@@ -1226,6 +1229,182 @@ exports.postanything = async (req, res) => {
   } catch (e) {
     console.log(e);
     res.status(500).json({ message: "Something went wrong", success: false });
+  }
+};
+
+exports.postanythings3 = async (req, res) => {
+  const { userId, comId, topicId } = req.params;
+  try {
+    if (req.fileValidationError) {
+      return res.status(400).json({
+        message: "File size limit exceeded",
+        success: false,
+      });
+    }
+
+    const { title, desc, tags, category, thumbnail } = req.body;
+    const tag = tags.split(",");
+
+    const user = await User.findById(userId);
+    const community = await Community.findById(comId);
+    const topic = await Topic.findById(topicId);
+
+    if (user && community && topic && req.files.length > 0) {
+      let pos = [];
+      if (thumbnail) {
+        let thumbail = "";
+        let video = "";
+        for (let i = 0; i < req?.files?.length; i++) {
+          const uuidString = uuid();
+          const bucketName = "posts";
+          const objectName = `${Date.now()}${uuidString}${req.files[i].originalname
+            }`;
+
+          const result = await s3.send(
+            new PutObjectCommand({
+              Bucket: POST_BUCKET,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+
+          if (req.files[i].fieldname === "image") {
+            thumbail = objectName;
+          } else {
+            video = objectName;
+          }
+        }
+        pos.push({
+          content: video,
+          thumbnail: thumbail,
+          type: "video/mp4",
+        });
+      } else {
+        for (let i = 0; i < req?.files?.length; i++) {
+          const uuidString = uuid();
+          const bucketName = "posts";
+          const objectName = `${Date.now()}${uuidString}${req.files[i].originalname
+            }`;
+
+          const result = await s3.send(
+            new PutObjectCommand({
+              Bucket: POST_BUCKET,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+          //  const result = await uploader(req.files[i].buffer);
+          pos.push({ content: objectName, type: req.files[i].mimetype });
+        }
+      }
+      const post = new Post({
+        title,
+        desc,
+        community: comId,
+        sender: userId,
+        post: pos,
+        tags: tag,
+        topicId: topicId,
+      });
+      const savedpost = await post.save();
+
+      const int = await Interest.findOne({ title: category });
+
+      for (let i = 0; i < tag?.length; i++) {
+        const t = await Tag.findOne({ title: tag[i].toLowerCase() });
+
+        if (t) {
+          await Tag.updateOne(
+            { _id: t._id },
+            { $inc: { count: 1 }, $addToSet: { post: post._id } }
+          );
+          if (int) {
+            await Interest.updateOne(
+              { _id: int._id },
+              { $inc: { count: 1 }, $addToSet: { post: post._id, tags: t._id } }
+            );
+          }
+        } else {
+          const newtag = new Tag({
+            title: tag[i].toLowerCase(),
+            post: post._id,
+            count: 1,
+          });
+          await newtag.save();
+          if (int) {
+            await Interest.updateOne(
+              { _id: int._id },
+              {
+                $inc: { count: 1 },
+                $addToSet: { post: post._id, tags: newtag._id },
+              }
+            );
+          }
+        }
+      }
+
+      await Community.updateOne(
+        { _id: comId },
+        { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
+      );
+      await Topic.updateOne(
+        { _id: topic._id },
+        { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
+      );
+
+      let tokens = [];
+
+      for (let u of community.members) {
+        const user = await User.findById(u);
+
+        if (user.notificationtoken && user._id.toString() !== userId) {
+          if (user.notificationtoken) {
+            tokens.push(user.notificationtoken);
+          }
+        }
+      }
+
+      if (tokens?.length > 0) {
+        const timestamp = `${new Date()}`;
+        const msg = {
+          notification: {
+            title: `${community.title} - Posted!`,
+            body: `${post.title} `,
+          },
+          data: {
+            screen: "CommunityChat",
+            sender_fullname: `${user?.fullname}`,
+            sender_id: `${user?._id}`,
+            text: `${post.title}`,
+            comId: `${community?._id}`,
+            createdAt: `${timestamp}`,
+          },
+          tokens: tokens,
+        };
+
+        await admin
+          .messaging()
+          .sendMulticast(msg)
+          .then((response) => {
+            console.log("Successfully sent message");
+          })
+          .catch((error) => {
+            console.log("Error sending message:", error);
+          });
+      }
+      res.status(200).json({ savedpost, success: true });
+    } else {
+      res.status(404).json({
+        message:
+          "User or Community or Topic not found or no files where there!",
+        success: false,
+      });
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(400).json({ message: "Something went wrong", success: false });
   }
 };
 
