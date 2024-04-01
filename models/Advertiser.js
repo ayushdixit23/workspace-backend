@@ -39,7 +39,7 @@ const AdvertiserSchema = new mongoose.Schema(
       },
     ],
     verificationstatus: { type: String, default: "unverified" },
-    advertiserid: { type: String, unique: true },
+    advertiserid: { type: String },
     image: { type: String },
     taxinfo: { type: String },
     editcount: [{

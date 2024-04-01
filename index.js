@@ -217,30 +217,32 @@ const encryptaes = (data) => {
     console.log(e);
   }
 };
-// const pas = encryptaes("aryansh")
-// console.log(pas)
-// const adver = async () => {
-//   try {
-//     const advertiser = new Advertiser({
-//       userid: "65a666a3e953a4573e6c7ecf",
-//       firstname: "Grovyo",
-//       lastname: "Ads",
-//       type: "Individual",
-//       phone: "1234567891",
-//       email: "grovyoinc@gmail.com",
-//       password: "12345678",
-//       retypepassword: "12345678"
-//     })
-//     const ad = await advertiser.save()
-//     const user = await User.findById("65a666a3e953a4573e6c7ecf")
-//     user.advertiserid = ad._id
-//     await user.save()
 
-//     console.log("done")
-//   } catch (error) {
-//     console.log(error)
-//   }
-// }
+const adver = async () => {
+  try {
+
+    const advertiser = new Advertiser({
+      userid: "65d8f8e5677eef6864f0533e",
+      firstname: "Goswami",
+      lastname: "Somayaji",
+      type: "Individual",
+      image: "dpsb (24).jpg",
+      email: "goswami_somayaji87@gmail.com",
+      advertiserid: "1710233067849",
+      password: "12345678",
+      retypepassword: "12345678"
+    });
+
+    const ad = await advertiser.save()
+    const user = await User.findById("65d8f8e5677eef6864f0533e")
+    user.advertiserid = ad._id
+    await user.save()
+
+    console.log("done")
+  } catch (error) {
+    console.log(error)
+  }
+}
 
 // adver()
 
@@ -329,3 +331,16 @@ const ab = async () => {
 
 
 // ab()
+
+// const asb = async () => {
+//   try {
+//     const user = await User.findById("65d8f8e5677eef6864f0533e")
+
+//     const pas = decryptaes(user.passw)
+//     console.log(pas, "pas", user.passw, user.profilepic)
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
+
+// asb()
