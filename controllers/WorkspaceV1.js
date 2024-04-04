@@ -897,6 +897,7 @@ exports.createcom = async (req, res) => {
             $push: {
               topicsjoined: [topic1._id, topic2._id],
               communityjoined: savedcom._id,
+              communitycreated: savedcom._id
             },
             $inc: { totaltopics: 2, totalcom: 1 },
           }
