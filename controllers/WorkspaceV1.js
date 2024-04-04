@@ -584,7 +584,7 @@ exports.analyticsuser = async (req, res) => {
 
       res
         .status(200)
-        .json({ success: true, sales, storeLocation: actualStoreLoc, pieChart, commerged, promerged, postmerged });
+        .json({ success: true, sales, storeLocation: actualStoreLoc, pieChart, posts: posts.length, commerged, promerged, postmerged });
     }
   } catch (err) {
     ;
@@ -1971,10 +1971,12 @@ exports.checkStore = async (req, res) => {
       for (let i = 0; i < community.length; i++) {
         const post = await Post.find({ community: community[i]._id });
         data.push({
-          community: community[i].title,
+          community: community.length,
           posts: post.length
         });
       }
+
+      const post = await Post.find({ sender: user._id })
 
       const checkUser = () => data.some(d => d.community && d.posts > 0);
       const validToCreateStore = checkUser()
@@ -1983,9 +1985,9 @@ exports.checkStore = async (req, res) => {
       const foodlic = user.foodLicense
       const foodLicenceExist = foodlic ? true : false
       if (store > 0) {
-        return res.status(200).json({ exist: true, q: "collection", foodLicenceExist, validToCreateStore, isverified: user.isStoreVerified });
+        return res.status(200).json({ exist: true, q: "collection", foodLicenceExist, validToCreateStore, community: community.length, posts: post.length, isverified: user.isStoreVerified });
       } else {
-        return res.status(200).json({ exist: false, q: "store", foodLicenceExist, validToCreateStore, isverified: user.isStoreVerified });
+        return res.status(200).json({ exist: false, q: "store", foodLicenceExist, validToCreateStore, community: community.length, posts: post.length, isverified: user.isStoreVerified });
       }
     } else {
       return res.status(400).json({ message: "User Not Found" });

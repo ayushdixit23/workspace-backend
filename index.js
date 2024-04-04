@@ -332,15 +332,17 @@ const ab = async () => {
 
 // ab()
 
-// const asb = async () => {
-//   try {
-//     const user = await User.findById("65d8f8e5677eef6864f0533e")
+const asb = async () => {
+  try {
+    const user = await User.findById("65d8f8e5677eef6864f0533e")
 
-//     const pas = decryptaes(user.passw)
-//     console.log(pas, "pas", user.passw, user.profilepic)
-//   } catch (error) {
-//     console.log(error)
-//   }
-// }
+    const pas = decryptaes(
+      "1d1d5536ee897f0959"
+    )
+    console.log(pas, "pas", user.passw, user.profilepic)
+  } catch (error) {
+    console.log(error)
+  }
+}
 
-// asb()
+asb()
