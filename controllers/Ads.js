@@ -1358,7 +1358,7 @@ exports.addmoneytowallet = async (req, res) => {
         "merchantTransactionId":tId._id,
         "merchantUserId": user._id,
         "amount": amount,
-        "redirectUrl": "http://localhost:3000/main/wallet",
+        "redirectUrl": "https://ads.grovyo.com/main/wallet",
         "redirectMode": "REDIRECT",
         "callbackUrl": `https://work.grovyo.xyz/api/updatetransactionstatus/${id}/${tId._id}/${amount}`,
         "paymentInstrument": {
