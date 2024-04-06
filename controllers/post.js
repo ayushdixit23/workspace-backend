@@ -1164,7 +1164,7 @@ exports.updatesettings = async (req, res) => {
 //post anything
 exports.postanything = async (req, res) => {
   const { userId, comId } = req.params;
-  console.log(userId, comId)
+
   try {
     if (req.fileValidationError) {
       return res.status(400).json({
@@ -1174,58 +1174,61 @@ exports.postanything = async (req, res) => {
     }
 
     const { title, desc, tags, thumbnail } = req.body;
-    const tag = tags.split(",");
-    const user = await User.findById(userId);
-    const community = await Community.findById(comId);
-    const topic = await Topic.find({ community: community._id }).find({
-      title: "Posts",
-    });
 
-    if (user && community && topic && req.files.length > 0) {
-      let pos = [];
+    console.log(req.body, req.files)
+    // const tag = tags.split(",");
+    // const user = await User.findById(userId);
+    // const community = await Community.findById(comId);
+    // const topic = await Topic.find({ community: community._id }).find({
+    //   title: "Posts",
+    // });
 
-      for (let i = 0; i < req?.files?.length; i++) {
-        const uuidString = uuid();
-        const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname
-          }`;
-        const result = await s3.send(
-          new PutObjectCommand({
-            Bucket: POST_BUCKET,
-            Key: objectName,
-            Body: req.files[i].buffer,
-            ContentType: req.files[i].mimetype,
-          })
-        );
-        pos.push({ content: objectName, type: req.files[i].mimetype });
+    // if (user && community && topic && req.files.length > 0) {
+    //   let pos = [];
 
-      }
-      const post = new Post({
-        title,
-        desc,
-        community: comId,
-        topicId: topic[0]._id,
-        sender: userId,
-        post: pos,
-        tags: tag,
-      });
-      const savedpost = await post.save();
-      await Community.updateOne(
-        { _id: comId },
-        { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
-      );
+    //   for (let i = 0; i < req?.files?.length; i++) {
+    //     const uuidString = uuid();
+    //     const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname
+    //       }`;
+    //     const result = await s3.send(
+    //       new PutObjectCommand({
+    //         Bucket: POST_BUCKET,
+    //         Key: objectName,
+    //         Body: req.files[i].buffer,
+    //         ContentType: req.files[i].mimetype,
+    //       })
+    //     );
+    //     pos.push({ content: objectName, type: req.files[i].mimetype });
 
-      await Topic.updateOne(
-        { _id: topic[0]._id.toString() },
-        { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
-      );
-      res.status(200).json({ savedpost, success: true });
-    }
-    else {
-      res.status(404).json({
-        message: "User or Community not found or no files were there!",
-        success: false,
-      });
-    }
+    //   }
+    //   const post = new Post({
+    //     title,
+    //     desc,
+    //     community: comId,
+    //     topicId: topic[0]._id,
+    //     sender: userId,
+    //     post: pos,
+    //     tags: tag,
+    //   });
+    //   const savedpost = await post.save();
+    //   await Community.updateOne(
+    //     { _id: comId },
+    //     { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
+    //   );
+
+    //   await Topic.updateOne(
+    //     { _id: topic[0]._id.toString() },
+    //     { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
+    //   );
+    res.status(200).json({ success: true });
+    // res.status(200).json({ savedpost, success: true });
+    // }
+    // else {
+    //   res.status(404).json({
+    //     message: "User or Community not found or no files were there!",
+    //     success: false,
+    //   });
+    // }
   } catch (e) {
     console.log(e);
     res.status(500).json({ message: "Something went wrong", success: false });
@@ -1269,7 +1272,7 @@ exports.postanythings3 = async (req, res) => {
             })
           );
 
-          if (req.files[i].fieldname === "image") {
+          if (req.files[i].fieldname === "thumbnailImage") {
             thumbail = objectName;
           } else {
             video = objectName;
@@ -1402,6 +1405,7 @@ exports.postanythings3 = async (req, res) => {
         success: false,
       });
     }
+
   } catch (e) {
     console.log(e);
     res.status(400).json({ message: "Something went wrong", success: false });

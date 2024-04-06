@@ -959,21 +959,23 @@ exports.getallposts = async (req, res) => {
         console.log(final)
         let postdp
         let video
+        let content
+        let thumbnail
         if (post.post.length === 0) {
           postdp = null
         } else {
           if (post.post[0].type.startsWith("video")) {
             if (!post.post[0].thumbnail) {
-              postdp = process.env.POST_URL + post.post[0].content
-              thumbnail = process.env.POST_URL + post.post[0].thumbnail
+              postdp = process.env.POST_URL + post.post[0]?.content
+              thumbnail = process.env.POST_URL + post.post[0]?.thumbnail
               video = true
             } else {
-              postdp = process.env.POST_URL + post.post[0].thumbnail
-              content = process.env.POST_URL + post.post[0].content
+              postdp = process.env.POST_URL + post.post[0]?.thumbnail
+              content = process.env.POST_URL + post.post[0]?.content
               video = false
             }
           } else {
-            postdp = process.env.POST_URL + post.post[0].content
+            postdp = process.env.POST_URL + post.post[0]?.content
             video = false
           }
         }
@@ -2520,7 +2522,6 @@ exports.fetchCommunityStats = async (req, res) => {
     const communities = community.map((d, i) => {
       const monStatus = monetization.find((f) => f.community.toString() === d?._id.toString());
 
-
       return ({
         id: d?._id,
         topics: d?.topics.length,
@@ -2541,7 +2542,9 @@ exports.fetchCommunityStats = async (req, res) => {
     })
 
     const store = user.storeAddress.length > 0 ? true : false
-    res.status(200).json({ success: true, communities, store })
+    console.log(store)
+    const verified = user.isStoreVerified
+    res.status(200).json({ success: true, communities, store, verified })
   } catch (error) {
     console.log(error)
     res.status(400).json({ success: false, message: error.message })
@@ -2609,78 +2612,128 @@ exports.editPosts = async (req, res) => {
         success: false,
       });
     }
-    const { title, desc, tags, image, video } = req.body;
+    const { title, desc, tags, image, video, thumbnail, thumbnailImage } = req.body;
 
-    console.log(tags)
 
-    let videoArr
-    if (typeof video == "string") {
-      videoArr = [video];
-    } else {
-      videoArr = video || []
-    }
+    console.log(req.body, req.files)
 
-    let imageArr
-    if (typeof image == "string") {
-      imageArr = [image];
-    } else {
-      imageArr = image || []
-    }
-    let pos = [];
-    let img = []
-    let vid = []
-    for (let i = 0; i < imageArr.length; i++) {
-
-      const s = imageArr[i].split(".net/").pop()
-      img.push(s)
-    }
-    for (let i = 0; i < videoArr.length; i++) {
-
-      const s = videoArr[i].split(".net/").pop()
-      vid.push(s)
-    }
-
-    if (req.files && req.files.length > 0) {
-      for (let i = 0; i < req?.files?.length; i++) {
-        const uuidString = uuid();
-
-        const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
-        const objectId = mongoose.Types.ObjectId()
-        const result = await s3.send(
-          new PutObjectCommand({
-            Bucket: POST_BUCKET,
-            Key: objectName,
-            Body: req.files[i].buffer,
-            ContentType: req.files[i].mimetype,
-          })
-        );
-
-        pos.push({ content: objectName, type: req.files[i].mimetype, _id: objectId });
+    if (!thumbnail) {
+      let videoArr
+      if (typeof video == "string") {
+        videoArr = [video];
+      } else {
+        videoArr = video || []
       }
-    }
-    const post = await Post.findById(postId)
-    for (let i = 0; i < post.post.length; i++) {
-      if (post.post[i].type.startsWith("video")) {
-        for (let j = 0; j < vid.length; j++) {
-          if (vid[j] == post.post[i].content) {
-            pos.push(post.post[i])
-          }
-        }
-      } else if (post.post[i].type.startsWith("image")) {
-        for (let j = 0; j < img.length; j++) {
-          if (img[j] == post.post[i].content) {
-            pos.push(post.post[i])
-          }
+
+      let imageArr
+      if (typeof image == "string") {
+        imageArr = [image];
+      } else {
+        imageArr = image || []
+      }
+      let pos = [];
+      let img = []
+      let vid = []
+      for (let i = 0; i < imageArr.length; i++) {
+
+        const s = imageArr[i].split(".net/").pop()
+        img.push(s)
+      }
+      for (let i = 0; i < videoArr.length; i++) {
+
+        const s = videoArr[i].split(".net/").pop()
+        vid.push(s)
+      }
+
+      if (req.files && req.files.length > 0) {
+        for (let i = 0; i < req?.files?.length; i++) {
+          const uuidString = uuid();
+
+          const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+          const objectId = mongoose.Types.ObjectId()
+          const result = await s3.send(
+            new PutObjectCommand({
+              Bucket: POST_BUCKET,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+
+          pos.push({ content: objectName, type: req.files[i].mimetype, _id: objectId });
         }
       }
-    }
-    post.title = title
-    post.desc = desc
-    post.tags = tags
-    post.post = pos
-    await post.save()
+      const post = await Post.findById(postId)
+      for (let i = 0; i < post.post.length; i++) {
+        if (post.post[i].type.startsWith("video")) {
+          for (let j = 0; j < vid.length; j++) {
+            if (vid[j] == post.post[i].content) {
+              pos.push(post.post[i])
+            }
+          }
+        } else if (post.post[i].type.startsWith("image")) {
+          for (let j = 0; j < img.length; j++) {
+            if (img[j] == post.post[i].content) {
+              pos.push(post.post[i])
+            }
+          }
+        }
+      }
+      post.title = title
+      post.desc = desc
+      post.tags = tags
+      post.post = pos
+      await post.save()
 
-    res.status(200).json({ success: true });
+      res.status(200).json({ success: true });
+    } else {
+      let myVideo
+      if (typeof video == "string") {
+        myVideo = video.split(".net/").pop()
+      }
+      let myThumbnail
+      if (typeof thumbnailImage == "string") {
+        myThumbnail = thumbnailImage.split(".net/").pop()
+      }
+      if (req.files && req.files.length > 0) {
+        for (let i = 0; i < req?.files?.length; i++) {
+          const uuidString = uuid();
+
+          const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+
+          const result = await s3.send(
+            new PutObjectCommand({
+              Bucket: POST_BUCKET,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+
+          if (req.files[i].fieldname === "thumbnailImage") {
+            myThumbnail = objectName;
+          } else {
+            myVideo = objectName;
+          }
+
+        }
+      }
+      const post = await Post.findById(postId)
+      post.post = [
+        {
+          content: myVideo,
+          type: "video/mp4",
+          thumbnail: myThumbnail
+        },
+      ]
+      post.title = title
+      post.desc = desc
+      post.tags = tags
+      await post.save()
+
+      res.status(200).json({ success: true });
+    }
+
   } catch (error) {
     console.log(error)
     res.status(409).json({

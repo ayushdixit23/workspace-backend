@@ -21,7 +21,8 @@ const {
   getCommunities,
   feedback,
   promotedposts,
-  getAllPosts, createad, fetchingprosite, fetchLocations, loginwithgrovyo, verifyOtp
+  getAllPosts, createad, fetchingprosite, fetchLocations, loginwithgrovyo, verifyOtp,
+  loginwithworkspace
 } = require("../controllers/Ads");
 const router = express.Router();
 const multer = require("multer");
@@ -57,5 +58,6 @@ router.post("/feedback/:advid", feedback)
 router.get("/getprositedetails/:id", fetchingprosite)
 router.post("/loginwithgrovyo", loginwithgrovyo)
 router.post("/verifyotp", verifyOtp)
+router.get("/loginwithworkspace/:id/:postid", loginwithworkspace)
 
 module.exports = router;

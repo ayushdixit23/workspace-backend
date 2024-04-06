@@ -355,34 +355,34 @@ exports.createadvacc = async (req, res) => {
 
       let objectName
 
-      if(image){
-         objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
-      }else{
-        objectName= user.profilepic
+      if (image) {
+        objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
+      } else {
+        objectName = user.profilepic
       }
 
       const adv = new Advertiser({
-          firstname,
-          lastname,
-          city,
-          state,
-          landmark,
-          email,
-          phone,
-          type,
-          pincode,
-          address,
-          advertiserid: advid,
-          image:objectName,
-          organizationname,
-          pan,
-          gst,
-          password,
-          retypepassword,
-          userid: user._id,
-        })
-        
-       if(image){
+        firstname,
+        lastname,
+        city,
+        state,
+        landmark,
+        email,
+        phone,
+        type,
+        pincode,
+        address,
+        advertiserid: advid,
+        image: objectName,
+        organizationname,
+        pan,
+        gst,
+        password,
+        retypepassword,
+        userid: user._id,
+      })
+
+      if (image) {
         await s3.send(
           new PutObjectCommand({
             Bucket: BUCKET_NAME,
@@ -393,7 +393,7 @@ exports.createadvacc = async (req, res) => {
         );
       }
 
-     savedAdv = await adv.save();
+      savedAdv = await adv.save();
 
       await User.updateOne(
         { _id: user._id },
@@ -538,7 +538,7 @@ exports.newad = async (req, res) => {
           $push: {
             topicsjoined: [topic1._id, topic2._id],
             communityjoined: savedcom._id,
-            communitycreated:savedcom._id
+            communitycreated: savedcom._id
           },
           $inc: { totaltopics: 3, totalcom: 1 },
         }
@@ -1024,8 +1024,8 @@ exports.getallads = async (req, res) => {
       //   );
       //   content.push(a);
       // }
-const adsreversed = ads.reverse()
-      res.status(200).json({ ads:adsreversed, content, success: true });
+      const adsreversed = ads.reverse()
+      res.status(200).json({ ads: adsreversed, content, success: true });
     } else {
       res.status(404).json({ message: "User not found", success: false });
     }
@@ -1352,10 +1352,10 @@ exports.addmoneytowallet = async (req, res) => {
       await Advertiser.updateOne({ _id: id },
         { $push: { transactions: tId._id }, }
       );
-      
+
       let payload = {
         "merchantId": process.env.MERCHANT_ID,
-        "merchantTransactionId":tId._id,
+        "merchantTransactionId": tId._id,
         "merchantUserId": user._id,
         "amount": amount,
         "redirectUrl": "https://ads.grovyo.com/main/wallet",
@@ -1365,8 +1365,8 @@ exports.addmoneytowallet = async (req, res) => {
           "type": "PAY_PAGE"
         }
       }
-      let bufferObj = Buffer.from(JSON.stringify(payload),"utf8")
-    
+      let bufferObj = Buffer.from(JSON.stringify(payload), "utf8")
+
       let base64string = bufferObj.toString("base64")
 
       let string = base64string + "/pg/v1/pay" + process.env.PHONE_PAY_KEY
@@ -1374,17 +1374,19 @@ exports.addmoneytowallet = async (req, res) => {
 
       let checkSum = shaString + "###" + process.env.keyIndex
 
-      axios.post("https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay",{"request":base64string},{headers:{
-        "Content-Type":"application/json",
-        "X-VERIFY":checkSum,
-        "accept":"application/json"
-      }}).then((response)=>{
-        console.log(response.data,response.data.data.instrumentResponse.redirectInfo.url)
-        res.status(200).json({success:true,url:response.data.data.instrumentResponse.redirectInfo.url})
-       
-      }).catch((err)=>{
+      axios.post("https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay", { "request": base64string }, {
+        headers: {
+          "Content-Type": "application/json",
+          "X-VERIFY": checkSum,
+          "accept": "application/json"
+        }
+      }).then((response) => {
+        console.log(response.data, response.data.data.instrumentResponse.redirectInfo.url)
+        res.status(200).json({ success: true, url: response.data.data.instrumentResponse.redirectInfo.url })
+
+      }).catch((err) => {
         console.log(err)
-       return res.status({success:false,message:err.message})
+        return res.status({ success: false, message: err.message })
       })
     }
   } catch (e) {
@@ -1393,66 +1395,66 @@ exports.addmoneytowallet = async (req, res) => {
   }
 };
 
-exports.updatetransactionstatus = async (req,res)=>{
+exports.updatetransactionstatus = async (req, res) => {
   try {
-    const { id,tid,amount } = req.params;
+    const { id, tid, amount } = req.params;
     const user = await Advertiser.findById(id);
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
-    } 
+    }
     function generateChecksum(merchantId, merchantTransactionId, saltKey, saltIndex) {
       const stringToHash = `/pg/v1/status/${merchantId}/${merchantTransactionId}` + saltKey;
       const shaHash = sha256(stringToHash).toString();
       const checksum = shaHash + "###" + saltIndex;
-  
+
       return checksum;
     }
 
-  const checksum = generateChecksum(process.env.MERCHANT_ID,tid, process.env.PHONE_PAY_KEY, process.env.keyIndex);
-  const t = await Transaction.findById(tid);
-  const response = await axios.get(`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`,{
-    headers:{
-      "Content-Type":"application/json",
-      "X-VERIFY":checksum,
-     "X-MERCHANT-ID"	:process.env.MERCHANT_ID
+    const checksum = generateChecksum(process.env.MERCHANT_ID, tid, process.env.PHONE_PAY_KEY, process.env.keyIndex);
+    const t = await Transaction.findById(tid);
+    const response = await axios.get(`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-VERIFY": checksum,
+        "X-MERCHANT-ID": process.env.MERCHANT_ID
+      }
+    })
+    if (response.data.code === "PAYMENT_SUCCESS") {
+      console.log("Payment Successful")
+      await Transaction.updateOne(
+        { _id: t._id },
+        {
+          $set: {
+            status: "completed",
+          },
+        }
+      );
+
+      await Advertiser.updateOne(
+        { _id: id },
+        {
+          $inc: { currentbalance: amount * 0.01 },
+        }
+      );
+      return res.status(200).json({
+        success: true,
+      });
+    } else if (response.data.code === "PAYMENT_ERROR") {
+      console.log("Payment Failed")
+      await Transaction.updateOne(
+        { _id: t._id },
+        {
+          $set: {
+            status: "failed",
+          },
+        }
+      );
+      res.status(400).json({ success: false })
     }
-  })
-      if(response.data.code ==="PAYMENT_SUCCESS"){
-     console.log("Payment Successful")
-     await Transaction.updateOne(
-      { _id: t._id },
-      {
-        $set: {
-          status: "completed",
-        },
-      }
-    );
-    
-    await Advertiser.updateOne(
-      { _id: id },
-      {
-        $inc: { currentbalance: amount*0.01 },
-      }
-    );
-    return res.status(200).json({
-      success: true,
-    });
-      }else if(response.data.code ==="PAYMENT_ERROR"){
-        console.log("Payment Failed")
-        await Transaction.updateOne(
-          { _id: t._id },
-          {
-            $set: {
-              status: "failed",
-            },
-          }
-        );
-        res.status(400).json({ success: false })
-      }
-   
+
   } catch (error) {
     console.log(error)
-    res.status(400).json({success:false,message: "Something went wrong",})
+    res.status(400).json({ success: false, message: "Something went wrong", })
   }
 }
 
@@ -2532,7 +2534,7 @@ exports.loginwithgrovyo = async (req, res) => {
       value = f
     }
     if (!user) {
-      
+
       return res.status(404).json({ success: false, message: "User not Found" })
     }
 
@@ -2567,42 +2569,42 @@ exports.loginwithgrovyo = async (req, res) => {
       };
       const m = new Message(data);
       await m.save();
-if(user.notificationtoken){
-      const msg = {
-        notification: {
-          title: "Grovyo",
-          body: `Your one-time password (OTP) for login is: ${otp}.`,
-        },
-        data: {
-          screen: "Conversation",
-          sender_fullname: `${grovyo?.fullname}`,
-          sender_id: `${grovyo?._id}`,
-          text: `Your one-time password (OTP) for login is: ${otp}.`,
-          convId: `${convs?._id}`,
-          createdAt: `${timestamp}`,
-          mesId: `${mesId}`,
-          typ: 'message',
-          senderuname: `${grovyo?.username}`,
-          senderverification: `${grovyo.isverified}`,
-          senderpic: `${senderpic}`,
-          reciever_fullname: `${user.fullname}`,
-          reciever_username: `${user.username}`,
-          reciever_isverified: `${user.isverified}`,
-          reciever_pic: `${recpic}`,
-          reciever_id: `${user._id}`,
-        },
-        token: user?.notificationtoken,
-      };
+      if (user.notificationtoken) {
+        const msg = {
+          notification: {
+            title: "Grovyo",
+            body: `Your one-time password (OTP) for login is: ${otp}.`,
+          },
+          data: {
+            screen: "Conversation",
+            sender_fullname: `${grovyo?.fullname}`,
+            sender_id: `${grovyo?._id}`,
+            text: `Your one-time password (OTP) for login is: ${otp}.`,
+            convId: `${convs?._id}`,
+            createdAt: `${timestamp}`,
+            mesId: `${mesId}`,
+            typ: 'message',
+            senderuname: `${grovyo?.username}`,
+            senderverification: `${grovyo.isverified}`,
+            senderpic: `${senderpic}`,
+            reciever_fullname: `${user.fullname}`,
+            reciever_username: `${user.username}`,
+            reciever_isverified: `${user.isverified}`,
+            reciever_pic: `${recpic}`,
+            reciever_id: `${user._id}`,
+          },
+          token: user?.notificationtoken,
+        };
 
-      await admin
-        .messaging()
-        .send(msg)
-        .then((response) => {
-          console.log("Successfully sent message");
-        })
-        .catch((error) => {
-          console.log("Error sending message:", error);
-        });
+        await admin
+          .messaging()
+          .send(msg)
+          .then((response) => {
+            console.log("Successfully sent message");
+          })
+          .catch((error) => {
+            console.log("Error sending message:", error);
+          });
       }
     } else {
       const conv = new Conversation({
@@ -2635,44 +2637,45 @@ if(user.notificationtoken){
       const m = new Message(data);
       await m.save();
 
-      if(user.notificationtoken){
-      const msg = {
-        notification: {
-          title: "Grovyo",
-          body: `Your one-time password (OTP) for login is: ${otp}.`,
-        },
-        data: {
-          screen: "Conversation",
-          sender_fullname: `${user?.fullname}`,
-          sender_id: `${user?._id}`,
-          text: `Your one-time password (OTP) for login is: ${otp}.`,
-          convId: `${convs?._id}`,
-          createdAt: `${timestamp}`,
-          mesId: `${mesId}`,
-          typ: 'message',
-          senderuname: `${user?.username}`,
-          senderverification: `${user.isverified}`,
-          senderpic: `${recpic}`,
-          reciever_fullname: `${grovyo.fullname}`,
-          reciever_username: `${grovyo.username}`,
-          reciever_isverified: `${grovyo.isverified}`,
-          reciever_pic: `${senderpic}`,
-          reciever_id: `${grovyo._id}`,
-        },
-        token: user?.notificationtoken,
-      };
+      if (user.notificationtoken) {
+        const msg = {
+          notification: {
+            title: "Grovyo",
+            body: `Your one-time password (OTP) for login is: ${otp}.`,
+          },
+          data: {
+            screen: "Conversation",
+            sender_fullname: `${user?.fullname}`,
+            sender_id: `${user?._id}`,
+            text: `Your one-time password (OTP) for login is: ${otp}.`,
+            convId: `${convs?._id}`,
+            createdAt: `${timestamp}`,
+            mesId: `${mesId}`,
+            typ: 'message',
+            senderuname: `${user?.username}`,
+            senderverification: `${user.isverified}`,
+            senderpic: `${recpic}`,
+            reciever_fullname: `${grovyo.fullname}`,
+            reciever_username: `${grovyo.username}`,
+            reciever_isverified: `${grovyo.isverified}`,
+            reciever_pic: `${senderpic}`,
+            reciever_id: `${grovyo._id}`,
+          },
+          token: user?.notificationtoken,
+        };
 
-      await admin
-        .messaging()
-        .send(msg)
-        .then((response) => {
-          console.log("Successfully sent message");
-        })
-        .catch((error) => {
-          console.log("Error sending message:", error);
-        });}
+        await admin
+          .messaging()
+          .send(msg)
+          .then((response) => {
+            console.log("Successfully sent message");
+          })
+          .catch((error) => {
+            console.log("Error sending message:", error);
+          });
+      }
     }
-   
+
     res.status(200).json({ success: true, logwithidentity, value })
   } catch (error) {
     console.log(error)
@@ -2724,7 +2727,7 @@ exports.verifyOtp = async (req, res) => {
           sessionId
         };
 
-        user.otp= undefined
+        user.otp = undefined
         await user.save()
         const access_token = generateAccessToken(data)
         const refresh_token = generateRefreshToken(data)
@@ -2732,30 +2735,30 @@ exports.verifyOtp = async (req, res) => {
           advertiser,
           access_token,
           refresh_token,
-          accountexist:true,
+          accountexist: true,
           userid: advertiser.userid,
           dp,
           sessionId,
           success: true,
         });
       } else {
-        const firstname= user.fullname.split(" ")[0]
-        const lastname= user.fullname.split(" ")[1]
+        const firstname = user.fullname.split(" ")[0]
+        const lastname = user.fullname.split(" ")[1]
         const dp = process.env.URL + user.profilepic
         const phoneNumber = user.phone.substring(2)
         const data = {
           dp,
           firstname,
           lastname,
-          phone:phoneNumber,
-          email:user.email,
-          address:user.address.streetaddress,
-          city:user.address.city,
-          state:user.address.state,
-          pincode:user.address.pincode,
-          landmark:user.address.landmark,
+          phone: phoneNumber,
+          email: user.email,
+          address: user.address.streetaddress,
+          city: user.address.city,
+          state: user.address.state,
+          pincode: user.address.pincode,
+          landmark: user.address.landmark,
         }
-        res.status(203).json({success:true, accountexist:false,data})
+        res.status(203).json({ success: true, accountexist: false, data })
       }
     } else {
       return res.status(400).json({ success: false, message: "Invalid otp" })
@@ -2767,8 +2770,129 @@ exports.verifyOtp = async (req, res) => {
 
 // exports.paybyphonepay = async (req, res) => {
 //   try {
-    
+
 //   } catch (error) {
 //     res.status(400).json({ success: false, message: "Something Went Wrong" })
 //   }
 // }
+
+exports.loginwithworkspace = async (req, res) => {
+  try {
+    const { id, postid } = req.params
+
+    const user = await User.findById(id)
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found" })
+    }
+
+    const post = await Post.findById(postid).populate("community", "title dp")
+
+    if (!post) {
+      return res.status(400).json({ success: false, message: "Post not found!" })
+    }
+
+    const postData = {
+      title: post.title,
+      desc: post.desc,
+      media: post.post,
+      communityId: post.community._id,
+      communityName: post.community.title,
+      dp: process.env.URL + post.community.dp
+    }
+
+    let advertiser = ""
+    if (user?.advertiserid) {
+      advertiser = await Advertiser.findById(user?.advertiserid.toString())
+    }
+
+    if (advertiser) {
+      const dp = process.env.URL + advertiser.image
+      const newEditCount = {
+        login: Date.now().toString(),
+      };
+      await Advertiser.updateOne(
+        { _id: advertiser._id },
+        {
+          $push: { logs: newEditCount },
+        }
+      );
+      const data = {
+        userid: advertiser.userid,
+        advid: advertiser._id,
+        image: dp,
+        firstname: advertiser.firstname,
+        lastname: advertiser.lastname,
+        country: advertiser.country,
+        city: advertiser.city,
+        address: advertiser.address,
+        accounttype: advertiser.type,
+        taxinfo: advertiser.taxinfo,
+        email: advertiser.email,
+        advertiserid: advertiser.advertiserid,
+      };
+
+      const access_token = generateAccessToken(data)
+      const refresh_token = generateRefreshToken(data)
+
+      return res.status(200).json({
+        message: "Advertiser exists",
+        advertiser,
+        access_token,
+        refresh_token,
+        userid: advertiser.userid,
+        dp,
+        postData,
+        success: true,
+      });
+    } else {
+      const firstname = user.fullname.split(" ")[0]
+      const lastname = user.fullname.split(" ")[1]
+      const dp = process.env.URL + user.profilepic
+
+      const advertisernew = new Advertiser({
+        firstname,
+        lastname,
+        image: user.profilepic,
+        phone: user.phone,
+        email: user.email,
+        address: user.address.streetaddress,
+        city: user.address.city,
+        state: user.address.state,
+        pincode: user.address.pincode,
+        landmark: user.address.landmark,
+        userid: user._id,
+        advertiserid: generateUniqueID()
+      })
+
+      const savedAdvertiser = await advertisernew.save()
+
+      user.advertiserid = savedAdvertiser._id
+      await user.save()
+
+      const data = {
+        userid: savedAdvertiser.userid,
+        advid: savedAdvertiser._id,
+        image: dp,
+        firstname: savedAdvertiser.firstname,
+        lastname: savedAdvertiser.lastname,
+        country: savedAdvertiser.country,
+        city: savedAdvertiser.city,
+        address: savedAdvertiser.address,
+        accounttype: savedAdvertiser.type,
+        taxinfo: savedAdvertiser.taxinfo,
+        email: savedAdvertiser.email,
+        advertiserid: savedAdvertiser.advertiserid,
+      };
+
+      const access_token = generateAccessToken(data)
+      const refresh_token = generateRefreshToken(data)
+
+      res.status(203).json({ success: true, message: "Account Created", access_token, refresh_token, postData })
+    }
+
+  } catch (error) {
+    console.log(error)
+    res.status(400).json({ success: false, message: "Something Went Wrong" })
+  }
+}
