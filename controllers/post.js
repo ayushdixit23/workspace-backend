@@ -1254,7 +1254,8 @@ exports.postanythings3 = async (req, res) => {
 
     if (user && community && topic && req.files.length > 0) {
       let pos = [];
-      if (thumbnail) {
+      if (thumbnail == "true") {
+
         let thumbail = "";
         let video = "";
         for (let i = 0; i < req?.files?.length; i++) {
@@ -1284,6 +1285,7 @@ exports.postanythings3 = async (req, res) => {
           type: "video/mp4",
         });
       } else {
+        console.log(" re")
         for (let i = 0; i < req?.files?.length; i++) {
           const uuidString = uuid();
           const bucketName = "posts";
@@ -1298,7 +1300,7 @@ exports.postanythings3 = async (req, res) => {
               ContentType: req.files[i].mimetype,
             })
           );
-          //  const result = await uploader(req.files[i].buffer);
+
           pos.push({ content: objectName, type: req.files[i].mimetype });
         }
       }

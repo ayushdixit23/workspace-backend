@@ -952,11 +952,9 @@ exports.getallposts = async (req, res) => {
       const postId = community.posts[i]
       const post = await Post.findById(postId)
       if (post.kind === "post") {
-        console.log(
-          post.views, post.sharescount, post.likes, post.totalcomments, "fghjk"
-        )
+
         let final = post.views <= 0 ? 0 : (parseInt(post?.likes) / parseInt(post?.views)) * 100;
-        console.log(final)
+
         let postdp
         let video
         let content
@@ -2544,6 +2542,7 @@ exports.fetchCommunityStats = async (req, res) => {
     const store = user.storeAddress.length > 0 ? true : false
     console.log(store)
     const verified = user.isStoreVerified
+    console.log(communities.length, communities[0].post)
     res.status(200).json({ success: true, communities, store, verified })
   } catch (error) {
     console.log(error)
@@ -2617,7 +2616,7 @@ exports.editPosts = async (req, res) => {
 
     console.log(req.body, req.files)
 
-    if (!thumbnail) {
+    if (thumbnail == "false") {
       let videoArr
       if (typeof video == "string") {
         videoArr = [video];
