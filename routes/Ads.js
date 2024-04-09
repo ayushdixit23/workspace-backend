@@ -22,7 +22,8 @@ const {
   feedback,
   promotedposts,
   getAllPosts, createad, fetchingprosite, fetchLocations, loginwithgrovyo, verifyOtp,
-  loginwithworkspace
+  loginwithworkspace,
+  loginAdspace
 } = require("../controllers/Ads");
 const router = express.Router();
 const multer = require("multer");
@@ -34,8 +35,9 @@ router.post("/newad/:id/:userId", upload.any(), newad);
 router.post("/v1/createad/:id", upload.any(), createad);
 router.get("/getad/:id", getad);
 router.get("/getallads/:id", getallads);
-router.post("/checkadvaccount", checkaccount),
-  router.post("/createadvacc", upload.single("image"), createadvacc),
+router.post("/checkadvaccount", loginAdspace)
+// router.post("/checkadvaccount", checkaccount),
+router.post("/createadvacc", upload.single("image"), createadvacc),
 
   router.get("/fetchdashboard/:id", fetchdashboard);
 router.get("/gettransactions/:id", gettransactions);

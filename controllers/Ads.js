@@ -122,7 +122,7 @@ exports.refreshingsAdsTokens = async (req, res) => {
               .json({ success: false, message: "Invalid refresh token" });
           }
           const advertiser = await Advertiser.findById(payload.advid);
-          const sessionId = payload.sessionId;
+
           if (!advertiser) {
             return res
               .status(400)
@@ -148,7 +148,7 @@ exports.refreshingsAdsTokens = async (req, res) => {
             taxinfo: advertiser.taxinfo,
             email: advertiser.email,
             advertiserid: advertiser.advertiserid,
-            sessionId
+
           };
           const access_token = generateAccessToken(data);
           res.status(200).json({ success: true, access_token });
@@ -171,14 +171,81 @@ function generateUniqueID() {
   return advertiserID.toString();
 }
 
-exports.checkaccount = async (req, res) => {
+// exports.checkaccount = async (req, res) => {
+//   const { phone, email, password } = req.body;
+//   try {
+//     let advertiser;
+//     if (email && password) {
+//       advertiser = await Advertiser.findOne({ email, password });
+//     } else if (phone) {
+//       advertiser = await Advertiser.findOne({ phone });
+//     } else {
+//       return res.status(400).json({
+//         message: "Invalid request. Please provide email, password, or phone.",
+//         success: false,
+//       });
+//     }
+//     if (advertiser) {
+
+//       const dp = process.env.URL + advertiser.image
+//       const sessionId = generateSessionId();
+//       const newEditCount = {
+//         login: Date.now().toString(),
+//       };
+//       await Advertiser.updateOne(
+//         { _id: advertiser._id },
+//         {
+//           $push: { logs: newEditCount },
+//         }
+//       );
+//       const data = {
+//         userid: advertiser.userid,
+//         advid: advertiser._id,
+//         image: dp,
+//         firstname: advertiser.firstname,
+//         lastname: advertiser.lastname,
+//         country: advertiser.country,
+//         city: advertiser.city,
+//         address: advertiser.address,
+//         accounttype: advertiser.type,
+//         taxinfo: advertiser.taxinfo,
+//         email: advertiser.email,
+//         advertiserid: advertiser.advertiserid,
+//         sessionId
+//       };
+
+//       const access_token = generateAccessToken(data)
+//       const refresh_token = generateRefreshToken(data)
+//       return res.status(200).json({
+//         message: "Advertiser exists",
+//         advertiser,
+//         access_token,
+//         refresh_token,
+//         userid: advertiser.userid,
+//         dp,
+//         sessionId,
+//         success: true,
+//       });
+//     } else {
+
+//       return res
+//         .status(404)
+//         .json({ message: "Advertiser not found", success: false });
+//     }
+//   } catch (e) {
+//     console.log(e)
+//     res.status(400).json({ message: "Something went wrong", success: false });
+//   }
+// };
+
+exports.loginAdspace = async (req, res) => {
   const { phone, email, password } = req.body;
   try {
     let advertiser;
     if (email && password) {
       advertiser = await Advertiser.findOne({ email, password });
     } else if (phone) {
-      advertiser = await Advertiser.findOne({ phone });
+      advertiser = await Advertiser.findOne({ phone: "91" + phone });
     } else {
       return res.status(400).json({
         message: "Invalid request. Please provide email, password, or phone.",
@@ -199,18 +266,18 @@ exports.checkaccount = async (req, res) => {
         }
       );
       const data = {
-        userid: advertiser.userid,
-        advid: advertiser._id,
+        userid: advertiser?.userid,
+        advid: advertiser?._id,
         image: dp,
-        firstname: advertiser.firstname,
-        lastname: advertiser.lastname,
-        country: advertiser.country,
-        city: advertiser.city,
-        address: advertiser.address,
-        accounttype: advertiser.type,
-        taxinfo: advertiser.taxinfo,
-        email: advertiser.email,
-        advertiserid: advertiser.advertiserid,
+        firstname: advertiser?.firstname,
+        lastname: advertiser?.lastname,
+        country: advertiser?.country,
+        city: advertiser?.city,
+        address: advertiser?.address,
+        accounttype: advertiser?.type,
+        taxinfo: advertiser?.taxinfo,
+        email: advertiser?.email,
+        advertiserid: advertiser?.advertiserid,
         sessionId
       };
 
@@ -227,10 +294,67 @@ exports.checkaccount = async (req, res) => {
         success: true,
       });
     } else {
+      let user
+      if (email && password) {
+        const enpas = encryptaes(password)
+        user = await User.findOne({ email, passw: enpas });
+      } else if (phone) {
+        user = await User.findOne({ phone: "91" + phone });
+      } else {
+        return res.status(400).json({
+          message: "Invalid request. Please provide email, password, or phone.",
+          success: false,
+          accountexist: false
+        });
+      }
 
-      return res
-        .status(404)
-        .json({ message: "Advertiser not found", success: false });
+      if (!user) {
+        return res.status(200).json({ success: false, accountexist: false, message: "User not found!" })
+      }
+
+      const firstname = user.fullname.split(" ")[0]
+      const lastname = user.fullname.split(" ")[1]
+      const dp = process.env.URL + user.profilepic
+
+      const advertisernew = new Advertiser({
+        firstname,
+        lastname,
+        image: user?.profilepic,
+        phone: user?.phone,
+        email: user?.email,
+        address: user?.address.streetaddress,
+        city: user?.address.city,
+        state: user?.address.state,
+        pincode: user?.address.pincode,
+        landmark: user?.address.landmark,
+        userid: user?._id,
+        advertiserid: generateUniqueID()
+      })
+
+      const savedAdvertiser = await advertisernew.save()
+
+      user.advertiserid = savedAdvertiser._id
+      await user.save()
+
+      const data = {
+        userid: savedAdvertiser.userid,
+        advid: savedAdvertiser._id,
+        image: dp,
+        firstname: savedAdvertiser.firstname,
+        lastname: savedAdvertiser.lastname,
+        country: savedAdvertiser.country,
+        city: savedAdvertiser.city,
+        address: savedAdvertiser.address,
+        accounttype: savedAdvertiser.type,
+        taxinfo: savedAdvertiser.taxinfo,
+        email: savedAdvertiser.email,
+        advertiserid: savedAdvertiser.advertiserid,
+      };
+
+      const access_token = generateAccessToken(data)
+      const refresh_token = generateRefreshToken(data)
+
+      res.status(203).json({ success: true, message: "Account Created", access_token, refresh_token })
     }
   } catch (e) {
     console.log(e)
@@ -265,12 +389,18 @@ exports.createadvacc = async (req, res) => {
     const user = await User.findOne({
       $or: [{ email: email }, { phone: phone }],
     })
+    console.log(user.fullname, phone, email)
     let savedAdv
+    console.log(advertiser)
+    console.log(!advertiser && !user)
+    console.log(!advertiser && user)
     if (!advertiser && !user) {
 
       const advid = generateUniqueID();
       const uuidString = uuid();
       const image = req.file;
+
+      console.log("first")
 
       const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
       const adv = new Advertiser({
@@ -349,17 +479,12 @@ exports.createadvacc = async (req, res) => {
         }
       );
     } else if (!advertiser && user) {
+      console.log("second")
       const advid = generateUniqueID();
       const uuidString = uuid();
       const image = req.file;
 
-      let objectName
-
-      if (image) {
-        objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
-      } else {
-        objectName = user.profilepic
-      }
+      let objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
 
       const adv = new Advertiser({
         firstname,
@@ -382,16 +507,14 @@ exports.createadvacc = async (req, res) => {
         userid: user._id,
       })
 
-      if (image) {
-        await s3.send(
-          new PutObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: objectName,
-            Body: image.buffer,
-            ContentType: image.mimetype,
-          })
-        );
-      }
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: objectName,
+          Body: image.buffer,
+          ContentType: image.mimetype,
+        })
+      );
 
       savedAdv = await adv.save();
 
@@ -402,31 +525,32 @@ exports.createadvacc = async (req, res) => {
         }
       );
     }
-    const sessionId = generateSessionId()
 
-    const dp = process.env.URL + savedAdv.image
+
+    console.log(savedAdv, "savedAdv")
 
     const data = {
-      userid: savedAdv.userid,
-      advid: savedAdv._id,
-      image: dp,
-      firstname: savedAdv.firstname,
-      lastname: savedAdv.lastname,
-      country: savedAdv.country,
-      city: savedAdv.city,
-      address: savedAdv.address,
-      accounttype: savedAdv.type,
-      taxinfo: savedAdv.taxinfo,
-      email: savedAdv.email,
-      advertiserid: savedAdv.advertiserid,
-      sessionId
+      userid: savedAdv?.userid,
+      advid: savedAdv?._id,
+      image: process.env.URL + savedAdv?.image,
+      firstname: savedAdv?.firstname,
+      lastname: savedAdv?.lastname,
+      country: savedAdv?.country,
+      city: savedAdv?.city,
+      address: savedAdv?.address,
+      accounttype: savedAdv?.type,
+      taxinfo: savedAdv?.taxinfo,
+      email: savedAdv?.email,
+      advertiserid: savedAdv?.advertiserid,
     };
+
+    console.log(data)
 
     const access_token = generateAccessToken(data)
     const refresh_token = generateRefreshToken(data)
     res.status(200).json({
       success: true, access_token,
-      refresh_token, sessionId
+      refresh_token
     });
   } catch (e) {
     console.log(e);

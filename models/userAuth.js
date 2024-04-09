@@ -33,8 +33,9 @@ const userSchema = new mongoose.Schema(
       maxLength: 30,
     },
     token: { type: String },
-    phone: { type: String, trim: true },
+    phone: { type: String, trim: true, unique: true },
     DOB: { type: String },
+    guide: { type: Boolean, default: false },
     username: {
       type: String,
       maxLength: 30,
