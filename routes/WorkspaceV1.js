@@ -46,6 +46,7 @@ const {
   approvalrequestbank,
   removecomwithposts,
   deletepost,
+  analyticsuserThirtyDays,
   // fetchingprosite,
 
   // base64upload,
@@ -78,6 +79,7 @@ router.post("/checkqr", checkqr);
 router.post("/checkemail", checkemail);
 router.post("/refresh", refresh);
 router.get("/analyticsuser/:userid", analyticsuser);
+router.get("/analyticsuserThirtyDays/:userid", analyticsuserThirtyDays);
 router.get("/allcoms/:id", allcoms);
 router.post("/createcom/:userId", middlewareMembership, upload.single("image"), createcom);
 router.post(

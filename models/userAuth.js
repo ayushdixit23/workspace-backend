@@ -42,6 +42,9 @@ const userSchema = new mongoose.Schema(
       trim: true,
       unique: true,
     },
+
+    deliveryforcity: { type: Number },
+    deliveryforcountry: { type: Number },
     prositeweb_template: {
       type: String,
     },

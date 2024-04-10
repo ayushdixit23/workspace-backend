@@ -11,6 +11,7 @@ const Post = require("../models/post");
 require("dotenv").config();
 const Collection = require("../models/Collectionss");
 const Product = require("../models/product");
+const moment = require("moment");
 const Order = require("../models/orders");
 // const multer = require("multer");
 // const Image = require("../models/Image");
@@ -402,59 +403,29 @@ exports.analyticsuser = async (req, res) => {
         }
         avgeng.push(avg)
       }
+      const endDate = new Date();
 
-      // const commerged = community.map(async (f, i) => {
-      //   const anycom = await Analytics.find({ id: f?._id })
-      //   const reversedStats = anycom.map((e) => {
-      //     return ({
-      //       X: e?.X,
-      //       Y1: e?.Y1,
-      //       Y2: e?.Y2
-      //     })
-      //   })
-      //   console.log(reversedStats, "data")
-      //   // const reversedStats = f?.stats.reverse().slice(0, 8)
-      //   const locationToSend = Object.entries(f.location).map(([state, value]) => ({ state, value }));
-      //   const loc = locationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
-      //   const actualloc = loc.map((d, i) => {
-
-      //     return {
-      //       state: d?.state,
-      //       value: Math.round((d.value / f.memberscount) * 100)
-      //     }
-      //   })
-      //   const obtainAgeArr = Object.entries(f.demographics.age).map(([age, value]) => ({ age, value }))
-      //   const sendAge = obtainAgeArr.map((d, i) => {
-      //     return {
-      //       age: d.age,
-      //       percent: Math.round((d.value / f.memberscount) * 100)
-      //     }
-      //   })
-
-      //   return {
-      //     name: f?.title,
-      //     id: f?._id,
-      //     image: dps[i],
-      //     popularity: avgeng[i],
-      //     topic: f?.topics,
-      //     location: actualloc,
-      //     // stats: reversedStats,
-      //     totalmembers: f?.memberscount,
-      //     visitors: f?.visitors,
-      //     paidmember: f?.paidmemberscount,
-      //     agerange: sendAge
-      //   };
-      // });
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 7);
 
       const commerged = await Promise.all(
         community.map(async (f, i) => {
           try {
-            const anycom = await Analytics.find({ id: f?._id }).sort({ date: -1 }).limit(7);
+            const anycom = await Analytics.find({
+              id: f?._id,
+              creation: { $gte: startDate, $lte: endDate }
+            }).sort({ creation: -1 });
+
             const reversedStats = anycom.map((e) => ({
               X: e?.date,
               Y1: e?.Y1,
               Y2: e?.Y2,
-              Y3: e?.Y3
+              Y3: e?.Y3,
+              activemembers: e?.activemembers.length || 0,
+              newmembers: e?.newmembers.length || 0,
+              paidmembers: e?.paidmembers.length || 0,
+              newvisitor: e?.newvisitor.length || 0,
+              returningvisitor: e?.returningvisitor.length || 0,
             }));
 
             const locationToSend = Object.entries(f.location).map(([state, value]) => ({
@@ -486,11 +457,226 @@ exports.analyticsuser = async (req, res) => {
               stats: reversedStats,
               location: actualloc,
               totalmembers: f?.memberscount,
-              returningvisitor: f?.returningvisitor,
-              newvisitor: f?.newvisitor,
-              uniquemembers: f?.uniquemembers,
-              activemembers: f?.activemembers,
-              visitors: f?.visitors,
+              // returningvisitor: f?.returningvisitor,
+              // newvisitor: f?.newvisitor,
+              // uniquemembers: f?.uniquemembers,
+              // activemembers: f?.activemembers,
+              // visitors: f?.visitors,
+              paidmember: f?.paidmemberscount,
+              agerange: sendAge,
+            };
+          } catch (error) {
+            console.error(`Error processing community ${f?._id}: ${error}`);
+            // You can decide whether to return a default/fallback value or rethrow the error
+            throw error;
+          }
+        })
+      );
+
+      const product = await Product.find({ creator: user._id.toString() }).sort({ itemsold: -1 }).limit(5)
+      const productdps = await Promise.all(
+        product.map(async (f) => {
+          const dp =
+            process.env.PRODUCT_URL + f?.images[0].content;
+
+          return dp;
+        })
+      );
+
+      const promerged = product.map((f, i) => {
+        return { ...f.toObject(), dps: productdps[i] };
+      });
+
+      const pieChart = [{
+        name: "sales",
+        value: user.salesCount,
+      },
+      {
+        name: "visitors",
+        value: user.totalStoreVisit
+      }]
+
+      const storeLocationToSend = Object.entries(user.storeLocation).map(([state, value]) => ({ state, value }));
+      const locstore = storeLocationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
+
+      const actualStoreLoc = locstore.map((d, i) => {
+        return {
+          state: d?.state,
+          value: Math.round((d?.value / user.salesCount) * 100)
+        }
+      })
+
+      const posts = await Post.find({ sender: user._id.toString() }).populate(
+        "community",
+        "title"
+      );
+
+      let dp
+      let video
+      const postsdps = await Promise.all(
+        posts.map(async (f) => {
+          if (f?.post.length === 0) {
+            console.log("first", f?.title)
+            return null
+          }
+          if (f?.post[0].type.startsWith("video")) {
+            if (!f?.post[0].thumbnail) {
+              dp = process.env.POST_URL + f?.post[0].content
+              video = true
+            } else {
+              dp =
+                process.env.POST_URL + f?.post[0].thumbnail
+              video = false
+            }
+          } else {
+            dp =
+              process.env.POST_URL + f?.post[0].content
+            video = false
+          }
+
+          return { dp, video };
+        })
+      );
+
+      // engagement rate
+      let eng = []
+      await posts.map((p, i) => {
+        let final = p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
+        eng.push(final)
+      })
+
+      const postmerged = posts.map((f, i) => {
+        return {
+          ...f.toObject(),
+          dps: postsdps[i].dp,
+          engrate: eng[i],
+          video: postsdps[i].video
+        };
+      });
+
+      res
+        .status(200)
+        .json({ success: true, sales, storeLocation: actualStoreLoc, pieChart, posts: posts.length, commerged, promerged, postmerged });
+    }
+  } catch (err) {
+    ;
+    res.status(400).json({ message: err.message, success: false });
+  }
+};
+
+exports.analyticsuserThirtyDays = async (req, res) => {
+  try {
+    const { userid } = req.params;
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    const user = await User.findById(userid);
+    if (user) {
+
+      const community = await Community.find({
+        creator: user._id.toString(),
+      }).populate("topics");
+
+      const dps = await Promise.all(
+        community.map(async (d) => {
+          const a =
+            process.env.URL + d?.dp;
+          return a;
+        })
+      );
+
+      const storeAnalytics = await Analytics.find({ id: userid }).sort({ date: -1 }).limit(7)
+      const sales = storeAnalytics.map((d) => {
+        return ({
+          Dates: d?.date,
+          Sales: d?.Sales
+        })
+      })
+
+      let avgeng = []
+
+      for (let i = 0; i < community.length; i++) {
+        const posts = await Post.find({ community: community[i]._id });
+
+        let eng = []
+        await posts.map((p, i) => {
+
+          let final = p.views <= 0 ? 0 :
+            (
+              // (parseInt(p?.sharescount) 
+              + parseInt(p?.likes)
+              //  parseInt(p?.totalcomments)) 
+              / parseInt(p?.views)) * 100;
+          eng.push(final)
+        })
+
+        let sum = 0
+        for (let i = 0; i < eng.length; i++) {
+          sum += eng[i]
+        }
+        let avg = 0
+
+        if (eng.length > 0) {
+          avg = Math.round(sum / eng.length)
+        } else {
+          avg = 0
+        }
+        avgeng.push(avg)
+      }
+      const commerged = await Promise.all(
+        community.map(async (f, i) => {
+          try {
+            const anycom = await Analytics.find({
+              id: f?._id,
+              creation: { $gte: startDate, $lte: endDate }
+            }).sort({ creation: -1 });
+
+            const reversedStats = anycom.map((e) => ({
+              X: e?.date,
+              Y1: e?.Y1,
+              Y2: e?.Y2,
+              Y3: e?.Y3,
+              activemembers: e?.activemembers.length || 0,
+              newmembers: e?.newmembers.length || 0,
+              paidmembers: e?.paidmembers.length || 0,
+              newvisitor: e?.newvisitor.length || 0,
+              returningvisitor: e?.returningvisitor.length || 0,
+            }));
+
+            const locationToSend = Object.entries(f.location).map(([state, value]) => ({
+              state,
+              value,
+            }));
+            const loc = locationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
+            const actualloc = loc.map((d) => ({
+              state: d?.state,
+              value: Math.round((d.value / f.memberscount) * 100),
+            }));
+
+            const obtainAgeArr = Object.entries(f.demographics.age).map(([age, value]) => ({
+              age,
+              value,
+            }));
+
+            const sendAge = obtainAgeArr.map((d) => ({
+              age: d.age,
+              percent: Math.round((d.value / f.memberscount) * 100),
+            }));
+
+            return {
+              name: f?.title,
+              id: f?._id,
+              image: dps[i],
+              popularity: avgeng[i],
+              topic: f?.topics,
+              stats: reversedStats,
+              location: actualloc,
+              totalmembers: f?.memberscount,
+              // returningvisitor: f?.returningvisitor,
+              // newvisitor: f?.newvisitor,
+              // uniquemembers: f?.uniquemembers,
+              // activemembers: f?.activemembers,
+              // visitors: f?.visitors,
               paidmember: f?.paidmemberscount,
               agerange: sendAge,
             };
@@ -2132,7 +2318,7 @@ exports.membershipbuy = async (req, res) => {
 exports.memfinalize = async (req, res) => {
   try {
     const { id, orderId } = req.params
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, status, paymentMethod, memid, period } = req.body
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, status, paymentMethod, memid, deliverylimitcity, deliverylimitcountry, period } = req.body
     const user = await User.findById(id)
     const subscription = await Subscriptions.findOne({ orderId: orderId })
     const isValid = validatePaymentVerification(
@@ -2171,6 +2357,9 @@ exports.memfinalize = async (req, res) => {
       ending: endDate,
       paymentdetails: { mode: "online", amount: subscription.amount }
     }
+
+    user.deliveryforcity = deliverylimitcity
+    user.deliveryforcountry = deliverylimitcountry
     const membership = await Membership.findById(memid)
     user.isverified = true
     const saveduser = await user.save()

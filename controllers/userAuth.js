@@ -2298,7 +2298,7 @@ exports.postguide = async (req, res) => {
     const { id } = req.params
     const { guide } = req.body
     const user = await User.findById(id)
-
+    console.log(user, "user")
     if (!user) {
       return res.status(400).json({ success: false, message: "User Not Found!" })
     }
