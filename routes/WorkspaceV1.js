@@ -47,6 +47,7 @@ const {
   removecomwithposts,
   deletepost,
   analyticsuserThirtyDays,
+  fetchSingleProduct,
   // fetchingprosite,
 
   // base64upload,
@@ -154,6 +155,7 @@ router.post("/editpost/:userId/:postId", upload.any(), editPosts)
 router.post("/removecomwithposts/:id/:comId", removecomwithposts)
 router.delete("/deletepost/:userId/:postId", deletepost)
 router.post("/savemytemplate/:id", templates)
+router.get("/fetchSingleProduct/:productId", fetchSingleProduct)
 // router.post("/approvalrequestbank/:id", approvalrequestbank)
 
 

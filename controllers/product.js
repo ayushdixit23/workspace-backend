@@ -572,3 +572,4 @@ exports.updateproduct = async (req, res) => {
     res.status(400).json({ message: e.message, success: false });
   }
 };
+

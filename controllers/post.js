@@ -1237,6 +1237,7 @@ exports.postanything = async (req, res) => {
 
 exports.postanythings3 = async (req, res) => {
   const { userId, comId, topicId } = req.params;
+  console.log(req.files, "files")
   try {
     if (req.fileValidationError) {
       return res.status(400).json({
@@ -1255,7 +1256,7 @@ exports.postanythings3 = async (req, res) => {
     if (user && community && topic && req.files.length > 0) {
       let pos = [];
       if (thumbnail == "true") {
-
+        console.log("thumbnail")
         let thumbail = "";
         let video = "";
         for (let i = 0; i < req?.files?.length; i++) {
@@ -1285,7 +1286,7 @@ exports.postanythings3 = async (req, res) => {
           type: "video/mp4",
         });
       } else {
-        console.log(" re")
+        console.log("normal")
         for (let i = 0; i < req?.files?.length; i++) {
           const uuidString = uuid();
           const bucketName = "posts";
@@ -1304,6 +1305,7 @@ exports.postanythings3 = async (req, res) => {
           pos.push({ content: objectName, type: req.files[i].mimetype });
         }
       }
+      console.log(pos, "pos")
       const post = new Post({
         title,
         desc,

@@ -170,7 +170,6 @@ exports.checkid = async (req, res) => {
       res
         .status(200)
         .json({
-
           dp,
           access_token, refresh_token, sessionId, success: true
         });
@@ -548,9 +547,9 @@ exports.analyticsuser = async (req, res) => {
       const postmerged = posts.map((f, i) => {
         return {
           ...f.toObject(),
-          dps: postsdps[i].dp,
+          dps: postsdps[i]?.dp,
           engrate: eng[i],
-          video: postsdps[i].video
+          video: postsdps[i]?.video
         };
       });
 
@@ -559,7 +558,7 @@ exports.analyticsuser = async (req, res) => {
         .json({ success: true, sales, storeLocation: actualStoreLoc, pieChart, posts: posts.length, commerged, promerged, postmerged });
     }
   } catch (err) {
-    ;
+    console.log(err)
     res.status(400).json({ message: err.message, success: false });
   }
 };
@@ -763,9 +762,9 @@ exports.analyticsuserThirtyDays = async (req, res) => {
       const postmerged = posts.map((f, i) => {
         return {
           ...f.toObject(),
-          dps: postsdps[i].dp,
+          dps: postsdps[i]?.dp,
           engrate: eng[i],
-          video: postsdps[i].video
+          video: postsdps[i]?.video
         };
       });
 
@@ -3050,3 +3049,21 @@ exports.removecomwithposts = async (req, res) => {
     res.status(400).json({ message: "Something went wrong", success: false });
   }
 };
+
+
+exports.fetchSingleProduct = async (req, res) => {
+  try {
+    const { productId } = req.params
+    const product = await Product.findById(productId)
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.status(200).json({ success: true, product, url: process.env.PRODUCT_URL })
+
+  } catch (error) {
+    res.status(400).json({ message: error.message, success: false });
+  }
+}
+

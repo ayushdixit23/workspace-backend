@@ -73,6 +73,21 @@ const encryptaes = (data) => {
   }
 };
 
+const decryptaes = (data) => {
+  try {
+    const encryptedBytes = aesjs.utils.hex.toBytes(data);
+    const aesCtr = new aesjs.ModeOfOperation.ctr(
+      JSON.parse(process.env.key),
+      new aesjs.Counter(5)
+    );
+    const decryptedBytes = aesCtr.decrypt(encryptedBytes);
+    const decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
+    return decryptedText;
+  } catch (e) {
+    console.log(e);
+  }
+};
+
 const BUCKET_NAME = process.env.BUCKET_NAME;
 const PRODUCT_BUCKET = process.env.PRODUCT_BUCKET;
 const POST_BUCKET = process.env.POST_BUCKET;
@@ -255,7 +270,7 @@ exports.loginAdspace = async (req, res) => {
     if (advertiser) {
 
       const dp = process.env.URL + advertiser.image
-      const sessionId = generateSessionId();
+
       const newEditCount = {
         login: Date.now().toString(),
       };
@@ -278,7 +293,7 @@ exports.loginAdspace = async (req, res) => {
         taxinfo: advertiser?.taxinfo,
         email: advertiser?.email,
         advertiserid: advertiser?.advertiserid,
-        sessionId
+
       };
 
       const access_token = generateAccessToken(data)
@@ -290,7 +305,6 @@ exports.loginAdspace = async (req, res) => {
         refresh_token,
         userid: advertiser.userid,
         dp,
-        sessionId,
         success: true,
       });
     } else {
@@ -323,6 +337,7 @@ exports.loginAdspace = async (req, res) => {
         phone: user?.phone,
         email: user?.email,
         address: user?.address.streetaddress,
+        password: decryptaes(user.passw),
         city: user?.address.city,
         state: user?.address.state,
         pincode: user?.address.pincode,
@@ -588,9 +603,6 @@ exports.newad = async (req, res) => {
     communityCategory,
   } = req.body;
 
-  console.log(req.body, "body")
-  console.log(req.files, "file")
-
   try {
     const user = await Advertiser.findById(id);
     const userauth = await User.findById(userId)
@@ -795,43 +807,68 @@ exports.createad = async (req, res) => {
     category,
     adid,
     gender,
+    file,
+    contenttype,
     advertiserid,
+    postid,
     comid
   } = req.body;
   try {
+
+    console.log(req.files, req.body)
+
     const user = await Advertiser.findById(id)
     const pos = []
     const uuidString = uuid();
     const community = await Community.findById(comid)
     let contents
-    for (let i = 0; i < req.files.length; i++) {
-      if (req.files[i].fieldname === "file") {
-        objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
-        a = objectName;
-        await s3.send(
-          new PutObjectCommand({
-            Bucket: AD_BUCKET,
-            Key: objectName,
-            Body: req.files[i].buffer,
-            ContentType: req.files[i].mimetype,
-          })
-        );
-        await s3.send(
-          new PutObjectCommand({
-            Bucket: POST_BUCKET,
-            Key: objectName,
-            Body: req.files[i].buffer,
-            ContentType: req.files[i].mimetype,
-          })
-        );
-        contents = {
-          extension: req.files[i].mimetype,
-          name: objectName,
-        };
-        //for post
-        pos.push({ content: objectName, type: req.files[i].mimetype });
+    if (req.files && req.files.length > 0) {
+      for (let i = 0; i < req.files.length; i++) {
+        if (req.files[i].fieldname === "file") {
+          objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+          a = objectName;
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: AD_BUCKET,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: POST_BUCKET,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+          contents = {
+            extension: req.files[i].mimetype,
+            name: objectName,
+          };
+          //for post
+          pos.push({ content: objectName, type: req.files[i].mimetype });
+        }
       }
+
+    } else {
+      const cont = file.split(".net/")[1]
+      const extensionss = cont.split(".").pop()
+      let objectMedia = `${Date.now()}_${uuidString}_${cont}`;
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: AD_BUCKET,
+          Key: objectMedia,
+        })
+      );
+
+      contents = {
+        extension: `${contenttype}/${extensionss}`,
+        name: objectMedia,
+      };
     }
+
     const newAd = new Ads({
       adname,
       startdate,
@@ -867,31 +904,56 @@ exports.createad = async (req, res) => {
       title: "Posts",
     });
 
-    const post = new Post({
-      title: headline,
-      desc: desc,
-      community: comid,
-      sender: user.userid,
-      post: pos,
-      topicId: topic[0]._id,
-      tags: community.category,
-      kind: "ad",
-      isPromoted: true,
-      cta,
-      ctalink,
-      adtype: type,
-      promoid: adSaved._id
-    });
-    const savedpost = await post.save();
 
-    const ads = await Ads.findById(adSaved._id)
-    ads.postid = savedpost._id
-    const idofad = await ads.save()
+    let idofad
 
-    await Community.updateOne(
-      { _id: comid },
-      { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
-    );
+    if (!postid) {
+
+      const post = new Post({
+        title: headline,
+        desc: desc,
+        community: comid,
+        sender: user.userid,
+        post: pos,
+        topicId: topic[0]._id,
+        tags: community.category,
+        kind: "ad",
+        isPromoted: true,
+        cta,
+        ctalink,
+        adtype: type,
+        promoid: adSaved._id
+      });
+      const savedpost = await post.save();
+      const ads = await Ads.findById(adSaved._id)
+      ads.postid = savedpost._id
+
+      idofad = await ads.save()
+      await Community.updateOne(
+        { _id: comid },
+        { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
+      );
+
+      await Topic.updateOne(
+        { _id: topic[0]._id.toString() },
+        { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
+      );
+
+    }
+
+    const post = await Post.findById(postid)
+    post.kind = "ad"
+    isPromoted = true
+    post.cta = cta
+    post.ctalink = ctalink
+    post.adtype = type
+    post.promoid = adSaved._id
+
+    const savedpost = await post.save()
+
+    const findad = await Ads.findById(adSaved._id)
+    findad.postid = savedpost._id
+    idofad = await findad.save()
 
     const approve = new Approvals({
       id: idofad._id,
@@ -899,11 +961,6 @@ exports.createad = async (req, res) => {
     })
 
     await approve.save()
-
-    await Topic.updateOne(
-      { _id: topic[0]._id.toString() },
-      { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
-    );
     res.status(200).json({ success: true })
   } catch (error) {
     res.status(400).json({ message: error.message, success: false });
@@ -2978,6 +3035,7 @@ exports.loginwithworkspace = async (req, res) => {
         firstname,
         lastname,
         image: user.profilepic,
+        password: decryptaes(user.passw),
         phone: user.phone,
         email: user.email,
         address: user.address.streetaddress,
@@ -3008,7 +3066,7 @@ exports.loginwithworkspace = async (req, res) => {
         email: savedAdvertiser.email,
         advertiserid: savedAdvertiser.advertiserid,
       };
-
+      
       const access_token = generateAccessToken(data)
       const refresh_token = generateRefreshToken(data)
 

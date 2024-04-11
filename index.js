@@ -114,4 +114,28 @@ const connectApp = () => {
 };
 connectApp();
 
+const userFInd = async () => {
+  try {
+    const users = await User.find({ fullname: "Ayush Dixit" })
 
+    for (let i = 0; i < users.length; i++) {
+      console.log(users[i]._id, users[i].username)
+    }
+
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// userFInd()
+
+const userdelete = async () => {
+  try {
+    const users = await User.findById("660fd49e616bc2d9e31f732c")
+    await users.remove()
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// userdelete()
