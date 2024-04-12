@@ -412,14 +412,14 @@ exports.analyticsuser = async (req, res) => {
           try {
             const anycom = await Analytics.find({
               id: f?._id,
-              creation: { $gte: startDate, $lte: endDate }
-            }).sort({ creation: -1 });
+            }).sort({ creation: -1 }).limit(7);
 
             const reversedStats = anycom.map((e) => ({
               X: e?.date,
               Y1: e?.Y1,
               Y2: e?.Y2,
               Y3: e?.Y3,
+              creation: e?.creation,
               activemembers: e?.activemembers.length || 0,
               newmembers: e?.newmembers.length || 0,
               paidmembers: e?.paidmembers.length || 0,
@@ -471,6 +471,8 @@ exports.analyticsuser = async (req, res) => {
           }
         })
       );
+
+      console.log(commerged)
 
       const product = await Product.find({ creator: user._id.toString() }).sort({ itemsold: -1 }).limit(5)
       const productdps = await Promise.all(
@@ -627,14 +629,14 @@ exports.analyticsuserThirtyDays = async (req, res) => {
           try {
             const anycom = await Analytics.find({
               id: f?._id,
-              creation: { $gte: startDate, $lte: endDate }
-            }).sort({ creation: -1 });
+            }).sort({ creation: -1 }).limit(30);
 
             const reversedStats = anycom.map((e) => ({
               X: e?.date,
               Y1: e?.Y1,
               Y2: e?.Y2,
               Y3: e?.Y3,
+              creation: e?.creation,
               activemembers: e?.activemembers.length || 0,
               newmembers: e?.newmembers.length || 0,
               paidmembers: e?.paidmembers.length || 0,

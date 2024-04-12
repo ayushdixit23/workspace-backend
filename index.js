@@ -161,3 +161,65 @@ const userdelete = async () => {
 // }
 
 // findUser()
+
+const anan = async () => {
+  try {
+
+
+    const arr = ["64a7bd59c9aab1a5960083e0", "64b84197281876c462d40978", "65314cd99db37d9109914f3f", "65326e4893a673b9c7dc6020"]
+    const arrs = ["65340d7f214aa8835254dc74", "6548e918c3e9b12274c1cca7"]
+    const arrd = ["6548e918c3e9b12274c1cca7", "65314cd99db37d9109914f3f", "65326e4893a673b9c7dc6020"]
+
+
+    const currentDate = new Date();
+    for (let i = 8; i < 31; i++) {
+      const futureDate = new Date(currentDate.getTime() + i * 24 * 60 * 60 * 1000);
+
+
+      const analyticsData = {
+        id: "65d0f8176a4e4ae4c6e8ff6f",
+        date: futureDate.toISOString().slice(0, 10),
+        Y1: Math.floor(Math.random() * 100),
+        Y2: Math.floor(Math.random() * 100),
+        Y3: Math.floor(Math.random() * 100),
+        Sales: Math.floor(Math.random() * 1000),
+        click: Math.floor(Math.random() * 100),
+        impressions: Math.floor(Math.random() * 1000),
+        cpc: Math.random() * 10,
+        cost: Math.random() * 1000,
+        creation: futureDate,
+        views: Math.floor(Math.random() * 1000),
+        activemembers: i % 2 === 0 ? arrs : arr,
+        newmembers: i % 2 === 0 ? arrd : arr,
+        paidmembers: i % 2 === 0 ? arr : arrs,
+        newvisitor: i % 2 === 0 ? arr : arrd,
+        returningvisitor: i % 2 === 0 ? arrd : arr,
+      };
+
+      // Save the generated data to MongoDB
+      await Analytics.create(analyticsData);
+
+
+    }
+
+    console.log("first")
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// const deleteAN = async () => {
+//   try {
+//     const an = await Analytics.find({ id: "65d0f8176a4e4ae4c6e8ff6f" })
+
+//     for (let i = 0; i < an.length; i++) {
+//       await an[i].remove()
+//     }
+
+//     console.log("donw")
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
+
+// anan()
