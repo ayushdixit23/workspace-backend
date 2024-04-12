@@ -139,3 +139,25 @@ const userdelete = async () => {
 }
 
 // userdelete()
+
+// const findUser = async () => {
+//   try {
+//     const users = await User.find()
+//     const reverseusers = users.reverse()
+
+//     const onlyfive = reverseusers.slice(0, 7)
+//     for (let i = 0; i < onlyfive.length; i++) {
+//       const data = {
+//         fullname: reverseusers[i].fullname,
+//         id: reverseusers[i]._id,
+//         email: reverseusers[i].email,
+//         phone: reverseusers[i].phone,
+//       }
+//       console.log(data)
+//     }
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
+
+// findUser()
