@@ -731,7 +731,7 @@ exports.newad = async (req, res) => {
         dailybudget,
         estaudience,
         category,
-        content: contents,
+        content: [contents],
         adid: adid,
         gender,
         advertiserid,
@@ -855,14 +855,13 @@ exports.createad = async (req, res) => {
     } else {
       const cont = file.split(".net/")[1]
       const extensionss = cont.split(".").pop()
-      let objectMedia = `${Date.now()}_${uuidString}_${cont}`;
+      let objectMedia = `${cont}`;
       await s3.send(
         new PutObjectCommand({
           Bucket: AD_BUCKET,
           Key: objectMedia,
         })
       );
-
       contents = {
         extension: `${contenttype}/${extensionss}`,
         name: objectMedia,
@@ -890,7 +889,7 @@ exports.createad = async (req, res) => {
       dailybudget,
       estaudience,
       category,
-      content: contents,
+      content: [contents],
       creation: Date.now(),
       adid: adid,
       gender,
@@ -3036,7 +3035,7 @@ exports.loginwithworkspace = async (req, res) => {
         lastname,
         image: user.profilepic,
         password: decryptaes(user.passw),
-        phone: user.phone,
+        phone: user.phone ? user.phone : undefined,
         email: user.email,
         address: user.address.streetaddress,
         city: user.address.city,
@@ -3066,7 +3065,7 @@ exports.loginwithworkspace = async (req, res) => {
         email: savedAdvertiser.email,
         advertiserid: savedAdvertiser.advertiserid,
       };
-      
+
       const access_token = generateAccessToken(data)
       const refresh_token = generateRefreshToken(data)
 
