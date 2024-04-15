@@ -1139,8 +1139,7 @@ exports.getallposts = async (req, res) => {
 
       const postId = community.posts[i]
       const post = await Post.findById(postId)
-      if (post.kind === "post") {
-
+      if (post.kind !== "poll") {
         let final = post.views <= 0 ? 0 : (parseInt(post?.likes) / parseInt(post?.views)) * 100;
 
         let postdp
@@ -1775,6 +1774,9 @@ exports.fetchallorders = async (req, res) => {
         }
       })
 
+      const citydelivery = user.deliveryforcity
+      const countrydelivery = user.deliveryforcountry
+
       const mergedOrder = reversedmergedOrder.reverse()
       res.status(200).json({
         pendingOrders,
@@ -1785,6 +1787,8 @@ exports.fetchallorders = async (req, res) => {
         isStoreVerified,
         storeexistornot,
         damaged,
+        citydelivery,
+        countrydelivery,
         earnings,
         customers,
         earnings,
@@ -3069,3 +3073,20 @@ exports.fetchSingleProduct = async (req, res) => {
   }
 }
 
+exports.defaultprositeselector = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { checked } = req.body
+    const user = await User.findById(id)
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found!" })
+    }
+    user.useDefaultProsite = checked
+    await user.save()
+    res.status(200).json({ success: true })
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+    console.log(error)
+  }
+}

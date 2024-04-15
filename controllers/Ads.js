@@ -938,21 +938,21 @@ exports.createad = async (req, res) => {
         { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
       );
 
+    } else {
+      const post = await Post.findById(postid)
+      post.kind = "ad"
+      isPromoted = true
+      post.cta = cta
+      post.ctalink = ctalink
+      post.adtype = type
+      post.promoid = adSaved._id
+
+      const savedpost = await post.save()
+
+      const findad = await Ads.findById(adSaved._id)
+      findad.postid = savedpost._id
+      idofad = await findad.save()
     }
-
-    const post = await Post.findById(postid)
-    post.kind = "ad"
-    isPromoted = true
-    post.cta = cta
-    post.ctalink = ctalink
-    post.adtype = type
-    post.promoid = adSaved._id
-
-    const savedpost = await post.save()
-
-    const findad = await Ads.findById(adSaved._id)
-    findad.postid = savedpost._id
-    idofad = await findad.save()
 
     const approve = new Approvals({
       id: idofad._id,

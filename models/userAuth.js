@@ -330,7 +330,10 @@ const userSchema = new mongoose.Schema(
     showStoreSection: { type: Boolean, default: true },
     showCommunitySection: { type: Boolean, default: true },
     showAboutSection: { type: Boolean, default: true },
-    gr: { type: Number, default: 0 }
+    gr: { type: Number, default: 0 },
+    useDefaultProsite: { type: Boolean, default: false },
+    recentPrositeSearches: [{ type: ObjectId, ref: "User", default: [] }],
+    recentCommunitySearches: [{ type: ObjectId, ref: "Community", default: [] }]
     // for workspace membership
   },
 
