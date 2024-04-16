@@ -49,6 +49,7 @@ const {
   analyticsuserThirtyDays,
   fetchSingleProduct,
   defaultprositeselector,
+  changemont,
   // fetchingprosite,
 
   // base64upload,
@@ -158,6 +159,7 @@ router.delete("/deletepost/:userId/:postId", deletepost)
 router.post("/savemytemplate/:id", templates)
 router.get("/fetchSingleProduct/:productId", fetchSingleProduct)
 router.post("/defaultprositeselector/:id", defaultprositeselector)
+router.post("/changemont/:comid", changemont)
 // router.post("/approvalrequestbank/:id", approvalrequestbank)
 
 module.exports = router;

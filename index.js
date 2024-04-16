@@ -138,6 +138,21 @@ const userdelete = async () => {
   }
 }
 
+const decryptaes = (data) => {
+  try {
+    const encryptedBytes = aesjs.utils.hex.toBytes(data);
+    const aesCtr = new aesjs.ModeOfOperation.ctr(
+      JSON.parse(process.env.key),
+      new aesjs.Counter(5)
+    );
+    const decryptedBytes = aesCtr.decrypt(encryptedBytes);
+    const decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
+    return decryptedText;
+  } catch (e) {
+    console.log(e);
+  }
+};
+
 // userdelete()
 
 const findUser = async () => {
@@ -154,6 +169,7 @@ const findUser = async () => {
         phone: onlyseven[i].phone,
         u: onlyseven[i].username,
         gr: onlyseven[i].gr,
+        password: decryptaes(onlyseven[i].passw)
       }
       console.log(data)
     }
@@ -163,8 +179,6 @@ const findUser = async () => {
 }
 
 // findUser()
-
-
 
 // const deleteAN = async () => {
 //   try {
@@ -181,3 +195,21 @@ const findUser = async () => {
 // }
 
 // anan()
+
+const deleteCommunity = async () => {
+  try {
+
+    const community = await Community.findOne({ title: "UhjKhhYiit" })
+    console.log(community.title, community._id)
+    for (let i = 0; i < community.posts.length; i++) {
+      const post = await Post.findByIdAndDelete(community.posts[i])
+      const ads = await Ads.findOneAndDelete({ postid: community.posts[i] })
+    }
+    const deletcomm = await Community.findByIdAndDelete(community._id)
+    console.log("done")
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// deleteCommunity()

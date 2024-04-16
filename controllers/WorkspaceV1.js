@@ -3090,3 +3090,23 @@ exports.defaultprositeselector = async (req, res) => {
     console.log(error)
   }
 }
+
+exports.changemont = async (req, res) => {
+  try {
+    const { comid } = req.params
+    const { ismonetized } = req.body
+    console.log(ismonetized)
+    const community = await Community.findById(comid)
+
+    if (!community) {
+      return res.status(400).json({ success: false, message: "Community Not Found!" })
+    }
+
+    community.ismonetized = ismonetized
+    await community.save()
+    res.status(200).json({ success: true })
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+    console.log(error)
+  }
+}
