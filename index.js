@@ -9,6 +9,9 @@ const Redis = require("ioredis");
 const http = require("http").Server(app);
 const io = require("socket.io")(http);
 const aesjs = require("aes-js");
+const fs = require('fs');
+const path = require('path');
+
 
 //import routes
 const userAuth = require("./routes/authRoutes");
@@ -160,7 +163,7 @@ const findUser = async () => {
     const users = await User.find()
     const reverseusers = users.reverse()
 
-    const onlyseven = reverseusers.slice(0, 7)
+    const onlyseven = reverseusers.slice(0, 20)
     for (let i = 0; i < onlyseven.length; i++) {
       const data = {
         fullname: onlyseven[i].fullname,
@@ -199,7 +202,7 @@ const findUser = async () => {
 const deleteCommunity = async () => {
   try {
 
-    const community = await Community.findOne({ title: "UhjKhhYiit" })
+    const community = await Community.findOne({ title: "Gdhgs" })
     console.log(community.title, community._id)
     for (let i = 0; i < community.posts.length; i++) {
       const post = await Post.findByIdAndDelete(community.posts[i])
@@ -212,4 +215,54 @@ const deleteCommunity = async () => {
   }
 }
 
+const pushId = async () => {
+  try {
+    // let ids = []
+    const user = await User.find()
+    for (let i = 0; i < 2000; i++) {
+      const community = await Community.find({ creator: user[i]._id })
+      const cId = community.map((d) => { return (d._id) })
+      user[i].communitycreated = cId
+      await user[i].save()
+      console.log(cId)
+      // ids.push(cId)
+    }
+
+    console.log("done")
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// pushId()
 // deleteCommunity()
+
+const usersIds = async () => {
+  try {
+    const data = []
+    const fullname = [
+      "Party Bags", "Shiv Bakers", "Play paladins", "Deep Learning Hub", "FREAKY MOVIES", "Arnav Mehta", "Food Fetchers "
+    ]
+    for (let i = 0; i < fullname.length; i++) {
+
+      const users = await User.findOne({ fullname: fullname[i] })
+      const com = await Community.findOne({ creator: users?._id })
+      const obj = {
+        email: users?.email,
+        password: users?.passw ? decryptaes(users?.passw) : null,
+        comId: com?._id,
+        communityName: com?.title,
+        userid: users?._id,
+        fullname: users?.fullname
+      }
+      data.push(obj)
+    }
+
+    console.log(data, "data")
+
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+usersIds()
