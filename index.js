@@ -202,7 +202,7 @@ const findUser = async () => {
 const deleteCommunity = async () => {
   try {
 
-    const community = await Community.findOne({ title: "Gdhgs" })
+    const community = await Community.findOne({ title: "ghj" })
     console.log(community.title, community._id)
     for (let i = 0; i < community.posts.length; i++) {
       const post = await Post.findByIdAndDelete(community.posts[i])
@@ -253,10 +253,15 @@ const usersIds = async () => {
         comId: com?._id,
         communityName: com?.title,
         userid: users?._id,
-        fullname: users?.fullname
+        fullname: users?.fullname,
+        memberships: users?.memberships,
+        isverified: users?.isverified
       }
       data.push(obj)
+
     }
+
+
 
     console.log(data, "data")
 
@@ -265,4 +270,4 @@ const usersIds = async () => {
   }
 }
 
-usersIds()
+// usersIds()

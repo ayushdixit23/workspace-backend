@@ -760,6 +760,10 @@ exports.newad = async (req, res) => {
       });
       const savedpost = await post.save();
 
+      const adstopost = await Ads.findById(adSaved?._id)
+      adstopost.postid = savedpost._id
+      await adstopost.save()
+
       const approve = new Approvals({
         id: adSaved._id,
         type: "ad"
