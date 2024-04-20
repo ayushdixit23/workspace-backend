@@ -25,11 +25,11 @@ const sha256 = require("sha256")
 
 const minioClient = new Minio.Client({
   endPoint: "minio.grovyo.xyz",
-
   useSSL: true,
   accessKey: "shreyansh379",
   secretKey: "shreyansh379",
 });
+
 const Advertiser = require("../models/Advertiser");
 const Post = require("../models/post");
 const Topic = require("../models/topic");
