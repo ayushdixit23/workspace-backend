@@ -50,6 +50,7 @@ const AdsSchema = new mongoose.Schema(
     impressions: { type: Number, default: 0 },
     cpc: { type: Number, default: 0 },
     clicks: { type: Number, default: 0 },
+    popularity: { type: Number, default: 1 }
   },
   { timestamps: false }
 );

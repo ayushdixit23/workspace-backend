@@ -600,6 +600,7 @@ exports.newad = async (req, res) => {
     advertiserid,
     communityName,
     communityDesc,
+    popularity,
     communityCategory,
   } = req.body;
 
@@ -724,6 +725,7 @@ exports.newad = async (req, res) => {
         tags,
         location,
         agerange,
+        popularity,
         maxage,
         minage,
         totalbudget,
@@ -795,6 +797,7 @@ exports.createad = async (req, res) => {
     enddate,
     cta,
     ctalink,
+    popularity,
     goal,
     headline,
     desc,
@@ -889,6 +892,7 @@ exports.createad = async (req, res) => {
       maxage,
       minage,
       age,
+      popularity,
       totalbudget,
       dailybudget,
       estaudience,

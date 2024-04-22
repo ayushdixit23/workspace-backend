@@ -780,6 +780,19 @@ exports.analyticsuserThirtyDays = async (req, res) => {
   }
 };
 
+exports.checkfordefault = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(id)
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found!" })
+    }
+    res.status(200).json({ success: true, useDefaultProsite: user.useDefaultProsite })
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+}
+
 // middleware
 exports.authenticateUser = async (req, res, next) => {
   try {

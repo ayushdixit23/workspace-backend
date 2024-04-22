@@ -50,6 +50,7 @@ const {
   fetchSingleProduct,
   defaultprositeselector,
   changemont,
+  checkfordefault,
   // fetchingprosite,
 
   // base64upload,
@@ -160,6 +161,7 @@ router.post("/savemytemplate/:id", templates)
 router.get("/fetchSingleProduct/:productId", fetchSingleProduct)
 router.post("/defaultprositeselector/:id", defaultprositeselector)
 router.post("/changemont/:comid", changemont)
+router.get("/checkfordefault/:id", checkfordefault)
 // router.post("/approvalrequestbank/:id", approvalrequestbank)
 
 module.exports = router;
