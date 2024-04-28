@@ -26,6 +26,7 @@ const PostSchema = new mongoose.Schema(
         type: { type: String },
         size: { type: String },
         thumbnail: { type: String },
+        resolution: { type: String, default: "original" },
       },
     ],
     kind: { type: String, default: "post" },

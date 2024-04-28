@@ -25,14 +25,18 @@ const Order = require("../models/orders");
 // const Lottie = require("../models/Lottie");
 const mongoose = require("mongoose");
 const Subscriptions = require("../models/Subscriptions");
-const SellerOrder = require("../models/SellerOrder")
+const SellerOrder = require("../models/SellerOrder");
 // const Subscriptions = require("../models/Subscriptions");
 // const Prosite = require("../models/prosite");
 const Razorpay = require("razorpay");
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/cloudfront-signer");
-const Tag = require("../models/Tag")
-const Interest = require("../models/Interest")
+const Tag = require("../models/Tag");
+const Interest = require("../models/Interest");
 const fs = require("fs");
 require("dotenv").config();
 
@@ -83,7 +87,6 @@ function generateAccessToken(data) {
   return access_token;
 }
 function generateRefreshToken(data) {
-
   const refresh_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
     expiresIn: "10d",
   });
@@ -147,89 +150,93 @@ exports.checkid = async (req, res) => {
   try {
     const { phone } = req.body;
     const dphone = await decryptaes(phone);
-    const user = await User.findOne({ phone: dphone })
+    const user = await User.findOne({ phone: dphone });
 
-    const memberships = await Membership.findById(user.memberships.membership)
-    console.log(memberships)
+    const memberships = await Membership.findById(user.memberships.membership);
+    console.log(memberships);
     if (user) {
       const sessionId = generateSessionId();
 
-      const dp =
-        process.env.URL + user.profilepic;
+      const dp = process.env.URL + user.profilepic;
       const data = {
         dp,
         fullname: user.fullname,
         username: user.username,
         id: user._id.toString(),
         sessionId,
-        memberships: memberships.title
+        memberships: memberships.title,
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
 
-      res
-        .status(200)
-        .json({
-          dp,
-          access_token, refresh_token, sessionId, success: true
-        });
+      res.status(200).json({
+        dp,
+        access_token,
+        refresh_token,
+        sessionId,
+        success: true,
+      });
     } else {
       res.status(404).json({ message: "User not found", success: false });
     }
   } catch (err) {
-    ;
     res.status(400).json({ message: "Something Went Wrong", success: false });
   }
 };
 
 exports.fetchwithid = async (req, res) => {
   try {
-    const { id } = req.params
-    const user = await User.findById(id)
+    const { id } = req.params;
+    const user = await User.findById(id);
     if (!user) {
-      return res.status(400).json({ success: false, message: "User Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found" });
     }
-    const memberships = await Membership.findById(user.memberships.membership)
+    const memberships = await Membership.findById(user.memberships.membership);
     const sessionId = generateSessionId();
-    const dp =
-      process.env.URL + user.profilepic;
+    const dp = process.env.URL + user.profilepic;
     const data = {
       dp,
       fullname: user.fullname,
       username: user.username,
       id: user._id.toString(),
       sessionId,
-      memberships: memberships.title
+      memberships: memberships.title,
     };
-    console.log(data)
+    console.log(data);
     const access_token = generateAccessToken(data);
     const refresh_token = generateRefreshToken(data);
     res.status(200).json({
       dp,
-      access_token, refresh_token, sessionId, success: true, user, data
+      access_token,
+      refresh_token,
+      sessionId,
+      success: true,
+      user,
+      data,
     });
   } catch (error) {
     res.status(500).json({ message: "Something Went Wrong", success: false });
   }
-}
+};
 
 exports.checkqr = async (req, res) => {
   console.log(req.body);
   try {
     const { id } = req.body;
-    const user = await User.findById(id)
-    const memberships = await Membership.findById(user.memberships.membership)
+    const user = await User.findById(id);
+    const memberships = await Membership.findById(user.memberships.membership);
     if (user) {
       const sessionId = generateSessionId();
-      const dp =
-        process.env.URL + user.profilepic;
+      const dp = process.env.URL + user.profilepic;
       const data = {
         dp,
         fullname: user.fullname,
         username: user.username,
         id: user._id.toString(),
         sessionId,
-        memberships: memberships.title
+        memberships: memberships.title,
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
@@ -249,26 +256,26 @@ exports.checkqr = async (req, res) => {
 // email
 exports.checkemail = async (req, res) => {
   const { email, password } = req.body;
-  const passw = await encryptaes(password)
+  const passw = await encryptaes(password);
   try {
-    const user = await User.findOne({ email: email, passw: passw })
+    const user = await User.findOne({ email: email, passw: passw });
     if (!user) {
       return res
         .status(203)
         .json({ message: "User not found", success: false, userexists: false });
     } else {
-
-      const memberships = await Membership.findById(user.memberships.membership)
-      const dp =
-        process.env.URL + user.profilepic;
-      const sessionId = generateSessionId()
+      const memberships = await Membership.findById(
+        user.memberships.membership
+      );
+      const dp = process.env.URL + user.profilepic;
+      const sessionId = generateSessionId();
       const data = {
         dp,
         fullname: user.fullname,
         username: user.username,
         id: user._id.toString(),
         sessionId,
-        memberships: memberships.title
+        memberships: memberships.title,
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
@@ -312,10 +319,11 @@ exports.refresh = async (req, res) => {
           }
           const sessionId = payload.sessionId;
           const user = await User.findById(payload.id);
-          const memberships = await Membership.findById(user.memberships.membership)
+          const memberships = await Membership.findById(
+            user.memberships.membership
+          );
 
-          const dp =
-            process.env.URL + user.profilepic;
+          const dp = process.env.URL + user.profilepic;
           if (!user) {
             return res
               .status(400)
@@ -327,10 +335,10 @@ exports.refresh = async (req, res) => {
             username: user.username,
             id: user._id.toString(),
             sessionId,
-            memberships: memberships.title
+            memberships: memberships.title,
           };
           const access_token = generateAccessToken(data);
-          const refresh_token = generateRefreshToken(data)
+          const refresh_token = generateRefreshToken(data);
 
           res.status(200).json({ success: true, access_token, refresh_token });
         } catch (err) {
@@ -339,11 +347,9 @@ exports.refresh = async (req, res) => {
       }
     );
   } catch (err) {
-    ;
     res.status(400).json({ success: false, message: "Internal server error" });
   }
 };
-
 
 // all analytics of Dashboard
 exports.analyticsuser = async (req, res) => {
@@ -351,56 +357,57 @@ exports.analyticsuser = async (req, res) => {
     const { userid } = req.params;
     const user = await User.findById(userid);
     if (user) {
-
       const community = await Community.find({
         creator: user._id.toString(),
       }).populate("topics");
 
       const dps = await Promise.all(
         community.map(async (d) => {
-          const a =
-            process.env.URL + d?.dp;
+          const a = process.env.URL + d?.dp;
           return a;
         })
       );
 
-      const storeAnalytics = await Analytics.find({ id: userid }).sort({ date: -1 }).limit(7)
+      const storeAnalytics = await Analytics.find({ id: userid })
+        .sort({ date: -1 })
+        .limit(7);
       const sales = storeAnalytics.map((d) => {
-        return ({
+        return {
           Dates: d?.date,
-          Sales: d?.Sales
-        })
-      })
+          Sales: d?.Sales,
+        };
+      });
 
-      let avgeng = []
+      let avgeng = [];
 
       for (let i = 0; i < community.length; i++) {
         const posts = await Post.find({ community: community[i]._id });
 
-        let eng = []
+        let eng = [];
         await posts.map((p, i) => {
+          let final =
+            p.views <= 0
+              ? 0
+              : // (parseInt(p?.sharescount)
+              (+parseInt(p?.likes) /
+                //  parseInt(p?.totalcomments))
+                parseInt(p?.views)) *
+              100;
+          eng.push(final);
+        });
 
-          let final = p.views <= 0 ? 0 :
-            (
-              // (parseInt(p?.sharescount) 
-              + parseInt(p?.likes)
-              //  parseInt(p?.totalcomments)) 
-              / parseInt(p?.views)) * 100;
-          eng.push(final)
-        })
-
-        let sum = 0
+        let sum = 0;
         for (let i = 0; i < eng.length; i++) {
-          sum += eng[i]
+          sum += eng[i];
         }
-        let avg = 0
+        let avg = 0;
 
         if (eng.length > 0) {
-          avg = Math.round(sum / eng.length)
+          avg = Math.round(sum / eng.length);
         } else {
-          avg = 0
+          avg = 0;
         }
-        avgeng.push(avg)
+        avgeng.push(avg);
       }
       const endDate = new Date();
 
@@ -412,7 +419,9 @@ exports.analyticsuser = async (req, res) => {
           try {
             const anycom = await Analytics.find({
               id: f?._id,
-            }).sort({ creation: -1 }).limit(7);
+            })
+              .sort({ creation: -1 })
+              .limit(7);
 
             const reversedStats = anycom.map((e) => ({
               X: e?.date,
@@ -427,20 +436,26 @@ exports.analyticsuser = async (req, res) => {
               returningvisitor: e?.returningvisitor.length || 0,
             }));
 
-            const locationToSend = Object.entries(f.location).map(([state, value]) => ({
-              state,
-              value,
-            }));
-            const loc = locationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
+            const locationToSend = Object.entries(f.location).map(
+              ([state, value]) => ({
+                state,
+                value,
+              })
+            );
+            const loc = locationToSend
+              .sort((a, b) => b.value - a.value)
+              .slice(0, 5);
             const actualloc = loc.map((d) => ({
               state: d?.state,
               value: Math.round((d.value / f.memberscount) * 100),
             }));
 
-            const obtainAgeArr = Object.entries(f.demographics.age).map(([age, value]) => ({
-              age,
-              value,
-            }));
+            const obtainAgeArr = Object.entries(f.demographics.age).map(
+              ([age, value]) => ({
+                age,
+                value,
+              })
+            );
 
             const sendAge = obtainAgeArr.map((d) => ({
               age: d.age,
@@ -472,13 +487,17 @@ exports.analyticsuser = async (req, res) => {
         })
       );
 
-      console.log(commerged)
-
-      const product = await Product.find({ creator: user._id.toString() }).sort({ itemsold: -1 }).limit(5)
+      const product = await Product.find({ creator: user._id.toString() })
+        .sort({ itemsold: -1 })
+        .limit(5);
       const productdps = await Promise.all(
         product.map(async (f) => {
-          const dp =
-            process.env.PRODUCT_URL + f?.images[0].content;
+          let dp;
+          if (f.isvariant) {
+            dp = process.env.PRODUCT_URL + f?.variants[0].category[0].content;
+          } else {
+            dp = process.env.PRODUCT_URL + f?.images[0].content;
+          }
 
           return dp;
         })
@@ -488,51 +507,55 @@ exports.analyticsuser = async (req, res) => {
         return { ...f.toObject(), dps: productdps[i] };
       });
 
-      const pieChart = [{
-        name: "sales",
-        value: user.salesCount,
-      },
-      {
-        name: "visitors",
-        value: user.totalStoreVisit
-      }]
+      const pieChart = [
+        {
+          name: "sales",
+          value: user.salesCount,
+        },
+        {
+          name: "visitors",
+          value: user.totalStoreVisit,
+        },
+      ];
 
-      const storeLocationToSend = Object.entries(user.storeLocation).map(([state, value]) => ({ state, value }));
-      const locstore = storeLocationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
+      const storeLocationToSend = Object.entries(user.storeLocation).map(
+        ([state, value]) => ({ state, value })
+      );
+      const locstore = storeLocationToSend
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
 
       const actualStoreLoc = locstore.map((d, i) => {
         return {
           state: d?.state,
-          value: Math.round((d?.value / user.salesCount) * 100)
-        }
-      })
+          value: Math.round((d?.value / user.salesCount) * 100),
+        };
+      });
 
       const posts = await Post.find({ sender: user._id.toString() }).populate(
         "community",
         "title"
       );
 
-      let dp
-      let video
+      let dp;
+      let video;
       const postsdps = await Promise.all(
         posts.map(async (f) => {
           if (f?.post.length === 0) {
-            console.log("first", f?.title)
-            return null
+            console.log("first", f?.title);
+            return null;
           }
           if (f?.post[0].type.startsWith("video")) {
             if (!f?.post[0].thumbnail) {
-              dp = process.env.POST_URL + f?.post[0].content
-              video = true
+              dp = process.env.POST_URL + f?.post[0].content;
+              video = true;
             } else {
-              dp =
-                process.env.POST_URL + f?.post[0].thumbnail
-              video = false
+              dp = process.env.POST_URL + f?.post[0].thumbnail;
+              video = false;
             }
           } else {
-            dp =
-              process.env.POST_URL + f?.post[0].content
-            video = false
+            dp = process.env.POST_URL + f?.post[0].content;
+            video = false;
           }
 
           return { dp, video };
@@ -540,27 +563,35 @@ exports.analyticsuser = async (req, res) => {
       );
 
       // engagement rate
-      let eng = []
+      let eng = [];
       await posts.map((p, i) => {
-        let final = p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
-        eng.push(final)
-      })
+        let final =
+          p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
+        eng.push(final);
+      });
 
       const postmerged = posts.map((f, i) => {
         return {
           ...f.toObject(),
           dps: postsdps[i]?.dp,
           engrate: eng[i],
-          video: postsdps[i]?.video
+          video: postsdps[i]?.video,
         };
       });
 
-      res
-        .status(200)
-        .json({ success: true, sales, storeLocation: actualStoreLoc, pieChart, posts: posts.length, commerged, promerged, postmerged });
+      res.status(200).json({
+        success: true,
+        sales,
+        storeLocation: actualStoreLoc,
+        pieChart,
+        posts: posts.length,
+        commerged,
+        promerged,
+        postmerged,
+      });
     }
   } catch (err) {
-    console.log(err)
+    console.log(err);
     res.status(400).json({ message: err.message, success: false });
   }
 };
@@ -573,63 +604,66 @@ exports.analyticsuserThirtyDays = async (req, res) => {
     startDate.setDate(startDate.getDate() - 7);
     const user = await User.findById(userid);
     if (user) {
-
       const community = await Community.find({
         creator: user._id.toString(),
       }).populate("topics");
 
       const dps = await Promise.all(
         community.map(async (d) => {
-          const a =
-            process.env.URL + d?.dp;
+          const a = process.env.URL + d?.dp;
           return a;
         })
       );
 
-      const storeAnalytics = await Analytics.find({ id: userid }).sort({ date: -1 }).limit(7)
+      const storeAnalytics = await Analytics.find({ id: userid })
+        .sort({ date: -1 })
+        .limit(7);
       const sales = storeAnalytics.map((d) => {
-        return ({
+        return {
           Dates: d?.date,
-          Sales: d?.Sales
-        })
-      })
+          Sales: d?.Sales,
+        };
+      });
 
-      let avgeng = []
+      let avgeng = [];
 
       for (let i = 0; i < community.length; i++) {
         const posts = await Post.find({ community: community[i]._id });
 
-        let eng = []
+        let eng = [];
         await posts.map((p, i) => {
+          let final =
+            p.views <= 0
+              ? 0
+              : // (parseInt(p?.sharescount)
+              (+parseInt(p?.likes) /
+                //  parseInt(p?.totalcomments))
+                parseInt(p?.views)) *
+              100;
+          eng.push(final);
+        });
 
-          let final = p.views <= 0 ? 0 :
-            (
-              // (parseInt(p?.sharescount) 
-              + parseInt(p?.likes)
-              //  parseInt(p?.totalcomments)) 
-              / parseInt(p?.views)) * 100;
-          eng.push(final)
-        })
-
-        let sum = 0
+        let sum = 0;
         for (let i = 0; i < eng.length; i++) {
-          sum += eng[i]
+          sum += eng[i];
         }
-        let avg = 0
+        let avg = 0;
 
         if (eng.length > 0) {
-          avg = Math.round(sum / eng.length)
+          avg = Math.round(sum / eng.length);
         } else {
-          avg = 0
+          avg = 0;
         }
-        avgeng.push(avg)
+        avgeng.push(avg);
       }
       const commerged = await Promise.all(
         community.map(async (f, i) => {
           try {
             const anycom = await Analytics.find({
               id: f?._id,
-            }).sort({ creation: -1 }).limit(30);
+            })
+              .sort({ creation: -1 })
+              .limit(30);
 
             const reversedStats = anycom.map((e) => ({
               X: e?.date,
@@ -644,20 +678,26 @@ exports.analyticsuserThirtyDays = async (req, res) => {
               returningvisitor: e?.returningvisitor.length || 0,
             }));
 
-            const locationToSend = Object.entries(f.location).map(([state, value]) => ({
-              state,
-              value,
-            }));
-            const loc = locationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
+            const locationToSend = Object.entries(f.location).map(
+              ([state, value]) => ({
+                state,
+                value,
+              })
+            );
+            const loc = locationToSend
+              .sort((a, b) => b.value - a.value)
+              .slice(0, 5);
             const actualloc = loc.map((d) => ({
               state: d?.state,
               value: Math.round((d.value / f.memberscount) * 100),
             }));
 
-            const obtainAgeArr = Object.entries(f.demographics.age).map(([age, value]) => ({
-              age,
-              value,
-            }));
+            const obtainAgeArr = Object.entries(f.demographics.age).map(
+              ([age, value]) => ({
+                age,
+                value,
+              })
+            );
 
             const sendAge = obtainAgeArr.map((d) => ({
               age: d.age,
@@ -689,11 +729,17 @@ exports.analyticsuserThirtyDays = async (req, res) => {
         })
       );
 
-      const product = await Product.find({ creator: user._id.toString() }).sort({ itemsold: -1 }).limit(5)
+      const product = await Product.find({ creator: user._id.toString() })
+        .sort({ itemsold: -1 })
+        .limit(5);
       const productdps = await Promise.all(
         product.map(async (f) => {
-          const dp =
-            process.env.PRODUCT_URL + f?.images[0].content;
+          let dp;
+          if (f.isvariant) {
+            dp = process.env.PRODUCT_URL + f?.variants[0].category[0].content;
+          } else {
+            dp = process.env.PRODUCT_URL + f?.images[0].content;
+          }
 
           return dp;
         })
@@ -703,51 +749,55 @@ exports.analyticsuserThirtyDays = async (req, res) => {
         return { ...f.toObject(), dps: productdps[i] };
       });
 
-      const pieChart = [{
-        name: "sales",
-        value: user.salesCount,
-      },
-      {
-        name: "visitors",
-        value: user.totalStoreVisit
-      }]
+      const pieChart = [
+        {
+          name: "sales",
+          value: user.salesCount,
+        },
+        {
+          name: "visitors",
+          value: user.totalStoreVisit,
+        },
+      ];
 
-      const storeLocationToSend = Object.entries(user.storeLocation).map(([state, value]) => ({ state, value }));
-      const locstore = storeLocationToSend.sort((a, b) => b.value - a.value).slice(0, 5);
+      const storeLocationToSend = Object.entries(user.storeLocation).map(
+        ([state, value]) => ({ state, value })
+      );
+      const locstore = storeLocationToSend
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
 
       const actualStoreLoc = locstore.map((d, i) => {
         return {
           state: d?.state,
-          value: Math.round((d?.value / user.salesCount) * 100)
-        }
-      })
+          value: Math.round((d?.value / user.salesCount) * 100),
+        };
+      });
 
       const posts = await Post.find({ sender: user._id.toString() }).populate(
         "community",
         "title"
       );
 
-      let dp
-      let video
+      let dp;
+      let video;
       const postsdps = await Promise.all(
         posts.map(async (f) => {
           if (f?.post.length === 0) {
-            console.log("first", f?.title)
-            return null
+            console.log("first", f?.title);
+            return null;
           }
           if (f?.post[0].type.startsWith("video")) {
             if (!f?.post[0].thumbnail) {
-              dp = process.env.POST_URL + f?.post[0].content
-              video = true
+              dp = process.env.POST_URL + f?.post[0].content;
+              video = true;
             } else {
-              dp =
-                process.env.POST_URL + f?.post[0].thumbnail
-              video = false
+              dp = process.env.POST_URL + f?.post[0].thumbnail;
+              video = false;
             }
           } else {
-            dp =
-              process.env.POST_URL + f?.post[0].content
-            video = false
+            dp = process.env.POST_URL + f?.post[0].content;
+            video = false;
           }
 
           return { dp, video };
@@ -755,43 +805,54 @@ exports.analyticsuserThirtyDays = async (req, res) => {
       );
 
       // engagement rate
-      let eng = []
+      let eng = [];
       await posts.map((p, i) => {
-        let final = p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
-        eng.push(final)
-      })
+        let final =
+          p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
+        eng.push(final);
+      });
 
       const postmerged = posts.map((f, i) => {
         return {
           ...f.toObject(),
           dps: postsdps[i]?.dp,
           engrate: eng[i],
-          video: postsdps[i]?.video
+          video: postsdps[i]?.video,
         };
       });
 
-      res
-        .status(200)
-        .json({ success: true, sales, storeLocation: actualStoreLoc, pieChart, posts: posts.length, commerged, promerged, postmerged });
+      res.status(200).json({
+        success: true,
+        sales,
+        storeLocation: actualStoreLoc,
+        pieChart,
+        posts: posts.length,
+        commerged,
+        promerged,
+        postmerged,
+      });
     }
   } catch (err) {
-    ;
     res.status(400).json({ message: err.message, success: false });
   }
 };
 
 exports.checkfordefault = async (req, res) => {
   try {
-    const { id } = req.params
-    const user = await User.findById(id)
+    const { id } = req.params;
+    const user = await User.findById(id);
     if (!user) {
-      return res.status(400).json({ success: false, message: "User Not Found!" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found!" });
     }
-    res.status(200).json({ success: true, useDefaultProsite: user.useDefaultProsite })
+    res
+      .status(200)
+      .json({ success: true, useDefaultProsite: user.useDefaultProsite });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
-}
+};
 
 // middleware
 exports.authenticateUser = async (req, res, next) => {
@@ -830,12 +891,15 @@ exports.allcoms = async (req, res) => {
       "fullname"
     );
     const dps = [];
-    const topicPost = []
+    const topicPost = [];
     let avgeng = [];
     for (let i = 0; i < Co.length; i++) {
-      const topic = await Topic.findOne({ community: Co[i]._id, title: "Posts" })
-      const topicId = { topicid: topic._id }
-      topicPost.push(topicId)
+      const topic = await Topic.findOne({
+        community: Co[i]._id,
+        title: "Posts",
+      });
+      const topicId = { topicid: topic._id };
+      topicPost.push(topicId);
       const abc = process.env.URL + Co[i].dp;
       dps.push(abc);
     }
@@ -844,37 +908,38 @@ exports.allcoms = async (req, res) => {
     for (let i = 0; i < Co.length; i++) {
       const posts = await Post.find({ community: Co[i]._id });
 
-      let eng = []
+      let eng = [];
       await posts.map((p, i) => {
-        let final = p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
-        eng.push(final)
-      })
+        let final =
+          p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
+        eng.push(final);
+      });
 
-      let sum = 0
+      let sum = 0;
       for (let i = 0; i < eng.length; i++) {
-        sum += eng[i]
+        sum += eng[i];
       }
-      let avg = 0
+      let avg = 0;
 
       if (eng.length > 0) {
-        avg = Math.round(sum / eng.length)
+        avg = Math.round(sum / eng.length);
       } else {
-        avg = 0
+        avg = 0;
       }
-      avgeng.push(avg)
+      avgeng.push(avg);
     }
     dps.reverse();
-    const topicPosts = topicPost.reverse()
+    const topicPosts = topicPost.reverse();
     const dpdata = dps;
     const comData = Com;
-    const avgEngData = avgeng
+    const avgEngData = avgeng;
     const merged = dpdata.map((d, i) => ({
       dps: d,
       topicId: topicPosts[i],
       c: comData[i],
-      avgeng: avgEngData[i]
+      avgeng: avgEngData[i],
     }));
-    console.log(dps)
+    console.log(dps);
     res.status(200).json({ merged, success: true });
   } catch (e) {
     console.log(e);
@@ -886,11 +951,13 @@ exports.createcom = async (req, res) => {
   const { title, desc, type, category, iddata } = req.body;
   const { userId } = req.params;
   const image = req.file;
-  console.log(type, "type")
+  console.log(type, "type");
   const uuidString = uuid();
   if (req.canCreateCommunity) {
     if (!image) {
-      res.status(400).json({ message: "Please upload an image", success: false });
+      res
+        .status(400)
+        .json({ message: "Please upload an image", success: false });
     } else if (iddata != undefined) {
       try {
         const user = await User.findById(userId);
@@ -918,7 +985,7 @@ exports.createcom = async (req, res) => {
           title: "Posts",
           creator: userId,
           community: savedcom._id,
-          nature: "post"
+          nature: "post",
         });
         await topic1.save();
 
@@ -926,7 +993,7 @@ exports.createcom = async (req, res) => {
           title: "All",
           creator: userId,
           community: savedcom._id,
-          nature: "chat"
+          nature: "chat",
         });
         await topic2.save();
 
@@ -1051,7 +1118,7 @@ exports.createcom = async (req, res) => {
           title: "Posts",
           creator: userId,
           community: savedcom._id,
-          nature: "post"
+          nature: "post",
         });
         await topic1.save();
 
@@ -1059,7 +1126,7 @@ exports.createcom = async (req, res) => {
           title: "All",
           creator: userId,
           community: savedcom._id,
-          nature: "chat"
+          nature: "chat",
         });
         await topic2.save();
 
@@ -1098,19 +1165,20 @@ exports.createcom = async (req, res) => {
             $push: {
               topicsjoined: [topic1._id, topic2._id],
               communityjoined: savedcom._id,
-              communitycreated: savedcom._id
+              communitycreated: savedcom._id,
             },
             $inc: { totaltopics: 2, totalcom: 1 },
           }
         );
         res.status(200).json({ community: savedcom, success: true });
-      }
-      catch (e) {
+      } catch (e) {
         res.status(400).json({ message: e.message, success: false });
       }
     }
   } else {
-    res.status(203).json({ success: false, message: "Max Community Limit Exceeded" })
+    res
+      .status(203)
+      .json({ success: false, message: "Max Community Limit Exceeded" });
   }
 };
 
@@ -1122,7 +1190,6 @@ exports.getposts = async (req, res) => {
       _id: comid,
     }).populate("posts");
     if (com && com.posts) {
-
       const postdetails = com.posts.map((post) => {
         return {
           post,
@@ -1136,61 +1203,107 @@ exports.getposts = async (req, res) => {
       res.status(400).json({ success: false, message: "Not found" });
     }
   } catch (err) {
-    res.status(400).json({ message: "Cant get following information" });;
+    res.status(400).json({ message: "Cant get following information" });
   }
 };
 
 exports.getallposts = async (req, res) => {
   try {
-    const { comid } = req.params
-    const community = await Community.findById(comid).populate("posts")
+    const { comid } = req.params;
+    const community = await Community.findById(comid).populate("posts");
     if (!community) {
-      return res.status(400).json({ success: false, message: "No Results Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "No Results Found" });
     }
-    let postsArr = []
+    let postsArr = [];
     for (let i = 0; i < community.posts.length; i++) {
+      const postId = community.posts[i];
+      const post = await Post.findById(postId);
+      if (post.kind !== "poll" || post.kind !== "product") {
+        let final =
+          post.views <= 0
+            ? 0
+            : (parseInt(post?.likes) / parseInt(post?.views)) * 100;
 
-      const postId = community.posts[i]
-      const post = await Post.findById(postId)
-      if (post.kind !== "poll") {
-        let final = post.views <= 0 ? 0 : (parseInt(post?.likes) / parseInt(post?.views)) * 100;
-
-        let postdp
-        let video
-        let content
-        let thumbnail
+        let postdp;
+        let video;
+        let content;
+        let thumbnail;
         if (post.post.length === 0) {
-          postdp = null
+          postdp = null;
         } else {
           if (post.post[0].type.startsWith("video")) {
             if (!post.post[0].thumbnail) {
-              postdp = process.env.POST_URL + post.post[0]?.content
-              thumbnail = process.env.POST_URL + post.post[0]?.thumbnail
-              video = true
+              postdp = process.env.POST_URL + post.post[0]?.content;
+              thumbnail = process.env.POST_URL + post.post[0]?.thumbnail;
+              video = true;
             } else {
-              postdp = process.env.POST_URL + post.post[0]?.thumbnail
-              content = process.env.POST_URL + post.post[0]?.content
-              video = false
+              postdp = process.env.POST_URL + post.post[0]?.thumbnail;
+              content = process.env.POST_URL + post.post[0]?.content;
+              video = false;
             }
           } else {
-            postdp = process.env.POST_URL + post.post[0]?.content
-            video = false
+            postdp = process.env.POST_URL + post.post[0]?.content;
+            video = false;
           }
         }
         const postswithdp = {
-          post, postdp, engrate: Math.round(final), video, content
+          post,
+          postdp,
+          engrate: Math.round(final),
+          video,
+          content,
+        };
+        postsArr.push(postswithdp);
+      } else {
+        if (post.kind === "product") {
+          let final =
+            post.views <= 0
+              ? 0
+              : (parseInt(post?.likes) / parseInt(post?.views)) * 100;
+
+          let postdp;
+          let video;
+          let content;
+          let thumbnail;
+          if (post.post.length === 0) {
+            postdp = null;
+          } else {
+            if (post.post[0].type.startsWith("video")) {
+              if (!post.post[0].thumbnail) {
+                postdp = process.env.PRODUCT_URL + post.post[0]?.content;
+                thumbnail = process.env.PRODUCT_URL + post.post[0]?.thumbnail;
+                video = true;
+              } else {
+                postdp = process.env.PRODUCT_URL + post.post[0]?.thumbnail;
+                content = process.env.PRODUCT_URL + post.post[0]?.content;
+                video = false;
+              }
+            } else {
+              postdp = process.env.PRODUCT_URL + post.post[0]?.content;
+              video = false;
+            }
+          }
+          const postswithdp = {
+            post,
+            postdp,
+            engrate: Math.round(final),
+            video,
+            content,
+          };
+          postsArr.push(postswithdp);
         }
-        postsArr.push(postswithdp)
       }
     }
 
-    const posts = postsArr.reverse()
-    res.status(200).json({ success: true, posts })
+    const posts = postsArr.reverse();
+    res.status(200).json({ success: true, posts });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.status(500).json({ message: error.message, success: false });
   }
-}
+};
 
 // Store API =>
 // store registration
@@ -1230,38 +1343,42 @@ exports.registerstore = async (req, res) => {
 
     let finaladdress;
     if (gst) {
-      finaladdress = [{
-        buildingno: buildingno,
-        city: city,
-        state: state,
-        postal: postal,
-        landmark: landmark,
-        gst: gst,
-        businesscategory: businesscategory,
-        documenttype: documenttype.toString(),
-        documentfile: objectName,
-        coordinates: {
-          latitude,
-          longitude,
-          accuracy,
+      finaladdress = [
+        {
+          buildingno: buildingno,
+          city: city,
+          state: state,
+          postal: postal,
+          landmark: landmark,
+          gst: gst,
+          businesscategory: businesscategory,
+          documenttype: documenttype.toString(),
+          documentfile: objectName,
+          coordinates: {
+            latitude,
+            longitude,
+            accuracy,
+          },
         },
-      }];
+      ];
     } else {
-      finaladdress = [{
-        buildingno: buildingno,
-        city: city,
-        state: state,
-        postal: postal,
-        landmark: landmark,
-        businesscategory: businesscategory,
-        documenttype: documenttype.toString(),
-        documentfile: objectName,
-        coordinates: {
-          latitude,
-          longitude,
-          accuracy,
+      finaladdress = [
+        {
+          buildingno: buildingno,
+          city: city,
+          state: state,
+          postal: postal,
+          landmark: landmark,
+          businesscategory: businesscategory,
+          documenttype: documenttype.toString(),
+          documentfile: objectName,
+          coordinates: {
+            latitude,
+            longitude,
+            accuracy,
+          },
         },
-      }];
+      ];
     }
 
     const data = [];
@@ -1271,21 +1388,20 @@ exports.registerstore = async (req, res) => {
       const post = await Post.find({ community: community[i]._id });
       data.push({
         community: community[i].title,
-        posts: post.length
+        posts: post.length,
       });
     }
 
-    const checkUserv = () => data.some(d => d.community && d.posts > 0);
-    const validToCreateStore = checkUserv()
+    const checkUserv = () => data.some((d) => d.community && d.posts > 0);
+    const validToCreateStore = checkUserv();
 
-    console.log(finaladdress, "checking")
+    console.log(finaladdress, "checking");
 
     if (user) {
       if (validToCreateStore) {
+        user.storeAddress = finaladdress;
 
-        user.storeAddress = finaladdress
-
-        let request = await Request.findOne({ userid: userId })
+        let request = await Request.findOne({ userid: userId });
 
         if (!request) {
           request = new Request({
@@ -1301,12 +1417,12 @@ exports.registerstore = async (req, res) => {
               businesscategory: businesscategory,
               documenttype: documenttype.toString(),
               documentfile: objectName,
-            }
-          })
-          await request.save()
+            },
+          });
+          await request.save();
         }
 
-        request.type = "store"
+        request.type = "store";
         request.storeDetails = {
           buildingno: buildingno,
           city: city,
@@ -1317,15 +1433,18 @@ exports.registerstore = async (req, res) => {
           businesscategory: businesscategory,
           documenttype: documenttype.toString(),
           documentfile: objectName,
-        }
+        };
 
-        await request.save()
+        await request.save();
 
-        user.isStoreVerified = false
-        await user.save()
+        user.isStoreVerified = false;
+        await user.save();
         res.status(200).json({ success: true });
       } else {
-        res.status(400).json({ success: false, message: "Not Eligable to Create Store Now!" })
+        res.status(400).json({
+          success: false,
+          message: "Not Eligable to Create Store Now!",
+        });
       }
     } else {
       res.status(404).json({ success: false, message: "User Not Found" });
@@ -1341,11 +1460,12 @@ exports.createCollection = async (req, res) => {
   try {
     const { name, category } = req.body;
     const { userId } = req.params;
-    const user = await User.findById(userId)
+    const user = await User.findById(userId);
     if (req.canCreateCollection) {
       if (req.file) {
         const uuidString = uuid();
-        const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
+        const objectName = `${Date.now()}_${uuidString}_${req.file.originalname
+          }`;
         console.log(objectName);
         await s3.send(
           new PutObjectCommand({
@@ -1355,24 +1475,26 @@ exports.createCollection = async (req, res) => {
             ContentType: req.file.mimetype,
           })
         );
-        user.foodLicense = objectName
+        user.foodLicense = objectName;
       }
       const data = {
         name,
         category,
         creator: userId,
-      }
+      };
       const newCol = new Collection(data);
       await newCol.save();
       // await User.updateOne(
       //   { _id: userId },
       //   { $push: { collectionss: newCol._id } }
       // );
-      user.collectionss.push(newCol._id)
-      await user.save()
+      user.collectionss.push(newCol._id);
+      await user.save();
       res.status(200).json({ success: true });
     } else {
-      res.status(203).json({ message: "Collections Limit Exceeded", success: false });
+      res
+        .status(203)
+        .json({ message: "Collections Limit Exceeded", success: false });
     }
   } catch (e) {
     console.log(e);
@@ -1425,10 +1547,15 @@ exports.fetchProduct = async (req, res) => {
         if (find) {
           const dps = await Promise.all(
             find.products.map(async (product) => {
-              const a =
-                process.env.PRODUCT_URL + product.images[0].content;
-
-              return a
+              let a;
+              if (product.isvariant) {
+                a =
+                  process.env.PRODUCT_URL +
+                  product?.variants[0].category[0].content;
+              } else {
+                a = process.env.PRODUCT_URL + product?.images[0].content;
+              }
+              return a;
             })
           );
           const productsWithDps = find.products.map((product, index) => {
@@ -1448,7 +1575,7 @@ exports.fetchProduct = async (req, res) => {
       res.json({ message: "User Not Found" });
     }
   } catch (err) {
-    res.status(404).json({ message: err.message, success: false });;
+    res.status(404).json({ message: err.message, success: false });
   }
 };
 
@@ -1465,74 +1592,169 @@ exports.createproduct = async (req, res) => {
     discountedprice,
     sellername,
     totalstars,
+    isvariant,
+    size,
+    color,
+    prices,
+    variantquantity,
+    variantdiscountedprice,
     isphysical,
     weight,
     type,
   } = req.body;
+  console.log(req.body, req.files);
   if (req.canCreateProduct) {
     const user = await User.findById(userId);
     if (!user) {
       res.status(400).json({ message: "User not found", success: false });
     } else {
-      if (req.files.length < 1) {
-        res.status(400).json({ message: "Must have one image" });
-      } else {
-        try {
-          let pos = [];
+      if (isvariant === false || isvariant == "false") {
+        if (req.files.length < 1) {
+          res.status(400).json({ message: "Must have one image" });
+        } else {
+          try {
+            let pos = [];
 
-          for (let i = 0; i < req?.files?.length; i++) {
-            const uuidString = uuid();
-            const bucketName = "products";
-            const objectName = `${Date.now()}_${uuidString}`;
-            await s3.send(
-              new PutObjectCommand({
-                Bucket: PRODUCT_BUCKET,
-                Key: objectName,
-                Body: req.files[i].buffer,
-                ContentType: req.files[i].mimetype,
-              })
-            );
-            pos.push({ content: objectName, type: req.files[i].mimetype });
+            for (let i = 0; i < req?.files?.length; i++) {
+              const uuidString = uuid();
+              const bucketName = "products";
+              const objectName = `${Date.now()}_${uuidString}`;
+              await s3.send(
+                new PutObjectCommand({
+                  Bucket: PRODUCT_BUCKET,
+                  Key: objectName,
+                  Body: req.files[i].buffer,
+                  ContentType: req.files[i].mimetype,
+                })
+              );
+              pos.push({ content: objectName, type: req.files[i].mimetype });
+            }
+
+            const p = new Product({
+              name,
+              brandname,
+              desc,
+              creator: userId,
+              quantity,
+              shippingcost,
+              price,
+              discountedprice,
+              sellername,
+              totalstars,
+              isphysical,
+              images: pos,
+              weight,
+              type,
+            });
+            const data = await p.save();
+
+            const collection = await Collection.findById(colid);
+            if (!collection) {
+              return res
+                .status(404)
+                .json({ message: "Collection not found", success: false });
+            }
+
+            collection.products.push(data);
+            const actualdata = await collection.save();
+
+            res.status(200).json({ actualdata, success: true });
+          } catch (e) {
+            console.log(e);
+            res.status(500).json({ message: e.message, success: false });
           }
-
-
-          const p = new Product({
-            name,
-            brandname,
-            desc,
-            creator: userId,
-            quantity,
-            shippingcost,
-            price,
-            discountedprice,
-            sellername,
-            totalstars,
-            isphysical,
-            images: pos,
-            weight,
-            type,
-          });
-          const data = await p.save();
-
-          const collection = await Collection.findById(colid);
-          if (!collection) {
-            return res
-              .status(404)
-              .json({ message: "Collection not found", success: false });
-          }
-
-          collection.products.push(data);
-          const actualdata = await collection.save();
-
-          res.status(200).json({ actualdata, success: true });
-        } catch (e) {
-          console.log(e);
-          res.status(500).json({ message: e.message, success: false });
         }
+      } else {
+        const priceVariant = JSON.parse(prices);
+        const variantsize = JSON.parse(size);
+        const variantcolor = JSON.parse(color);
+        const quantityVariant = JSON.parse(variantquantity);
+        const variantdiscounted = JSON.parse(variantdiscountedprice);
+        const variants = [];
+        const imageArr = [];
+
+        for (let i = 0; i < req?.files?.length; i++) {
+          const uuidString = uuid();
+          const bucketName = "products";
+          const objectName = `${Date.now()}_${uuidString}`;
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: PRODUCT_BUCKET,
+              Key: objectName,
+              Body: req.files[i].buffer,
+              ContentType: req.files[i].mimetype,
+            })
+          );
+          imageArr.push(objectName);
+        }
+
+        for (let i = 0; i < variantcolor.length; i++) {
+          const name = "size";
+          const value = variantcolor[i];
+          const category = [];
+
+          for (let j = 0; j < variantsize.length; j++) {
+            const price = priceVariant[i * variantsize.length + j];
+            const quantity = quantityVariant[i * variantsize.length + j];
+            const discountedPrice =
+              variantdiscounted[i * variantsize.length + j];
+            const content = imageArr[i * variantsize.length + j];
+
+            const cateData = {
+              name: variantsize[j],
+              price,
+              discountedprice: discountedPrice,
+              quantity,
+              content,
+            };
+            category.push(cateData);
+          }
+
+          const data = {
+            name,
+            value,
+            category,
+          };
+          variants.push(data);
+        }
+
+        const p = new Product({
+          name,
+          brandname,
+          desc,
+          creator: userId,
+          shippingcost,
+          sellername,
+          totalstars,
+          isphysical,
+          isvariant: isvariant,
+          variants,
+          type,
+        });
+        const data = await p.save();
+
+        const collection = await Collection.findById(colid);
+        if (!collection) {
+          return res
+            .status(404)
+            .json({ message: "Collection not found", success: false });
+        }
+
+        collection.products.push(data);
+        const actualdata = await collection.save();
+
+        // console.log(variants);
+        // const abs = variants.map((d) => d?.category);
+        // console.log(abs);
+        // const a = abs.map((d) => console.log(d));
+        res.status(200).json({ success: true });
       }
     }
   } else {
-    res.status(203).json({ success: false, message: "Product per Collection Limited Exceeded" })
+    res.status(203).json({
+      success: false,
+      message: "Product per Collection Limited Exceeded",
+    });
   }
 };
 
@@ -1540,7 +1762,7 @@ exports.createproduct = async (req, res) => {
 exports.deleteproduct = async (req, res) => {
   const { userId, colid, productId } = req.params;
   try {
-    const collection = await Collection.findById(colid)
+    const collection = await Collection.findById(colid);
 
     if (!collection) {
       return res.status(404).json({ message: "Collection not found" });
@@ -1591,8 +1813,7 @@ exports.getaproduct = async (req, res) => {
       }
       for (let i = 0; i < product.images.length; i++) {
         if (product.images[i] !== null) {
-          const a =
-            process.env.PRODUCT_URL + product.images[i].content
+          const a = process.env.PRODUCT_URL + product.images[i].content;
           // const a = await generatePresignedUrl(
           //   "products",
           //   product.images[i].content.toString(),
@@ -1601,9 +1822,15 @@ exports.getaproduct = async (req, res) => {
           urls.push(a);
         }
       }
-      res
-        .status(200)
-        .json({ data: { reviewed: isreviewed, product, urls, success: true } });
+      res.status(200).json({
+        data: {
+          reviewed: isreviewed,
+          product,
+          urls,
+          url: process.env.PRODUCT_URL,
+          success: true,
+        },
+      });
     }
   } catch (e) {
     console.log(e);
@@ -1611,26 +1838,135 @@ exports.getaproduct = async (req, res) => {
   }
 };
 
+exports.updateproducvariant = async (req, res) => {
+  try {
+    const {
+      name,
+      desc,
+      isvariant,
+      size,
+      color,
+      prices,
+      variantquantity,
+      variantdiscountedprice,
+      isphysical,
+    } = req.body;
+    const { userId, colid, productId } = req.params;
+
+    const imageUrls = [];
+    console.log(req.body);
+    const priceVariant = JSON.parse(prices);
+    const variantsize = JSON.parse(size);
+    const variantcolor = JSON.parse(color);
+    const quantityVariant = JSON.parse(variantquantity);
+    const variantdiscounted = JSON.parse(variantdiscountedprice);
+    const product = await Product.findById(productId);
+
+    const variants = [];
+
+    for (let i = 0; i < req?.files?.length; i++) {
+      const index = parseInt(req.files[i].fieldname.split("-")[1]);
+      const uuidString = uuid();
+      const bucketName = "products";
+      const objectName = `${Date.now()}_${uuidString}`;
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: PRODUCT_BUCKET,
+          Key: objectName,
+          Body: req.files[i].buffer,
+          ContentType: req.files[i].mimetype,
+        })
+      );
+      const obj = {
+        images: objectName,
+        index,
+      };
+      imageUrls.push(obj);
+    }
+
+    for (let i = 0; i < variantcolor.length; i++) {
+      for (let j = 0; j < variantsize.length; j++) {
+        const index = i * variantsize.length + j;
+        const imagesWithIndex = {
+          images: req.body[`variantimageurl${index}`],
+          index: index,
+        };
+        if (req.body[`variantimageurl${index}`]) {
+          imageUrls.push(imagesWithIndex);
+        }
+      }
+    }
+
+    imageUrls.sort((a, b) => a.index - b.index);
+
+    for (let i = 0; i < variantcolor.length; i++) {
+      const name = "size";
+      const value = variantcolor[i];
+      const category = [];
+
+      for (let j = 0; j < variantsize.length; j++) {
+        const price = priceVariant[i * variantsize.length + j];
+        const quantity = quantityVariant[i * variantsize.length + j];
+        const discountedPrice = variantdiscounted[i * variantsize.length + j];
+        const content = imageUrls[i * variantsize.length + j].images;
+
+        const cateData = {
+          name: variantsize[j],
+          price,
+          discountedprice: discountedPrice,
+          quantity,
+          content,
+        };
+        category.push(cateData);
+        console.log(cateData, "cateData");
+      }
+
+      const data = {
+        name,
+        value,
+        category,
+      };
+      variants.push(data);
+    }
+    product.variants = variants;
+    product.name = name;
+    product.desc = desc;
+    await product.save();
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" });
+    console.log(error);
+  }
+};
+
 // update product
 exports.updateproduct = async (req, res) => {
   try {
-    const { name, price, desc, discountedprice, quality, image, weight, isphysical } = req.body
+    const {
+      name,
+      price,
+      desc,
+      discountedprice,
+      quality,
+      image,
+      weight,
+      isphysical,
+    } = req.body;
     const { userId, colid, productId } = req.params;
-    let imageArr
+    let imageArr;
 
     let pos = [];
-    let im = []
+    let im = [];
     if (image) {
-
       if (typeof image == "string") {
         imageArr = [image];
       } else {
-        imageArr = image
+        imageArr = image;
       }
       for (let i = 0; i < imageArr.length; i++) {
         // const s = imageArr[i].split("?")[0].split("/").pop()
-        const s = imageArr[i].split("/").pop()
-        im.push(s)
+        const s = imageArr[i].split("/").pop();
+        im.push(s);
       }
     }
 
@@ -1661,7 +1997,6 @@ exports.updateproduct = async (req, res) => {
         //       console.log(err.message, "-error");
         //     });
 
-
         const result = await s3.send(
           new PutObjectCommand({
             Bucket: PRODUCT_BUCKET,
@@ -1671,7 +2006,11 @@ exports.updateproduct = async (req, res) => {
           })
         );
 
-        pos.push({ content: objectName, type: req.files[i].mimetype, _id: objectId });
+        pos.push({
+          content: objectName,
+          type: req.files[i].mimetype,
+          _id: objectId,
+        });
         // }
       }
     }
@@ -1693,28 +2032,27 @@ exports.updateproduct = async (req, res) => {
     if (!productid) {
       res.status(404).json({ message: "Product not found", success: false });
     } else {
-
-      const product = await Product.findById(productId)
+      const product = await Product.findById(productId);
       for (let i = 0; i < product.images.length; i++) {
         for (let j = 0; j < im.length; j++) {
           if (im[j] == product.images[i].content) {
-            pos.push(product.images[i])
+            pos.push(product.images[i]);
           }
         }
       }
-      product.name = name
-      product.price = price
-      product.desc = desc
-      product.discountedprice = discountedprice
-      product.quality = quality
-      product.images = pos
-      product.isphysical = isphysical
-      product.weight = weight
-      await product.save()
+      product.name = name;
+      product.price = price;
+      product.desc = desc;
+      product.discountedprice = discountedprice;
+      product.quality = quality;
+      product.images = pos;
+      product.isphysical = isphysical;
+      product.weight = weight;
+      await product.save();
       res.status(200).json({ success: true });
     }
   } catch (e) {
-    console.log(e)
+    console.log(e);
     res.status(400).json({ message: e.message, success: false });
   }
 };
@@ -1727,8 +2065,8 @@ exports.fetchallorders = async (req, res) => {
     const user = await User.findById(id);
     if (user) {
       const store = user.storeAddress.length;
-      const storeexistornot = store > 0 ? true : false
-      const isStoreVerified = user.isStoreVerified
+      const storeexistornot = store > 0 ? true : false;
+      const isStoreVerified = user.isStoreVerified;
       const orders = await SellerOrder.find({ sellerId: user._id })
         .populate("productId")
         .populate("buyerId", "fullname")
@@ -1751,7 +2089,7 @@ exports.fetchallorders = async (req, res) => {
       );
       const allorders = orders.length;
       const customers = user?.uniquecustomers?.length;
-      const earnings = user.storeearning
+      const earnings = user.storeearning;
 
       // let image = await Promise.all(
       //   orders.map(async (d, i) => {
@@ -1773,7 +2111,7 @@ exports.fetchallorders = async (req, res) => {
       let image = await Promise.all(
         orders.map(async (d, i) => {
           if (d?.productId) {
-            const l = process.env.PRODUCT_URL + d.productId?.images[0]?.content
+            const l = process.env.PRODUCT_URL + d.productId?.images[0]?.content;
             return l;
           } else {
             return null;
@@ -1783,14 +2121,15 @@ exports.fetchallorders = async (req, res) => {
 
       const reversedmergedOrder = orders.map((d, i) => {
         return {
-          ...d.toObject(), image: image[i]
-        }
-      })
+          ...d.toObject(),
+          image: image[i],
+        };
+      });
 
-      const citydelivery = user.deliveryforcity
-      const countrydelivery = user.deliveryforcountry
+      const citydelivery = user.deliveryforcity;
+      const countrydelivery = user.deliveryforcountry;
 
-      const mergedOrder = reversedmergedOrder.reverse()
+      const mergedOrder = reversedmergedOrder.reverse();
       res.status(200).json({
         pendingOrders,
         completedOrders,
@@ -1802,7 +2141,7 @@ exports.fetchallorders = async (req, res) => {
         damaged,
         citydelivery,
         countrydelivery,
-        earnings,
+
         customers,
         earnings,
         orders,
@@ -1845,7 +2184,8 @@ exports.profileinfo = async (req, res) => {
     if (user) {
       if (req.file) {
         const bucketName = "images";
-        const objectName = `${Date.now()}_${uuidString}_${req.file.originalname}`;
+        const objectName = `${Date.now()}_${uuidString}_${req.file.originalname
+          }`;
         // await sharp(req.file.buffer)
         //   .jpeg({ quality: 50 })
         //   .toBuffer()
@@ -1863,7 +2203,7 @@ exports.profileinfo = async (req, res) => {
             ContentType: req.file.mimetype,
           })
         );
-        user.profilepic = objectName
+        user.profilepic = objectName;
       }
       user.fullname = name;
       user.phone = 91 + newPhone;
@@ -1872,27 +2212,29 @@ exports.profileinfo = async (req, res) => {
       user.desc = bio;
       user.DOB = date;
       await user.save();
-      const sessionId = generateSessionId()
-      const dp =
-        process.env.URL + user.profilepic;
+      const sessionId = generateSessionId();
+      const dp = process.env.URL + user.profilepic;
 
-      const memberships = await Membership.findById(user.memberships.membership)
+      const memberships = await Membership.findById(
+        user.memberships.membership
+      );
       const data = {
         dp,
         fullname: user.fullname,
         username: user.username,
         id: user._id.toString(),
         sessionId,
-        memberships: memberships.title
+        memberships: memberships.title,
       };
-      const access_token = generateAccessToken(data)
-      const refresh_token = generateRefreshToken(data)
-      return res.status(200).json({ success: true, sessionId, refresh_token, access_token });
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
+      return res
+        .status(200)
+        .json({ success: true, sessionId, refresh_token, access_token });
     } else {
       res.status(400).json({ message: "User Not Found", success: false });
     }
   } catch (err) {
-    ;
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -1945,8 +2287,7 @@ exports.getprofileinfo = async (req, res) => {
       //   user.profilepic.toString(),
       //   60 * 60
       // );
-      const dp =
-        process.env.URL + user.profilepic;
+      const dp = process.env.URL + user.profilepic;
       const data = {
         name: user?.fullname,
         email: user?.email,
@@ -1959,14 +2300,14 @@ exports.getprofileinfo = async (req, res) => {
         // landmark: user?.storeAddress[0]?.landmark,
         image: dp,
         date: user.DOB,
-        bio: user.desc
+        bio: user.desc,
       };
       res.status(200).json({ success: true, data });
     } else {
       res.status(400).json({ success: false, message: "User Not Found" });
     }
   } catch (err) {
-    res.status(400).json({ message: "Internal Server Error" });;
+    res.status(400).json({ message: "Internal Server Error" });
   }
 };
 
@@ -2028,9 +2369,8 @@ exports.fetchtopic = async (req, res) => {
       return res.status(400).json({ message: "Community Not Found" });
     }
     res.status(200).json({ topics: community.topics, success: true });
-
   } catch (err) {
-    res.status(400).json({ message: err.message, success: false });;
+    res.status(400).json({ message: err.message, success: false });
   }
 };
 
@@ -2088,17 +2428,16 @@ exports.edittopic = async (req, res) => {
       res.status(200).json({ updatedTopic, success: true });
     }
   } catch (err) {
-    res.status(500).json({ message: "Internal Server Error", success: false });;
+    res.status(500).json({ message: "Internal Server Error", success: false });
   }
 };
 
 exports.updatecommunity = async (req, res) => {
   const { comId, userId } = req.params;
-  const { category, title, desc, type } =
-    req.body;
+  const { category, title, desc, type } = req.body;
   const uuidString = uuid();
 
-  const image = req.file
+  const image = req.file;
   try {
     const user = await User.findById(userId);
     const com = await Community.findById(comId);
@@ -2177,22 +2516,38 @@ exports.checkStore = async (req, res) => {
         const post = await Post.find({ community: community[i]._id });
         data.push({
           community: community.length,
-          posts: post.length
+          posts: post.length,
         });
       }
 
-      const post = await Post.find({ sender: user._id })
+      const post = await Post.find({ sender: user._id });
 
-      const checkUser = () => data.some(d => d.community && d.posts > 0);
-      const validToCreateStore = checkUser()
+      const checkUser = () => data.some((d) => d.community && d.posts > 0);
+      const validToCreateStore = checkUser();
 
       const store = user.storeAddress.length;
-      const foodlic = user.foodLicense
-      const foodLicenceExist = foodlic ? true : false
+      const foodlic = user.foodLicense;
+      const foodLicenceExist = foodlic ? true : false;
       if (store > 0) {
-        return res.status(200).json({ exist: true, q: "collection", foodLicenceExist, validToCreateStore, community: community.length, posts: post.length, isverified: user.isStoreVerified });
+        return res.status(200).json({
+          exist: true,
+          q: "collection",
+          foodLicenceExist,
+          validToCreateStore,
+          community: community.length,
+          posts: post.length,
+          isverified: user.isStoreVerified,
+        });
       } else {
-        return res.status(200).json({ exist: false, q: "store", foodLicenceExist, validToCreateStore, community: community.length, posts: post.length, isverified: user.isStoreVerified });
+        return res.status(200).json({
+          exist: false,
+          q: "store",
+          foodLicenceExist,
+          validToCreateStore,
+          community: community.length,
+          posts: post.length,
+          isverified: user.isStoreVerified,
+        });
       }
     } else {
       return res.status(400).json({ message: "User Not Found" });
@@ -2204,27 +2559,52 @@ exports.checkStore = async (req, res) => {
 
 exports.earnings = async (req, res) => {
   try {
-    const { id } = req.params
-    const user = await User.findById(id)
+    const { id } = req.params;
+    const user = await User.findById(id);
     if (!user) {
-      return res.status(400).json({ success: false, message: "User not found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found" });
     }
-    const prd = await Product.find({ creator: user._id })
-    const bankapp = await Approvals.findOne({ id: user._id, type: "bank" })
+    const prd = await Product.find({ creator: user._id });
+    const bankapp = await Approvals.findOne({ id: user._id, type: "bank" });
 
     const checkValidity = () => {
-      if (user.bank.IFSCcode && user.bank.accountno && user.bank.personname && user.bank.bankname && user.bank.branchname && bankapp.status === "approved") {
-        return "approved"
-      } else if (user.bank.IFSCcode && user.bank.accountno && user.bank.personname && user.bank.bankname && user.bank.branchname && bankapp.status === "pending") {
-        return "pending"
-      } else if (user.bank.IFSCcode && user.bank.accountno && user.bank.personname && user.bank.bankname && user.bank.branchname && bankapp.status === "rejected") {
-        return "rejected"
+      if (
+        user.bank.IFSCcode &&
+        user.bank.accountno &&
+        user.bank.personname &&
+        user.bank.bankname &&
+        user.bank.branchname &&
+        bankapp.status === "approved"
+      ) {
+        return "approved";
+      } else if (
+        user.bank.IFSCcode &&
+        user.bank.accountno &&
+        user.bank.personname &&
+        user.bank.bankname &&
+        user.bank.branchname &&
+        bankapp.status === "pending"
+      ) {
+        return "pending";
+      } else if (
+        user.bank.IFSCcode &&
+        user.bank.accountno &&
+        user.bank.personname &&
+        user.bank.bankname &&
+        user.bank.branchname &&
+        bankapp.status === "rejected"
+      ) {
+        return "rejected";
       } else {
-        return "nothing"
+        return "nothing";
       }
-    }
+    };
 
-    const final = prd.sort((item1, item2) => { return item2?.itemsold - item1?.itemsold })
+    const final = prd.sort((item1, item2) => {
+      return item2?.itemsold - item1?.itemsold;
+    });
     const earningStats = {
       earnings: user.storeearning + user.topicearning + user.adsearning,
       adsearning: user.adsearning,
@@ -2234,12 +2614,12 @@ exports.earnings = async (req, res) => {
       bank: user.bank,
       final,
       isbankverified: checkValidity(),
-    }
-    res.status(200).json({ success: true, earningStats, length: prd.length })
+    };
+    res.status(200).json({ success: true, earningStats, length: prd.length });
   } catch (err) {
     res.status(400).json({
-      success: false, message
-        : "Something went wrong"
+      success: false,
+      message: "Something went wrong",
     });
   }
 };
@@ -2262,13 +2642,13 @@ exports.deletecom = async (req, res) => {
 
 exports.membershipbuy = async (req, res) => {
   try {
-    const { amount } = req.body
-    console.log(amount)
-    const { id, memid } = req.params
-    const user = await User.findById(id)
+    const { amount } = req.body;
+    console.log(amount);
+    const { id, memid } = req.params;
+    const user = await User.findById(id);
 
     if (user.ismembershipactive) {
-      const membership = await Membership.findById(user.memberships.membership)
+      const membership = await Membership.findById(user.memberships.membership);
       if (membership.title !== "Free") {
         const currentTime = new Date();
         const endingTime = new Date(user.memberships.ending);
@@ -2281,22 +2661,25 @@ exports.membershipbuy = async (req, res) => {
         }
       }
     }
-    const membership = await Membership.findById(memid)
-    const newamount = amount.split("₹")[1]
-    const parseAmout = Number(newamount)
+    const membership = await Membership.findById(memid);
+    const newamount = amount.split("₹")[1];
+    const parseAmout = Number(newamount);
 
     if (!user) {
-      return res.status(400).json({ success: false, message: "User Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found" });
     }
-    let oi = Math.floor(Math.random() * 9000000) + 1000000
+    let oi = Math.floor(Math.random() * 9000000) + 1000000;
     const subs = new Subscriptions({
       memid,
       validity: Date.now(),
-      paymentMode: 'UPI',
+      paymentMode: "UPI",
       orderId: oi,
-      purchasedby: id, amount: parseAmout
-    })
-    await subs.save()
+      purchasedby: id,
+      amount: parseAmout,
+    });
+    await subs.save();
     // / creatign a rzp order
 
     instance.orders.create(
@@ -2331,73 +2714,82 @@ exports.membershipbuy = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message, success: false });
   }
-}
+};
 
 exports.memfinalize = async (req, res) => {
   try {
-    const { id, orderId } = req.params
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, status, paymentMethod, memid, deliverylimitcity, deliverylimitcountry, period } = req.body
-    const user = await User.findById(id)
-    const subscription = await Subscriptions.findOne({ orderId: orderId })
+    const { id, orderId } = req.params;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      status,
+      paymentMethod,
+      memid,
+      deliverylimitcity,
+      deliverylimitcountry,
+      period,
+    } = req.body;
+    const user = await User.findById(id);
+    const subscription = await Subscriptions.findOne({ orderId: orderId });
     const isValid = validatePaymentVerification(
       { order_id: razorpay_order_id, payment_id: razorpay_payment_id },
       razorpay_signature,
       "bxyQhbzS0bHNBnalbBg9QTDo"
     );
     if (!subscription) {
-      return res.status(400).json({ success: false })
+      return res.status(400).json({ success: false });
     }
     if (isValid) {
       if (status) {
-        subscription.currentStatus = "completed"
+        subscription.currentStatus = "completed";
       }
-    }
-    else {
+    } else {
       if (status == false) {
-        subscription.currentStatus = "failed"
+        subscription.currentStatus = "failed";
       }
     }
     const currentDate = new Date();
-    let endDate
+    let endDate;
     if (period == "year") {
-      endDate = new Date(currentDate.getTime() + (365.25 * 24 * 60 * 60 * 1000));
+      endDate = new Date(currentDate.getTime() + 365.25 * 24 * 60 * 60 * 1000);
     } else {
       endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
     }
 
-    subscription.paymentMode = "Card"
-    const newSub = await subscription.save()
-    user.activeSubscription.push(newSub._id)
-    user.ismembershipactive = true
+    subscription.paymentMode = "Card";
+    const newSub = await subscription.save();
+    user.activeSubscription.push(newSub._id);
+    user.ismembershipactive = true;
     user.memberships = {
       membership: memid,
       status: true,
       ending: endDate,
-      paymentdetails: { mode: "online", amount: subscription.amount }
-    }
+      paymentdetails: { mode: "online", amount: subscription.amount },
+    };
 
-    user.deliveryforcity = deliverylimitcity
-    user.deliveryforcountry = deliverylimitcountry
-    const membership = await Membership.findById(memid)
-    user.isverified = true
-    const saveduser = await user.save()
-    const sessionId = generateSessionId()
-    const dp =
-      process.env.URL + saveduser.profilepic;
+    user.deliveryforcity = deliverylimitcity;
+    user.deliveryforcountry = deliverylimitcountry;
+    const membership = await Membership.findById(memid);
+    user.isverified = true;
+    const saveduser = await user.save();
+    const sessionId = generateSessionId();
+    const dp = process.env.URL + saveduser.profilepic;
     const data = {
       dp,
       fullname: saveduser.fullname,
       username: saveduser.username,
       id: saveduser._id.toString(),
       sessionId,
-      memberships: membership.title
+      memberships: membership.title,
     };
     const access_token = generateAccessToken(data);
     const refresh_token = generateRefreshToken(data);
-    res.status(200).json({ success: true, refresh_token, sessionId, access_token })
-  } catch (error) {
-  }
-}
+    res
+      .status(200)
+      .json({ success: true, refresh_token, sessionId, access_token });
+  } catch (error) { }
+};
 
 // exports.approvalrequestbank = async (req, res) => {
 //   try {
@@ -2421,13 +2813,15 @@ exports.memfinalize = async (req, res) => {
 
 exports.addbank = async (req, res) => {
   try {
-    const { id } = req.params
-    const { bankname, branchname, accountno, IFSCcode, personname } = req.body
-    const user = await User.findById(id)
+    const { id } = req.params;
+    const { bankname, branchname, accountno, IFSCcode, personname } = req.body;
+    const user = await User.findById(id);
     if (!user) {
-      return res.status(400).json({ success: false, message: "User Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found" });
     }
-    let approval = await Approvals.findOne({ id, type: "bank" })
+    let approval = await Approvals.findOne({ id, type: "bank" });
     if (!approval) {
       approval = await Approvals({
         id,
@@ -2437,57 +2831,64 @@ exports.addbank = async (req, res) => {
           personname,
           branchname,
           accountno,
-          IFSCcode
+          IFSCcode,
         },
-      })
-      await approval.save()
+      });
+      await approval.save();
     } else {
       const bank = {
         bankname,
         personname,
         branchname,
         accountno,
-        IFSCcode
-      }
-      approval.bank = bank
-      await approval.save()
+        IFSCcode,
+      };
+      approval.bank = bank;
+      await approval.save();
     }
-    user.isbankverified = false
-    user.bank.bankname = bankname
-    user.bank.branchname = branchname
-    user.bank.personname = personname
-    user.bank.accountno = accountno
-    user.bank.IFSCcode = IFSCcode
-    const newuser = await user.save()
+    user.isbankverified = false;
+    user.bank.bankname = bankname;
+    user.bank.branchname = branchname;
+    user.bank.personname = personname;
+    user.bank.accountno = accountno;
+    user.bank.IFSCcode = IFSCcode;
+    const newuser = await user.save();
 
-    res.status(200).json({ success: true, bank: newuser.bank, isverified: newuser.isbankverified })
+    res.status(200).json({
+      success: true,
+      bank: newuser.bank,
+      isverified: newuser.isbankverified,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message, success: false });
   }
-}
+};
 
 exports.fetchingprosite = async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: "User Not Found" });
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found" });
     }
-    const user = await User.findById(id)
+    const user = await User.findById(id);
     if (!user) {
-      return res.status(400).json({ success: false, message: "User Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found" });
     }
-    const community = []
-    const com = await Community.find({ creator: id })
+    const community = [];
+    const com = await Community.find({ creator: id });
     for (let i = 0; i < com.length; i++) {
-      const id = com[i]
-      let comm = await Community.findById(id).populate("members", "dp")
-      community.push(comm)
+      const id = com[i];
+      let comm = await Community.findById(id).populate("members", "dp");
+      community.push(comm);
     }
 
     const communityDps = await Promise.all(
       community.map((d) => {
-        const imageforCommunity =
-          process.env.URL + d.dp;
+        const imageforCommunity = process.env.URL + d.dp;
 
         return imageforCommunity;
       })
@@ -2510,13 +2911,12 @@ exports.fetchingprosite = async (req, res) => {
       return { ...f.toObject(), dps: communityDps[i], membersdp: membersdp[i] };
     });
 
-    const products = await Product.find({ creator: id })
+    const products = await Product.find({ creator: id });
 
     const productdps = await Promise.all(
       products.map(async (product) => {
-        const a =
-          process.env.PRODUCT_URL + product.images[0].content;
-        return a
+        const a = process.env.PRODUCT_URL + product.images[0].content;
+        return a;
       })
     );
 
@@ -2544,93 +2944,110 @@ exports.fetchingprosite = async (req, res) => {
         snap: user.snap,
         x: user.x,
         yt: user.yt,
-        linkdin: user.linkdin
-      }
-    }
+        linkdin: user.linkdin,
+      },
+    };
     const data = {
-      communitywithDps, productsWithDps, userDetails
-    }
+      communitywithDps,
+      productsWithDps,
+      userDetails,
+    };
 
-    res.status(200).json({ success: true, data, user })
+    res.status(200).json({ success: true, data, user });
   } catch (error) {
     res.status(500).json({ message: error.message, success: false });
-
   }
-}
+};
 
 exports.fetchMemberShip = async (req, res) => {
   try {
-    const memberships = await Membership.find()
+    const memberships = await Membership.find();
     if (!memberships) {
-      return res.status(400).json({ success: false, message: "Membership Id Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "Membership Id Not Found" });
     }
 
     const ids = {
       free: "65671e5204b7d0d07ef0e796",
       pro: "65671ded04b7d0d07ef0e794",
-      premium: "65671e6004b7d0d07ef0e798"
-    }
+      premium: "65671e6004b7d0d07ef0e798",
+    };
 
-    res.status(200).json({ success: true, memberships, ids })
+    res.status(200).json({ success: true, memberships, ids });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Something Went Wrong!" })
+    res.status(500).json({ success: false, message: "Something Went Wrong!" });
   }
-}
+};
 
 exports.customMembership = async (req, res) => {
   try {
-    const { productlimit, topiclimit, isverified, communitylimit, collectionlimit, razorpay_order_id, razorpay_payment_id, razorpay_signature, status, memid } = req.body
-    const { userId, orderId } = req.params
-    console.log(req.body)
-    const user = await User.findById(userId)
+    const {
+      productlimit,
+      topiclimit,
+      isverified,
+      communitylimit,
+      collectionlimit,
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      status,
+      memid,
+    } = req.body;
+    const { userId, orderId } = req.params;
+    console.log(req.body);
+    const user = await User.findById(userId);
     if (!user) {
-      return res.status(400).json({ success: false, message: "User Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found" });
     }
-    const subscription = await Subscriptions.findOne({ orderId: orderId })
+    const subscription = await Subscriptions.findOne({ orderId: orderId });
     const isValid = validatePaymentVerification(
       { order_id: razorpay_order_id, payment_id: razorpay_payment_id },
       razorpay_signature,
       "bxyQhbzS0bHNBnalbBg9QTDo"
     );
-    const membership = await Membership.findById(memid)
-    membership.broughtby.push(userId)
-    const membershipsForTitle = await membership.save()
+    const membership = await Membership.findById(memid);
+    membership.broughtby.push(userId);
+    const membershipsForTitle = await membership.save();
     if (!subscription) {
-      return res.status(400).json({ success: false })
+      return res.status(400).json({ success: false });
     }
 
     if (isValid) {
       if (status) {
-        subscription.currentStatus = "completed"
+        subscription.currentStatus = "completed";
       }
-    }
-    else {
+    } else {
       if (status == false) {
-        subscription.currentStatus = "failed"
+        subscription.currentStatus = "failed";
       }
     }
     const currentDate = new Date();
     const endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
     if (isverified) {
-      user.isverified = isverified
+      user.isverified = isverified;
     }
     // subscription.paymentMode = "Card"
-    const newSub = await subscription.save()
-    user.activeSubscription.push(newSub._id)
-    user.ismembershipactive = true
+    const newSub = await subscription.save();
+    user.activeSubscription.push(newSub._id);
+    user.ismembershipactive = true;
     user.memberships = {
       membership: memid,
       status: true,
       ending: endDate,
-      paymentdetails: { mode: "online", amount: subscription.amount }
-    }
+      paymentdetails: { mode: "online", amount: subscription.amount },
+    };
     user.limits = {
-      productlimit, topiclimit, communitylimit, collectionlimit
-    }
-    const saveduser = await user.save()
-    const sessionId = generateSessionId()
-    const dp =
-      process.env.URL + saveduser.profilepic;
+      productlimit,
+      topiclimit,
+      communitylimit,
+      collectionlimit,
+    };
+    const saveduser = await user.save();
+    const sessionId = generateSessionId();
+    const dp = process.env.URL + saveduser.profilepic;
 
     const data = {
       dp,
@@ -2638,27 +3055,28 @@ exports.customMembership = async (req, res) => {
       username: saveduser.username,
       id: saveduser._id.toString(),
       sessionId,
-      memberships: membershipsForTitle.title
+      memberships: membershipsForTitle.title,
     };
     const access_token = generateAccessToken(data);
     const refresh_token = generateRefreshToken(data);
-    res.status(200).json({ success: true, access_token, sessionId, refresh_token })
-  } catch (error) {
-  }
-}
+    res
+      .status(200)
+      .json({ success: true, access_token, sessionId, refresh_token });
+  } catch (error) { }
+};
 
 exports.errorsDetection = async (req, res) => {
   try {
     const { causedBy, causedIn } = req.body;
     const data = {
       causedBy,
-      causedIn
+      causedIn,
     };
     let err = await Error.findOne();
 
     if (!err) {
       err = new Error({
-        error: [data]
+        error: [data],
       });
     } else {
       err.error.push(data);
@@ -2673,62 +3091,71 @@ exports.errorsDetection = async (req, res) => {
 
 exports.fetchCommunityStats = async (req, res) => {
   try {
-    const { userId } = req.params
-    const user = await User.findById(userId)
+    const { userId } = req.params;
+    const user = await User.findById(userId);
     if (!user) {
-      return res.status(400).json({ success: false, message: "User Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found" });
     }
-    const monetization = await Montenziation.find({ creator: userId })
-    const community = await Community.find({ creator: userId })
+    const monetization = await Montenziation.find({ creator: userId });
+    const community = await Community.find({ creator: userId });
     if (!community) {
-      return res.status(400).json({ success: false, message: "Community Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "Community Not Found" });
     }
 
-    let topic = []
+    let topic = [];
     for (let i = 0; i < community.length; i++) {
-      const top = (await Topic.find({ community: community[i]._id })).filter((d) => {
-        return d.type.toLowerCase() === "paid";
-      });
+      const top = (await Topic.find({ community: community[i]._id })).filter(
+        (d) => {
+          return d.type.toLowerCase() === "paid";
+        }
+      );
       const topics = top.map((d) => {
         return {
           title: d?.title,
           earnings: d?.earnings,
           type: d?.type,
-          members: d?.memberscount
-        }
-      })
-      topic.push(topics)
+          members: d?.memberscount,
+        };
+      });
+      topic.push(topics);
     }
 
-    let avgeng = []
+    let avgeng = [];
 
     for (let i = 0; i < community.length; i++) {
       const posts = await Post.find({ community: community[i]._id });
 
-      let eng = []
+      let eng = [];
       await posts.map((p, i) => {
-        let final = p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
-        eng.push(final)
-      })
+        let final =
+          p.views <= 0 ? 0 : (parseInt(p?.likes) / parseInt(p?.views)) * 100;
+        eng.push(final);
+      });
 
-      let sum = 0
+      let sum = 0;
       for (let i = 0; i < eng.length; i++) {
-        sum += eng[i]
+        sum += eng[i];
       }
-      let avg = 0
+      let avg = 0;
 
       if (eng.length > 0) {
-        avg = Math.round(sum / eng.length)
+        avg = Math.round(sum / eng.length);
       } else {
-        avg = 0
+        avg = 0;
       }
-      avgeng.push(avg)
+      avgeng.push(avg);
     }
 
     const communities = community.map((d, i) => {
-      const monStatus = monetization.find((f) => f.community.toString() === d?._id.toString());
+      const monStatus = monetization.find(
+        (f) => f.community.toString() === d?._id.toString()
+      );
 
-      return ({
+      return {
         id: d?._id,
         topics: d?.topics.length,
         ismonetized: d?.ismonetized || false,
@@ -2743,57 +3170,66 @@ exports.fetchCommunityStats = async (req, res) => {
         dps: process.env.URL + d?.dp,
         members: d?.memberscount,
         type: d?.type,
-        engagementrate: avgeng[i]
-      })
-    })
+        engagementrate: avgeng[i],
+        impressions: d?.impressions,
+        cpc: d?.cpc,
+        cpm: d?.cpm,
+      };
+    });
 
-    const store = user.storeAddress.length > 0 ? true : false
-    console.log(store)
-    const verified = user.isStoreVerified
-    console.log(communities.length, communities[0].post)
-    res.status(200).json({ success: true, communities, store, verified })
+    const store = user.storeAddress.length > 0 ? true : false;
+    console.log(store);
+    const verified = user.isStoreVerified;
+    console.log(communities.length, communities[0].post);
+    res.status(200).json({ success: true, communities, store, verified });
   } catch (error) {
-    console.log(error)
-    res.status(400).json({ success: false, message: error.message })
+    console.log(error);
+    res.status(400).json({ success: false, message: error.message });
   }
-}
+};
 
 exports.monetizationWorkSpace = async (req, res) => {
   try {
-    const { id, comid } = req.params
+    const { id, comid } = req.params;
     if (!id && !comid) {
-      return res.status(400).json({ success: false, message: "User Or Communnity Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User Or Communnity Not Found" });
     }
-    let monetization = await Montenziation.findOne({ community: comid })
+    let monetization = await Montenziation.findOne({ community: comid });
     if (!monetization) {
       monetization = new Montenziation({
         creator: id,
         community: comid,
-        status: "pending"
-      })
-      await monetization.save()
+        status: "pending",
+      });
+      await monetization.save();
     } else {
-      monetization.status = "pending"
-      await monetization.save()
+      monetization.status = "pending";
+      await monetization.save();
     }
-    res.status(200).json({ success: true })
+    res.status(200).json({ success: true });
   } catch (error) {
-    res.status(400).json({ success: false })
+    res.status(400).json({ success: false });
   }
-}
+};
 
 exports.templates = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id);
     const { curr_template1, curr_template2, webt } = req.body;
-    console.log(webt)
+    console.log(webt);
 
     if (user) {
       await User.updateOne(
         { _id: id },
         {
-          $set: { prositeweb_template: curr_template1, prositemob_template: curr_template2, recentTempPics: webt },
+          $set: {
+            prositeweb_template: curr_template1,
+            prositemob_template: curr_template2,
+            recentTempPics: webt,
+          },
         }
       );
 
@@ -2802,62 +3238,61 @@ exports.templates = async (req, res) => {
       res.status(404).json({ message: "User not found", success: false });
     }
   } catch (e) {
-    console.log(e)
+    console.log(e);
     res.status(409).json({
       message: e.message,
       success: false,
     });
   }
-}
+};
 
 exports.editPosts = async (req, res) => {
   try {
-    const { userId, postId } = req.params
+    const { userId, postId } = req.params;
     if (req.fileValidationError) {
       return res.status(400).json({
         message: "File size limit exceeded",
         success: false,
       });
     }
-    const { title, desc, tags, image, video, thumbnail, thumbnailImage } = req.body;
+    const { title, desc, tags, image, video, thumbnail, thumbnailImage } =
+      req.body;
 
-
-    console.log(req.body, req.files)
+    console.log(req.body, req.files);
 
     if (thumbnail == "false") {
-      let videoArr
+      let videoArr;
       if (typeof video == "string") {
         videoArr = [video];
       } else {
-        videoArr = video || []
+        videoArr = video || [];
       }
 
-      let imageArr
+      let imageArr;
       if (typeof image == "string") {
         imageArr = [image];
       } else {
-        imageArr = image || []
+        imageArr = image || [];
       }
       let pos = [];
-      let img = []
-      let vid = []
+      let img = [];
+      let vid = [];
       for (let i = 0; i < imageArr.length; i++) {
-
-        const s = imageArr[i].split(".net/").pop()
-        img.push(s)
+        const s = imageArr[i].split(".net/").pop();
+        img.push(s);
       }
       for (let i = 0; i < videoArr.length; i++) {
-
-        const s = videoArr[i].split(".net/").pop()
-        vid.push(s)
+        const s = videoArr[i].split(".net/").pop();
+        vid.push(s);
       }
 
       if (req.files && req.files.length > 0) {
         for (let i = 0; i < req?.files?.length; i++) {
           const uuidString = uuid();
 
-          const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
-          const objectId = mongoose.Types.ObjectId()
+          const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname
+            }`;
+          const objectId = mongoose.Types.ObjectId();
           const result = await s3.send(
             new PutObjectCommand({
               Bucket: POST_BUCKET,
@@ -2867,46 +3302,51 @@ exports.editPosts = async (req, res) => {
             })
           );
 
-          pos.push({ content: objectName, type: req.files[i].mimetype, _id: objectId });
+          pos.push({
+            content: objectName,
+            type: req.files[i].mimetype,
+            _id: objectId,
+          });
         }
       }
-      const post = await Post.findById(postId)
+      const post = await Post.findById(postId);
       for (let i = 0; i < post.post.length; i++) {
         if (post.post[i].type.startsWith("video")) {
           for (let j = 0; j < vid.length; j++) {
             if (vid[j] == post.post[i].content) {
-              pos.push(post.post[i])
+              pos.push(post.post[i]);
             }
           }
         } else if (post.post[i].type.startsWith("image")) {
           for (let j = 0; j < img.length; j++) {
             if (img[j] == post.post[i].content) {
-              pos.push(post.post[i])
+              pos.push(post.post[i]);
             }
           }
         }
       }
-      post.title = title
-      post.desc = desc
-      post.tags = tags
-      post.post = pos
-      await post.save()
+      post.title = title;
+      post.desc = desc;
+      post.tags = tags;
+      post.post = pos;
+      await post.save();
 
       res.status(200).json({ success: true });
     } else {
-      let myVideo
+      let myVideo;
       if (typeof video == "string") {
-        myVideo = video.split(".net/").pop()
+        myVideo = video.split(".net/").pop();
       }
-      let myThumbnail
+      let myThumbnail;
       if (typeof thumbnailImage == "string") {
-        myThumbnail = thumbnailImage.split(".net/").pop()
+        myThumbnail = thumbnailImage.split(".net/").pop();
       }
       if (req.files && req.files.length > 0) {
         for (let i = 0; i < req?.files?.length; i++) {
           const uuidString = uuid();
 
-          const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+          const objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname
+            }`;
 
           const result = await s3.send(
             new PutObjectCommand({
@@ -2922,33 +3362,31 @@ exports.editPosts = async (req, res) => {
           } else {
             myVideo = objectName;
           }
-
         }
       }
-      const post = await Post.findById(postId)
+      const post = await Post.findById(postId);
       post.post = [
         {
           content: myVideo,
           type: "video/mp4",
-          thumbnail: myThumbnail
+          thumbnail: myThumbnail,
         },
-      ]
-      post.title = title
-      post.desc = desc
-      post.tags = tags
-      await post.save()
+      ];
+      post.title = title;
+      post.desc = desc;
+      post.tags = tags;
+      await post.save();
 
       res.status(200).json({ success: true });
     }
-
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.status(409).json({
       message: error.message,
       success: false,
     });
   }
-}
+};
 
 exports.deletepost = async (req, res) => {
   const { userId, postId } = req.params;
@@ -3069,57 +3507,61 @@ exports.removecomwithposts = async (req, res) => {
   }
 };
 
-
 exports.fetchSingleProduct = async (req, res) => {
   try {
-    const { productId } = req.params
-    const product = await Product.findById(productId)
+    const { productId } = req.params;
+    const product = await Product.findById(productId);
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    res.status(200).json({ success: true, product, url: process.env.PRODUCT_URL })
-
+    res
+      .status(200)
+      .json({ success: true, product, url: process.env.PRODUCT_URL });
   } catch (error) {
     res.status(400).json({ message: error.message, success: false });
   }
-}
+};
 
 exports.defaultprositeselector = async (req, res) => {
   try {
-    const { id } = req.params
-    const { checked } = req.body
-    const user = await User.findById(id)
+    const { id } = req.params;
+    const { checked } = req.body;
+    const user = await User.findById(id);
 
     if (!user) {
-      return res.status(400).json({ success: false, message: "User not found!" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found!" });
     }
-    user.useDefaultProsite = checked
-    await user.save()
-    res.status(200).json({ success: true })
+    user.useDefaultProsite = checked;
+    await user.save();
+    res.status(200).json({ success: true });
   } catch (error) {
-    res.status(400).json({ success: false, message: "Something Went Wrong!" })
-    console.log(error)
+    res.status(400).json({ success: false, message: "Something Went Wrong!" });
+    console.log(error);
   }
-}
+};
 
 exports.changemont = async (req, res) => {
   try {
-    const { comid } = req.params
-    const { ismonetized } = req.body
-    console.log(ismonetized)
-    const community = await Community.findById(comid)
+    const { comid } = req.params;
+    const { ismonetized } = req.body;
+    console.log(ismonetized);
+    const community = await Community.findById(comid);
 
     if (!community) {
-      return res.status(400).json({ success: false, message: "Community Not Found!" })
+      return res
+        .status(400)
+        .json({ success: false, message: "Community Not Found!" });
     }
 
-    community.ismonetized = ismonetized
-    await community.save()
-    res.status(200).json({ success: true })
+    community.ismonetized = ismonetized;
+    await community.save();
+    res.status(200).json({ success: true });
   } catch (error) {
-    res.status(400).json({ success: false, message: "Something Went Wrong!" })
-    console.log(error)
+    res.status(400).json({ success: false, message: "Something Went Wrong!" });
+    console.log(error);
   }
-}
+};

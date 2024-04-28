@@ -15,7 +15,6 @@ const userSchema = new mongoose.Schema(
     gender: {
       type: String,
     },
-    otp: { type: String },
     passw: { type: String },
     otp: { type: String },
     salt: String,

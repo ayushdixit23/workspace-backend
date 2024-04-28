@@ -126,6 +126,9 @@ const communitySchema = new mongoose.Schema(
     activemembers: [{ type: ObjectId, ref: "User" }],
     uniquemembers: [{ type: ObjectId, ref: "User" }],
     ismonetized: { type: Boolean, default: false },
+    impressions: { type: Number, default: 0 },
+    cpc: { type: Number, default: 0 }, //Earnings from Clicks
+    cpm: { type: Number, default: 0 }, //Earnings from Views
   },
   { timestamps: false, strict: false }
 );

@@ -51,6 +51,7 @@ const {
   defaultprositeselector,
   changemont,
   checkfordefault,
+  updateproducvariant,
   // fetchingprosite,
 
   // base64upload,
@@ -85,7 +86,12 @@ router.post("/refresh", refresh);
 router.get("/analyticsuser/:userid", analyticsuser);
 router.get("/analyticsuserThirtyDays/:userid", analyticsuserThirtyDays);
 router.get("/allcoms/:id", allcoms);
-router.post("/createcom/:userId", middlewareMembership, upload.single("image"), createcom);
+router.post(
+  "/createcom/:userId",
+  middlewareMembership,
+  upload.single("image"),
+  createcom
+);
 router.post(
   "/createCollection/:userId",
   middlewareMembership,
@@ -94,16 +100,28 @@ router.post(
 );
 router.get("/fetchProducts/:userId", fetchProduct);
 router.delete("/deleteproduct/:userId/:colid/:productId", deleteproduct);
-router.post("/updateaproduct/:userId/:colid/:productId",
+router.post(
+  "/updateaproduct/:userId/:colid/:productId",
   upload.any("image"),
-  updateproduct);
+  updateproduct
+);
+router.post(
+  "/updateaproductvariant/:userId/:colid/:productId",
+  upload.any(),
+  updateproducvariant
+);
 router.delete("/collectiondelete/:userId/:colid", collectiondelete);
 router.post(
   "/registerstore/:userId",
   upload.single("documentfile"),
   registerstore
 );
-router.post("/createproduct/:userId/:colid", middlewareMembership, upload.any(), createproduct);
+router.post(
+  "/createproduct/:userId/:colid",
+  middlewareMembership,
+  upload.any(),
+  createproduct
+);
 router.get("/getaproduct/:id/:productId", getaproduct);
 router.get("/fetchallorders/:id", fetchallorders);
 router.get("/getposts/:id/:comid", getposts);
@@ -123,16 +141,16 @@ router.post(
 );
 router.get("/checkstore/:id", checkStore);
 router.get("/earnings/:id", earnings);
-router.post("/membershipbuy/:id/:memid", membershipbuy)
-router.post("/memfinalize/:id/:orderId", memfinalize)
-router.post("/addbank/:id", addbank)
-router.get("/fetchwithid/:id", fetchwithid)
-router.get("/fetchmembership", fetchMemberShip)
-router.post("/customMembership/:userId/:orderId", customMembership)
-router.post("/errorsDetection", errorsDetection)
-router.get("/fetchCommunityStats/:userId", fetchCommunityStats)
-router.post("/monetization/:id/:comid", monetizationWorkSpace)
-router.post("/editpost/:userId/:postId", upload.any(), editPosts)
+router.post("/membershipbuy/:id/:memid", membershipbuy);
+router.post("/memfinalize/:id/:orderId", memfinalize);
+router.post("/addbank/:id", addbank);
+router.get("/fetchwithid/:id", fetchwithid);
+router.get("/fetchmembership", fetchMemberShip);
+router.post("/customMembership/:userId/:orderId", customMembership);
+router.post("/errorsDetection", errorsDetection);
+router.get("/fetchCommunityStats/:userId", fetchCommunityStats);
+router.post("/monetization/:id/:comid", monetizationWorkSpace);
+router.post("/editpost/:userId/:postId", upload.any(), editPosts);
 // router.get("/getprositedetails/:id", fetchingprosite)
 // prosite route
 // router.use("/uploadbase64", base64upload);
@@ -155,13 +173,13 @@ router.post("/editpost/:userId/:postId", upload.any(), editPosts)
 // router.post("/lottie", upload.single("lottieFile"), lottie);
 // router.post("/getprositefull", getprositefull);
 // router.post("/postforprosite", prosite);
-router.post("/removecomwithposts/:id/:comId", removecomwithposts)
-router.delete("/deletepost/:userId/:postId", deletepost)
-router.post("/savemytemplate/:id", templates)
-router.get("/fetchSingleProduct/:productId", fetchSingleProduct)
-router.post("/defaultprositeselector/:id", defaultprositeselector)
-router.post("/changemont/:comid", changemont)
-router.get("/checkfordefault/:id", checkfordefault)
+router.post("/removecomwithposts/:id/:comId", removecomwithposts);
+router.delete("/deletepost/:userId/:postId", deletepost);
+router.post("/savemytemplate/:id", templates);
+router.get("/fetchSingleProduct/:productId", fetchSingleProduct);
+router.post("/defaultprositeselector/:id", defaultprositeselector);
+router.post("/changemont/:comid", changemont);
+router.get("/checkfordefault/:id", checkfordefault);
 // router.post("/approvalrequestbank/:id", approvalrequestbank)
 
 module.exports = router;

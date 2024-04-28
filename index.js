@@ -9,9 +9,8 @@ const Redis = require("ioredis");
 const http = require("http").Server(app);
 const io = require("socket.io")(http);
 const aesjs = require("aes-js");
-const fs = require('fs');
-const path = require('path');
-
+const fs = require("fs");
+const path = require("path");
 
 //import routes
 const userAuth = require("./routes/authRoutes");
@@ -48,7 +47,6 @@ const Analytics = require("./models/Analytics");
 const Membership = require("./models/membership");
 const Post = require("./models/post");
 
-
 require("dotenv").config();
 
 //middlewares
@@ -80,7 +78,7 @@ app.use("/api", testRoutes);
 app.use("/api", workRoutes);
 app.use("/api", adRoutes);
 app.use("/api/v1", workspacev1);
-app.use("/api/v1", prosRoutes)
+app.use("/api/v1", prosRoutes);
 
 //connect to DB
 const connectDB = async () => {
@@ -91,7 +89,7 @@ const connectDB = async () => {
     });
     // mongoose.connect(process.env.DATABASE).then(() => {
     //   console.log("DB is connected");
-    // });  
+    // });
     // mongoose
     //   .connect(
     //     "mongodb+srv://fsayush100:shreyansh7@cluster0.mrnejwh.mongodb.net/your-database-name?retryWrites=true&w=majority"
@@ -119,27 +117,26 @@ connectApp();
 
 const userFInd = async () => {
   try {
-    const users = await User.find({ fullname: "Ayush Dixit" })
+    const users = await User.find({ fullname: "Ayush Dixit" });
 
     for (let i = 0; i < users.length; i++) {
-      console.log(users[i]._id, users[i].username)
+      console.log(users[i]._id, users[i].username);
     }
-
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
 // userFInd()
 
 const userdelete = async () => {
   try {
-    const users = await User.findById("660fd49e616bc2d9e31f732c")
-    await users.remove()
+    const users = await User.findById("660fd49e616bc2d9e31f732c");
+    await users.remove();
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
 const decryptaes = (data) => {
   try {
@@ -160,10 +157,10 @@ const decryptaes = (data) => {
 
 const findUser = async () => {
   try {
-    const users = await User.find()
-    const reverseusers = users.reverse()
+    const users = await User.find();
+    const reverseusers = users.reverse();
 
-    const onlyseven = reverseusers.slice(0, 20)
+    const onlyseven = reverseusers.slice(0, 20);
     for (let i = 0; i < onlyseven.length; i++) {
       const data = {
         fullname: onlyseven[i].fullname,
@@ -172,16 +169,16 @@ const findUser = async () => {
         phone: onlyseven[i].phone,
         u: onlyseven[i].username,
         gr: onlyseven[i].gr,
-        password: decryptaes(onlyseven[i].passw)
-      }
-      console.log(data)
+        password: decryptaes(onlyseven[i].passw),
+      };
+      console.log(data);
     }
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
-// findUser()
+// findUser();
 
 // const deleteAN = async () => {
 //   try {
@@ -201,52 +198,58 @@ const findUser = async () => {
 
 const deleteCommunity = async () => {
   try {
-
-    const community = await Community.findOne({ title: "ghj" })
-    console.log(community.title, community._id)
+    const community = await Community.findOne({ title: "ghj" });
+    console.log(community.title, community._id);
     for (let i = 0; i < community.posts.length; i++) {
-      const post = await Post.findByIdAndDelete(community.posts[i])
-      const ads = await Ads.findOneAndDelete({ postid: community.posts[i] })
+      const post = await Post.findByIdAndDelete(community.posts[i]);
+      const ads = await Ads.findOneAndDelete({ postid: community.posts[i] });
     }
-    const deletcomm = await Community.findByIdAndDelete(community._id)
-    console.log("done")
+    const deletcomm = await Community.findByIdAndDelete(community._id);
+    console.log("done");
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
 const pushId = async () => {
   try {
     // let ids = []
-    const user = await User.find()
+    const user = await User.find();
     for (let i = 0; i < 2000; i++) {
-      const community = await Community.find({ creator: user[i]._id })
-      const cId = community.map((d) => { return (d._id) })
-      user[i].communitycreated = cId
-      await user[i].save()
-      console.log(cId)
+      const community = await Community.find({ creator: user[i]._id });
+      const cId = community.map((d) => {
+        return d._id;
+      });
+      user[i].communitycreated = cId;
+      await user[i].save();
+      console.log(cId);
       // ids.push(cId)
     }
 
-    console.log("done")
+    console.log("done");
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
 // pushId()
 // deleteCommunity()
 
 const usersIds = async () => {
   try {
-    const data = []
+    const data = [];
     const fullname = [
-      "Party Bags", "Shiv Bakers", "Play paladins", "Deep Learning Hub", "FREAKY MOVIES", "Arnav Mehta", "Food Fetchers "
-    ]
+      "Party Bags",
+      "Shiv Bakers",
+      "Play paladins",
+      "Deep Learning Hub",
+      "FREAKY MOVIES",
+      "Arnav Mehta",
+      "Food Fetchers ",
+    ];
     for (let i = 0; i < fullname.length; i++) {
-
-      const users = await User.findOne({ fullname: fullname[i] })
-      const com = await Community.findOne({ creator: users?._id })
+      const users = await User.findOne({ fullname: fullname[i] });
+      const com = await Community.findOne({ creator: users?._id });
       const obj = {
         email: users?.email,
         password: users?.passw ? decryptaes(users?.passw) : null,
@@ -255,19 +258,24 @@ const usersIds = async () => {
         userid: users?._id,
         fullname: users?.fullname,
         memberships: users?.memberships,
-        isverified: users?.isverified
-      }
-      data.push(obj)
-
+        isverified: users?.isverified,
+      };
+      data.push(obj);
     }
 
-
-
-    console.log(data, "data")
-
+    console.log(data, "data");
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
 // usersIds()
+
+// const uses = async () => {
+//   let usr = await User.find()
+//   const user = await User.findOne({ email: "watchmovies@gmail.com" });
+//   const pass = decryptaes(user.passw);
+//   console.log(pass, "pass");
+// };
+
+// uses();

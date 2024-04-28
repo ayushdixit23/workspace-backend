@@ -3,13 +3,13 @@ const User = require("../models/userAuth");
 const Minio = require("minio");
 const Verification = require("../models/Veriification");
 const Transaction = require("../models/AdTransactions");
-const Order = require("../models/orders")
-const Community = require("../models/community")
-const Product = require("../models/product")
+const Order = require("../models/orders");
+const Community = require("../models/community");
+const Product = require("../models/product");
 const Razorpay = require("razorpay");
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 const aesjs = require("aes-js");
-const Adbyloccategory = require("../models/Adbyloccategory")
+const Adbyloccategory = require("../models/Adbyloccategory");
 require("dotenv").config();
 const uuid = require("uuid").v4;
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
@@ -19,9 +19,9 @@ const {
   validateWebhookSignature,
 } = require("razorpay/dist/utils/razorpay-utils");
 const sharp = require("sharp");
-const admin = require("../fireb")
-const LocationData = require("../models/Data")
-const sha256 = require("sha256")
+const admin = require("../fireb");
+const LocationData = require("../models/Data");
+const sha256 = require("sha256");
 
 const minioClient = new Minio.Client({
   endPoint: "minio.grovyo.xyz",
@@ -101,7 +101,6 @@ const s3 = new S3Client({
   },
 });
 
-
 function generateAccessToken(data) {
   const access_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
     expiresIn: "1h",
@@ -148,7 +147,7 @@ exports.refreshingsAdsTokens = async (req, res) => {
           //   advertiser.image,
           //   60 * 60
           // );
-          const dp = process.env.URL + advertiser.image
+          const dp = process.env.URL + advertiser.image;
 
           const data = {
             userid: advertiser.userid,
@@ -163,7 +162,6 @@ exports.refreshingsAdsTokens = async (req, res) => {
             taxinfo: advertiser.taxinfo,
             email: advertiser.email,
             advertiserid: advertiser.advertiserid,
-
           };
           const access_token = generateAccessToken(data);
           res.status(200).json({ success: true, access_token });
@@ -268,8 +266,7 @@ exports.loginAdspace = async (req, res) => {
       });
     }
     if (advertiser) {
-
-      const dp = process.env.URL + advertiser.image
+      const dp = process.env.URL + advertiser.image;
 
       const newEditCount = {
         login: Date.now().toString(),
@@ -293,11 +290,10 @@ exports.loginAdspace = async (req, res) => {
         taxinfo: advertiser?.taxinfo,
         email: advertiser?.email,
         advertiserid: advertiser?.advertiserid,
-
       };
 
-      const access_token = generateAccessToken(data)
-      const refresh_token = generateRefreshToken(data)
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
       return res.status(200).json({
         message: "Advertiser exists",
         advertiser,
@@ -308,9 +304,9 @@ exports.loginAdspace = async (req, res) => {
         success: true,
       });
     } else {
-      let user
+      let user;
       if (email && password) {
-        const enpas = encryptaes(password)
+        const enpas = encryptaes(password);
         user = await User.findOne({ email, passw: enpas });
       } else if (phone) {
         user = await User.findOne({ phone: "91" + phone });
@@ -318,17 +314,21 @@ exports.loginAdspace = async (req, res) => {
         return res.status(400).json({
           message: "Invalid request. Please provide email, password, or phone.",
           success: false,
-          accountexist: false
+          accountexist: false,
         });
       }
 
       if (!user) {
-        return res.status(200).json({ success: false, accountexist: false, message: "User not found!" })
+        return res.status(200).json({
+          success: false,
+          accountexist: false,
+          message: "User not found!",
+        });
       }
 
-      const firstname = user.fullname.split(" ")[0]
-      const lastname = user.fullname.split(" ")[1]
-      const dp = process.env.URL + user.profilepic
+      const firstname = user.fullname.split(" ")[0];
+      const lastname = user.fullname.split(" ")[1];
+      const dp = process.env.URL + user.profilepic;
 
       const advertisernew = new Advertiser({
         firstname,
@@ -343,13 +343,13 @@ exports.loginAdspace = async (req, res) => {
         pincode: user?.address.pincode,
         landmark: user?.address.landmark,
         userid: user?._id,
-        advertiserid: generateUniqueID()
-      })
+        advertiserid: generateUniqueID(),
+      });
 
-      const savedAdvertiser = await advertisernew.save()
+      const savedAdvertiser = await advertisernew.save();
 
-      user.advertiserid = savedAdvertiser._id
-      await user.save()
+      user.advertiserid = savedAdvertiser._id;
+      await user.save();
 
       const data = {
         userid: savedAdvertiser.userid,
@@ -366,13 +366,18 @@ exports.loginAdspace = async (req, res) => {
         advertiserid: savedAdvertiser.advertiserid,
       };
 
-      const access_token = generateAccessToken(data)
-      const refresh_token = generateRefreshToken(data)
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
 
-      res.status(203).json({ success: true, message: "Account Created", access_token, refresh_token })
+      res.status(203).json({
+        success: true,
+        message: "Account Created",
+        access_token,
+        refresh_token,
+      });
     }
   } catch (e) {
-    console.log(e)
+    console.log(e);
     res.status(400).json({ message: "Something went wrong", success: false });
   }
 };
@@ -400,22 +405,21 @@ exports.createadvacc = async (req, res) => {
   try {
     const advertiser = await Advertiser.findOne({
       $or: [{ email: email }, { phone: phone }],
-    })
+    });
     const user = await User.findOne({
       $or: [{ email: email }, { phone: phone }],
-    })
-    console.log(user.fullname, phone, email)
-    let savedAdv
-    console.log(advertiser)
-    console.log(!advertiser && !user)
-    console.log(!advertiser && user)
+    });
+    console.log(user.fullname, phone, email);
+    let savedAdv;
+    console.log(advertiser);
+    console.log(!advertiser && !user);
+    console.log(!advertiser && user);
     if (!advertiser && !user) {
-
       const advid = generateUniqueID();
       const uuidString = uuid();
       const image = req.file;
 
-      console.log("first")
+      console.log("first");
 
       const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
       const adv = new Advertiser({
@@ -438,7 +442,7 @@ exports.createadvacc = async (req, res) => {
         retypepassword,
       });
 
-      console.log("runnded not user not advertiser")
+      console.log("runnded not user not advertiser");
       await s3.send(
         new PutObjectCommand({
           Bucket: BUCKET_NAME,
@@ -455,8 +459,9 @@ exports.createadvacc = async (req, res) => {
         const min = 100;
         const max = 999;
         const randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;
-        const usernam = `${firstname + lastname.replace(/\s/g, "").toLowerCase()
-          }_${randomNumber}`;
+        const usernam = `${
+          firstname + lastname.replace(/\s/g, "").toLowerCase()
+        }_${randomNumber}`;
         return usernam;
       };
 
@@ -483,7 +488,7 @@ exports.createadvacc = async (req, res) => {
         desc: "Hi, I am on Grovyo",
         address: finaladdress,
         adid: advid,
-        advertiserid: savedAdv._id
+        advertiserid: savedAdv._id,
       });
       const thisScopeUser = await user.save();
 
@@ -494,7 +499,7 @@ exports.createadvacc = async (req, res) => {
         }
       );
     } else if (!advertiser && user) {
-      console.log("second")
+      console.log("second");
       const advid = generateUniqueID();
       const uuidString = uuid();
       const image = req.file;
@@ -520,7 +525,7 @@ exports.createadvacc = async (req, res) => {
         password,
         retypepassword,
         userid: user._id,
-      })
+      });
 
       await s3.send(
         new PutObjectCommand({
@@ -541,8 +546,7 @@ exports.createadvacc = async (req, res) => {
       );
     }
 
-
-    console.log(savedAdv, "savedAdv")
+    console.log(savedAdv, "savedAdv");
 
     const data = {
       userid: savedAdv?.userid,
@@ -559,13 +563,14 @@ exports.createadvacc = async (req, res) => {
       advertiserid: savedAdv?.advertiserid,
     };
 
-    console.log(data)
+    console.log(data);
 
-    const access_token = generateAccessToken(data)
-    const refresh_token = generateRefreshToken(data)
+    const access_token = generateAccessToken(data);
+    const refresh_token = generateRefreshToken(data);
     res.status(200).json({
-      success: true, access_token,
-      refresh_token
+      success: true,
+      access_token,
+      refresh_token,
     });
   } catch (e) {
     console.log(e);
@@ -606,7 +611,7 @@ exports.newad = async (req, res) => {
 
   try {
     const user = await Advertiser.findById(id);
-    const userauth = await User.findById(userId)
+    const userauth = await User.findById(userId);
 
     let pos = [];
 
@@ -614,12 +619,13 @@ exports.newad = async (req, res) => {
     if (!user) {
       res.status(404).json({ message: "No user found!", success: false });
     } else {
-
       //community dp and creation of community
-      let objectName
+      let objectName;
       for (let i = 0; i < req.files.length; i++) {
         if (req.files[i].fieldname === "communityImage") {
-          objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+          objectName = `${Date.now()}_${uuidString}_${
+            req.files[i].originalname
+          }`;
           a = objectName;
           const result = await s3.send(
             new PutObjectCommand({
@@ -632,14 +638,13 @@ exports.newad = async (req, res) => {
         }
       }
 
-
       const community = new Community({
         title: communityName,
         creator: userId,
         dp: objectName,
         desc: communityDesc,
         category: communityCategory,
-        type: "public"
+        type: "public",
       });
       const savedcom = await community.save();
       const topic1 = new Topic({
@@ -675,16 +680,18 @@ exports.newad = async (req, res) => {
           $push: {
             topicsjoined: [topic1._id, topic2._id],
             communityjoined: savedcom._id,
-            communitycreated: savedcom._id
+            communitycreated: savedcom._id,
           },
           $inc: { totaltopics: 3, totalcom: 1 },
         }
       );
 
-      let contents
+      let contents;
       for (let i = 0; i < req.files.length; i++) {
         if (req.files[i].fieldname === "file") {
-          objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+          objectName = `${Date.now()}_${uuidString}_${
+            req.files[i].originalname
+          }`;
           a = objectName;
           await s3.send(
             new PutObjectCommand({
@@ -706,7 +713,6 @@ exports.newad = async (req, res) => {
             extension: req.files[i].mimetype,
             name: objectName,
           };
-
 
           //for post
           pos.push({ content: objectName, type: req.files[i].mimetype });
@@ -739,9 +745,8 @@ exports.newad = async (req, res) => {
         advertiserid,
       });
       const adSaved = await newAd.save();
-      user.ads.push(adSaved._id)
-      await user.save()
-
+      user.ads.push(adSaved._id);
+      await user.save();
 
       //creating a post of ad
       const topic = await Topic.find({ community: community._id }).find({
@@ -758,20 +763,20 @@ exports.newad = async (req, res) => {
         tags: community.category,
         kind: "ad",
         promoid: adSaved._id,
-        isPromoted: true
+        isPromoted: true,
       });
       const savedpost = await post.save();
 
-      const adstopost = await Ads.findById(adSaved?._id)
-      adstopost.postid = savedpost._id
-      await adstopost.save()
+      const adstopost = await Ads.findById(adSaved?._id);
+      adstopost.postid = savedpost._id;
+      await adstopost.save();
 
       const approve = new Approvals({
         id: adSaved._id,
-        type: "ad"
-      })
+        type: "ad",
+      });
 
-      await approve.save()
+      await approve.save();
       await Community.updateOne(
         { _id: community._id },
         { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
@@ -790,7 +795,7 @@ exports.newad = async (req, res) => {
 };
 
 exports.createad = async (req, res) => {
-  const { id } = req.params
+  const { id } = req.params;
   const {
     adname,
     startdate,
@@ -818,21 +823,22 @@ exports.createad = async (req, res) => {
     contenttype,
     advertiserid,
     postid,
-    comid
+    comid,
   } = req.body;
   try {
+    console.log(req.files, req.body);
 
-    console.log(req.files, req.body)
-
-    const user = await Advertiser.findById(id)
-    const pos = []
+    const user = await Advertiser.findById(id);
+    const pos = [];
     const uuidString = uuid();
-    const community = await Community.findById(comid)
-    let contents
+    const community = await Community.findById(comid);
+    let contents;
     if (req.files && req.files.length > 0) {
       for (let i = 0; i < req.files.length; i++) {
         if (req.files[i].fieldname === "file") {
-          objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname}`;
+          objectName = `${Date.now()}_${uuidString}_${
+            req.files[i].originalname
+          }`;
           a = objectName;
           await s3.send(
             new PutObjectCommand({
@@ -858,10 +864,9 @@ exports.createad = async (req, res) => {
           pos.push({ content: objectName, type: req.files[i].mimetype });
         }
       }
-
     } else {
-      const cont = file.split(".net/")[1]
-      const extensionss = cont.split(".").pop()
+      const cont = file.split(".net/")[1];
+      const extensionss = cont.split(".").pop();
       let objectMedia = `${cont}`;
       await s3.send(
         new PutObjectCommand({
@@ -904,18 +909,16 @@ exports.createad = async (req, res) => {
       advertiserid,
     });
     const adSaved = await newAd.save();
-    user.ads.push(adSaved._id)
-    await user.save()
+    user.ads.push(adSaved._id);
+    await user.save();
 
     const topic = await Topic.find({ community: comid }).find({
       title: "Posts",
     });
 
-
-    let idofad
+    let idofad;
 
     if (!postid) {
-
       const post = new Post({
         title: headline,
         desc: desc,
@@ -929,13 +932,13 @@ exports.createad = async (req, res) => {
         cta,
         ctalink,
         adtype: type,
-        promoid: adSaved._id
+        promoid: adSaved._id,
       });
       const savedpost = await post.save();
-      const ads = await Ads.findById(adSaved._id)
-      ads.postid = savedpost._id
+      const ads = await Ads.findById(adSaved._id);
+      ads.postid = savedpost._id;
 
-      idofad = await ads.save()
+      idofad = await ads.save();
       await Community.updateOne(
         { _id: comid },
         { $push: { posts: savedpost._id }, $inc: { totalposts: 1 } }
@@ -945,42 +948,43 @@ exports.createad = async (req, res) => {
         { _id: topic[0]._id.toString() },
         { $push: { posts: savedpost._id }, $inc: { postcount: 1 } }
       );
-
     } else {
-      const post = await Post.findById(postid)
-      post.kind = "ad"
-      isPromoted = true
-      post.cta = cta
-      post.ctalink = ctalink
-      post.adtype = type
-      post.promoid = adSaved._id
+      const post = await Post.findById(postid);
+      post.kind = "ad";
+      isPromoted = true;
+      post.cta = cta;
+      post.ctalink = ctalink;
+      post.adtype = type;
+      post.promoid = adSaved._id;
 
-      const savedpost = await post.save()
+      const savedpost = await post.save();
 
-      const findad = await Ads.findById(adSaved._id)
-      findad.postid = savedpost._id
-      idofad = await findad.save()
+      const findad = await Ads.findById(adSaved._id);
+      findad.postid = savedpost._id;
+      idofad = await findad.save();
     }
 
     const approve = new Approvals({
       id: idofad._id,
-      type: "ad"
-    })
+      type: "ad",
+    });
 
-    await approve.save()
-    res.status(200).json({ success: true })
+    await approve.save();
+    res.status(200).json({ success: true });
   } catch (error) {
     res.status(400).json({ message: error.message, success: false });
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
 exports.getCommunities = async (req, res) => {
   try {
-    const { id } = req.params
-    const user = await User.findById(id)
+    const { id } = req.params;
+    const user = await User.findById(id);
     if (!user) {
-      return res.status(400).json({ message: "User Not Found", success: false })
+      return res
+        .status(400)
+        .json({ message: "User Not Found", success: false });
     }
     // let com = []
     const com = await Community.find({ creator: id });
@@ -992,7 +996,7 @@ exports.getCommunities = async (req, res) => {
 
     const communitywithDps = await Promise.all(
       com.map(async (communityId) => {
-        const community = await Community.findById(communityId)
+        const community = await Community.findById(communityId);
         // .populate("promotedPosts");
 
         if (community) {
@@ -1004,99 +1008,130 @@ exports.getCommunities = async (req, res) => {
       })
     );
 
-    const filteredCommunities = communitywithDps.filter((community) => community !== null);
-    console.log(filteredCommunities)
-    res.status(200).json({ communitywithDps: filteredCommunities, success: true })
+    const filteredCommunities = communitywithDps.filter(
+      (community) => community !== null
+    );
+    console.log(filteredCommunities);
+    res
+      .status(200)
+      .json({ communitywithDps: filteredCommunities, success: true });
   } catch (error) {
-    res.status(500).json({ message: "Internal Server Errors", success: false })
-    console.log(error)
+    res.status(500).json({ message: "Internal Server Errors", success: false });
+    console.log(error);
   }
-}
+};
 
 exports.promotedposts = async (req, res) => {
   try {
-    const { id, comid } = req.params
-    const { postid } = req.body
-    const user = await User.findById(id)
-    const post = await Post.findById(postid)
+    const { id, comid } = req.params;
+    const { postid } = req.body;
+    const user = await User.findById(id);
+    const post = await Post.findById(postid);
     if (!post) {
-      return res.status(400).json({ success: false, message: "Post Not found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "Post Not found" });
     }
     if (!user) {
-      return res.status(400).json({ message: "User not Found", success: false })
+      return res
+        .status(400)
+        .json({ message: "User not Found", success: false });
     }
-    const community = await Community.findById(comid)
+    const community = await Community.findById(comid);
     if (!community) {
-      return res.status(400).json({ message: "Community not Found", success: false })
+      return res
+        .status(400)
+        .json({ message: "Community not Found", success: false });
     }
     if (community && user) {
-      user.promotedPosts.push(postid)
-      post.isPromoted = true
-      await post.save()
-      await user.save()
-      community.promotedPosts.push(postid)
-      await community.save()
+      user.promotedPosts.push(postid);
+      post.isPromoted = true;
+      await post.save();
+      await user.save();
+      community.promotedPosts.push(postid);
+      await community.save();
     }
-    res.status(200).json({ success: true })
+    res.status(200).json({ success: true });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Internal Server Error" })
-    console.log(error)
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+    console.log(error);
   }
-}
+};
 
 exports.getAllPosts = async (req, res) => {
   try {
-    const { comid } = req.params
-    const community = await Community.findById(comid).populate("promotedPosts posts")
+    const { comid } = req.params;
+    const community = await Community.findById(comid).populate(
+      "promotedPosts posts"
+    );
     if (!community) {
-      return res.status(400).json({ success: false, message: "Community Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "Community Not Found" });
     }
-    let posts = []
+    let posts = [];
     for (let i = 0; i < community.posts.length; i++) {
-
       if (community.posts[i].isPromoted === false) {
-        posts.push(community.posts[i])
+        posts.push(community.posts[i]);
       }
     }
 
-    let eng = []
+    let eng = [];
     await posts.map((p, i) => {
-      let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
-      eng.push(final)
-    })
+      let final =
+        p.views <= 0
+          ? 0
+          : ((parseInt(p?.sharescount) +
+              parseInt(p?.likes) +
+              parseInt(p?.totalcomments)) /
+              parseInt(p?.views)) *
+            100;
+      eng.push(final);
+    });
 
     const postsToSend = posts.map((f, i) => {
-      const postdps = process.env.POST_URL + f.post[0].content
+      const postdps = process.env.POST_URL + f.post[0].content;
 
-      return ({
+      return {
         ...f.toObject(),
         image: postdps,
-        engrate: eng[i]
-      });
+        engrate: eng[i],
+      };
     });
 
-    let engpromoted = []
+    let engpromoted = [];
     await posts.map((p, i) => {
-      let final = p.views <= 0 ? 0 : ((parseInt(p?.sharescount) + parseInt(p?.likes) + parseInt(p?.totalcomments)) / parseInt(p?.views)) * 100;
-      engpromoted.push(final)
-    })
+      let final =
+        p.views <= 0
+          ? 0
+          : ((parseInt(p?.sharescount) +
+              parseInt(p?.likes) +
+              parseInt(p?.totalcomments)) /
+              parseInt(p?.views)) *
+            100;
+      engpromoted.push(final);
+    });
 
     const postsToSendpromoted = community.promotedPosts.map((f, i) => {
-      const postdps = process.env.POST_URL + f.post[0].content
+      const postdps = process.env.POST_URL + f.post[0].content;
 
-      return ({
+      return {
         ...f.toObject(),
         image: postdps,
-        engrate: engpromoted[i]
-      });
+        engrate: engpromoted[i],
+      };
     });
 
-    res.status(200).json({ success: true, posts: postsToSend, promotedposts: postsToSendpromoted })
+    res.status(200).json({
+      success: true,
+      posts: postsToSend,
+      promotedposts: postsToSendpromoted,
+    });
   } catch (error) {
-    console.log(error)
-    res.status(500).json({ success: false, message: "Internal Server Error" })
+    console.log(error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
-}
+};
 
 exports.getad = async (req, res) => {
   const { id } = req.params;
@@ -1187,21 +1222,26 @@ exports.getallads = async (req, res) => {
     const user = await Advertiser.findById(id);
     if (user) {
       const content = [];
-      let ads = []
+      let ads = [];
       for (let i = 0; i < user.ads.length; i++) {
-        const id = user.ads[i].toString()
-        const h = await Ads.findById(id)
+        const id = user.ads[i].toString();
+        const h = await Ads.findById(id);
         if (h) {
-          const analytics = await Analytics.find({ id: id }).sort({ date: -1 }).limit(7);
-          const views = h?.views
-          const clicks = h?.clicks
-          const totalSpent = h?.totalspent
-          const conversion = (clicks / views) * 100
-          const popularity = ((clicks / views) / totalSpent) * 100
+          const analytics = await Analytics.find({ id: id })
+            .sort({ date: -1 })
+            .limit(7);
+          const views = h?.views;
+          const clicks = h?.clicks;
+          const totalSpent = h?.totalspent;
+          const conversion = (clicks / views) * 100;
+          const popularity = (clicks / views / totalSpent) * 100;
           const adsToPush = {
-            h, analytics, conversion, popularity
-          }
-          ads.push(adsToPush)
+            h,
+            analytics,
+            conversion,
+            popularity,
+          };
+          ads.push(adsToPush);
         }
       }
       // for (let i = 0; i < ads.length; i++) {
@@ -1212,13 +1252,13 @@ exports.getallads = async (req, res) => {
       //   );
       //   content.push(a);
       // }
-      const adsreversed = ads.reverse()
+      const adsreversed = ads.reverse();
       res.status(200).json({ ads: adsreversed, content, success: true });
     } else {
       res.status(404).json({ message: "User not found", success: false });
     }
   } catch (e) {
-    console.log(e)
+    console.log(e);
     res.status(400).json({ message: e.message, success: false });
   }
 };
@@ -1389,8 +1429,8 @@ exports.editadvertiser = async (req, res) => {
     if (!advertiser) {
       res.status(404).json({ success: false, message: "User not found" });
     } else {
-      const sessionId = generateSessionId()
-      const dp = process.env.URL + advertiser.image
+      const sessionId = generateSessionId();
+      const dp = process.env.URL + advertiser.image;
       const data = {
         userid: advertiser.userid,
         advid: advertiser._id,
@@ -1404,10 +1444,10 @@ exports.editadvertiser = async (req, res) => {
         taxinfo: advertiser.taxinfo,
         email: advertiser.email,
         advertiserid: advertiser.advertiserid,
-        sessionId
+        sessionId,
       };
-      const access_token = generateAccessToken(data)
-      const refresh_token = generateRefreshToken(data)
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
       const newEditCount = {
         date: Date.now().toString(),
         number: 1,
@@ -1428,10 +1468,12 @@ exports.editadvertiser = async (req, res) => {
           $push: { editcount: newEditCount },
         }
       );
-      res.status(200).json({ success: true, access_token, refresh_token, sessionId });
+      res
+        .status(200)
+        .json({ success: true, access_token, refresh_token, sessionId });
     }
   } catch (e) {
-    console.log(e)
+    console.log(e);
     res.status(400).json({ message: "Something went wrong", success: false });
   }
 };
@@ -1537,45 +1579,58 @@ exports.addmoneytowallet = async (req, res) => {
       });
       const tId = await t.save();
 
-      await Advertiser.updateOne({ _id: id },
-        { $push: { transactions: tId._id }, }
+      await Advertiser.updateOne(
+        { _id: id },
+        { $push: { transactions: tId._id } }
       );
 
       let payload = {
-        "merchantId": process.env.MERCHANT_ID,
-        "merchantTransactionId": tId._id,
-        "merchantUserId": user._id,
-        "amount": amount,
-        "redirectUrl": "https://ads.grovyo.com/main/wallet",
-        "redirectMode": "REDIRECT",
-        "callbackUrl": `https://work.grovyo.xyz/api/updatetransactionstatus/${id}/${tId._id}/${amount}`,
-        "paymentInstrument": {
-          "type": "PAY_PAGE"
-        }
-      }
-      let bufferObj = Buffer.from(JSON.stringify(payload), "utf8")
+        merchantId: process.env.MERCHANT_ID,
+        merchantTransactionId: tId._id,
+        merchantUserId: user._id,
+        amount: amount,
+        redirectUrl: "https://ads.grovyo.com/main/wallet",
+        redirectMode: "REDIRECT",
+        callbackUrl: `https://work.grovyo.xyz/api/updatetransactionstatus/${id}/${tId._id}/${amount}`,
+        paymentInstrument: {
+          type: "PAY_PAGE",
+        },
+      };
+      let bufferObj = Buffer.from(JSON.stringify(payload), "utf8");
 
-      let base64string = bufferObj.toString("base64")
+      let base64string = bufferObj.toString("base64");
 
-      let string = base64string + "/pg/v1/pay" + process.env.PHONE_PAY_KEY
-      let shaString = sha256(string)
+      let string = base64string + "/pg/v1/pay" + process.env.PHONE_PAY_KEY;
+      let shaString = sha256(string);
 
-      let checkSum = shaString + "###" + process.env.keyIndex
+      let checkSum = shaString + "###" + process.env.keyIndex;
 
-      axios.post("https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay", { "request": base64string }, {
-        headers: {
-          "Content-Type": "application/json",
-          "X-VERIFY": checkSum,
-          "accept": "application/json"
-        }
-      }).then((response) => {
-        console.log(response.data, response.data.data.instrumentResponse.redirectInfo.url)
-        res.status(200).json({ success: true, url: response.data.data.instrumentResponse.redirectInfo.url })
-
-      }).catch((err) => {
-        console.log(err)
-        return res.status({ success: false, message: err.message })
-      })
+      axios
+        .post(
+          "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay",
+          { request: base64string },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "X-VERIFY": checkSum,
+              accept: "application/json",
+            },
+          }
+        )
+        .then((response) => {
+          console.log(
+            response.data,
+            response.data.data.instrumentResponse.redirectInfo.url
+          );
+          res.status(200).json({
+            success: true,
+            url: response.data.data.instrumentResponse.redirectInfo.url,
+          });
+        })
+        .catch((err) => {
+          console.log(err);
+          return res.status({ success: false, message: err.message });
+        });
     }
   } catch (e) {
     console.log(e);
@@ -1590,25 +1645,39 @@ exports.updatetransactionstatus = async (req, res) => {
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
     }
-    function generateChecksum(merchantId, merchantTransactionId, saltKey, saltIndex) {
-      const stringToHash = `/pg/v1/status/${merchantId}/${merchantTransactionId}` + saltKey;
+    function generateChecksum(
+      merchantId,
+      merchantTransactionId,
+      saltKey,
+      saltIndex
+    ) {
+      const stringToHash =
+        `/pg/v1/status/${merchantId}/${merchantTransactionId}` + saltKey;
       const shaHash = sha256(stringToHash).toString();
       const checksum = shaHash + "###" + saltIndex;
 
       return checksum;
     }
 
-    const checksum = generateChecksum(process.env.MERCHANT_ID, tid, process.env.PHONE_PAY_KEY, process.env.keyIndex);
+    const checksum = generateChecksum(
+      process.env.MERCHANT_ID,
+      tid,
+      process.env.PHONE_PAY_KEY,
+      process.env.keyIndex
+    );
     const t = await Transaction.findById(tid);
-    const response = await axios.get(`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`, {
-      headers: {
-        "Content-Type": "application/json",
-        "X-VERIFY": checksum,
-        "X-MERCHANT-ID": process.env.MERCHANT_ID
+    const response = await axios.get(
+      `https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-VERIFY": checksum,
+          "X-MERCHANT-ID": process.env.MERCHANT_ID,
+        },
       }
-    })
+    );
     if (response.data.code === "PAYMENT_SUCCESS") {
-      console.log("Payment Successful")
+      console.log("Payment Successful");
       await Transaction.updateOne(
         { _id: t._id },
         {
@@ -1628,7 +1697,7 @@ exports.updatetransactionstatus = async (req, res) => {
         success: true,
       });
     } else if (response.data.code === "PAYMENT_ERROR") {
-      console.log("Payment Failed")
+      console.log("Payment Failed");
       await Transaction.updateOne(
         { _id: t._id },
         {
@@ -1637,14 +1706,13 @@ exports.updatetransactionstatus = async (req, res) => {
           },
         }
       );
-      res.status(400).json({ success: false })
+      res.status(400).json({ success: false });
     }
-
   } catch (error) {
-    console.log(error)
-    res.status(400).json({ success: false, message: "Something went wrong", })
+    console.log(error);
+    res.status(400).json({ success: false, message: "Something went wrong" });
   }
-}
+};
 
 //update transaction status
 // exports.updatetransactionstatus = async (req, res) => {
@@ -2343,12 +2411,12 @@ exports.getData = async (req, res) => {
     // };
 
     const check = await Adbyloccategory.findById("65227169cf69893a9474e73e");
-    console.log(check)
+    console.log(check);
     if (check) {
       res.status(200).json(check);
     }
   } catch (err) {
-    res.status(500).json({ message: "galaat chla" })
+    res.status(500).json({ message: "galaat chla" });
     console.log(err);
   }
 };
@@ -2365,22 +2433,23 @@ exports.audget = async (req, res) => {
 };
 
 exports.getuser = async (req, res) => {
-  console.log("runnded")
-  const { id } = req.params
-  console.log(id)
+  console.log("runnded");
+  const { id } = req.params;
+  console.log(id);
   try {
-    const user = await User.findById(id)
-    console.log(user)
+    const user = await User.findById(id);
+    console.log(user);
     if (!user) {
-      return res.status(404).json({ success: false, message: "user not found" })
+      return res
+        .status(404)
+        .json({ success: false, message: "user not found" });
     } else {
-      res.status(200).json({ user, success: true })
+      res.status(200).json({ user, success: true });
     }
-
   } catch (error) {
-    res.status(500).json({ message: "internal server error", success: false })
+    res.status(500).json({ message: "internal server error", success: false });
   }
-}
+};
 
 //create a new product order(UPI)
 exports.createrzporder = async (req, res) => {
@@ -2439,7 +2508,8 @@ exports.createrzporder = async (req, res) => {
             pids,
             total,
           },
-        }, function (err, order) {
+        },
+        function (err, order) {
           console.log(err, order);
           if (err) {
             res.status(400).json({ err, success: false });
@@ -2511,22 +2581,23 @@ exports.finaliseorder = async (req, res) => {
 
 exports.fetchingprosite = async (req, res) => {
   try {
-    const { id } = req.params
-    const user = await User.findById(id)
+    const { id } = req.params;
+    const user = await User.findById(id);
     if (!user) {
-      return res.status(400).json({ success: false, message: "User Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found" });
     }
-    const community = []
+    const community = [];
     for (let i = 0; i < user.communitycreated.length; i++) {
-      const id = user.communitycreated[i]
-      comm = await Community.findById(id).populate("members", "dp")
-      community.push(comm)
+      const id = user.communitycreated[i];
+      comm = await Community.findById(id).populate("members", "dp");
+      community.push(comm);
     }
 
     const communityDps = await Promise.all(
       community.map((d) => {
-        const imageforCommunity =
-          process.env.URL + d.dp;
+        const imageforCommunity = process.env.URL + d.dp;
 
         return imageforCommunity;
       })
@@ -2545,22 +2616,20 @@ exports.fetchingprosite = async (req, res) => {
       })
     );
 
-    console.log(membersdp)
+    console.log(membersdp);
 
     const communitywithDps = community.map((f, i) => {
       return { ...f.toObject(), dps: communityDps[i], membersdp: membersdp[i] };
     });
 
-    const products = await Product.find({ creator: id })
+    const products = await Product.find({ creator: id });
 
     const productdps = await Promise.all(
       products.map(async (product) => {
-        const a =
-          process.env.PRODUCT_URL + product.images[0].content;
-        return a
+        const a = process.env.PRODUCT_URL + product.images[0].content;
+        return a;
       })
     );
-
 
     const productsWithDps = products.map((product, index) => {
       return {
@@ -2582,33 +2651,35 @@ exports.fetchingprosite = async (req, res) => {
         snap: user.snap,
         x: user.x,
         yt: user.yt,
-        linkdin: user.linkdin
-      }
-    }
+        linkdin: user.linkdin,
+      },
+    };
     const data = {
-      communitywithDps, productsWithDps, userDetails
-    }
+      communitywithDps,
+      productsWithDps,
+      userDetails,
+    };
 
-    res.status(200).json({ success: true, data, user })
+    res.status(200).json({ success: true, data, user });
   } catch (error) {
     res.status(500).json({ message: error.message, success: false });
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
 exports.feedback = async (req, res) => {
   try {
-    const { advid } = req.params
-    const { msg } = req.body
-    const advertiser = await Advertiser.findById(advid)
-    advertiser.message.push(msg)
-    await advertiser.save()
-    res.status(200).json({ success: true })
+    const { advid } = req.params;
+    const { msg } = req.body;
+    const advertiser = await Advertiser.findById(advid);
+    advertiser.message.push(msg);
+    await advertiser.save();
+    res.status(200).json({ success: true });
   } catch (error) {
-    console.log(error)
-    res.status(400).json({ success: false })
+    console.log(error);
+    res.status(400).json({ success: false });
   }
-}
+};
 
 const locationofUsers = async () => {
   try {
@@ -2641,12 +2712,12 @@ const locationofUsers = async () => {
       { name: "uttar pradesh", total: 0, male: 0, female: 0 },
       { name: "uttarakhand", total: 0, male: 0, female: 0 },
       { name: "west bengal", total: 0, male: 0, female: 0 },
-    ]
+    ];
 
     const users = await User.find({ gr: 1 });
     console.log(users.length);
 
-    const aggregatedData = location.map(loc => ({
+    const aggregatedData = location.map((loc) => ({
       name: loc.name,
       total: loc.total,
       male: loc.male,
@@ -2655,7 +2726,10 @@ const locationofUsers = async () => {
 
     for (let i = 0; i < users.length; i++) {
       for (let j = 0; j < aggregatedData.length; j++) {
-        if (users[i].address.state.toLowerCase().trim() === aggregatedData[j].name.toLowerCase().trim()) {
+        if (
+          users[i].address.state.toLowerCase().trim() ===
+          aggregatedData[j].name.toLowerCase().trim()
+        ) {
           if (users[i].gender === "male") {
             aggregatedData[j].male++;
           } else {
@@ -2674,56 +2748,57 @@ const locationofUsers = async () => {
     // Save the new document
     await newLocationData.save();
 
-    console.log('New document saved:', newLocationData);
+    console.log("New document saved:", newLocationData);
   } catch (error) {
     console.log(error);
   }
 };
 exports.fetchLocations = async (req, res) => {
   try {
-    const locationfetc = await LocationData.findById("65eee94e9fc272dcee912fe2")
+    const locationfetc = await LocationData.findById(
+      "65eee94e9fc272dcee912fe2"
+    );
 
     const location = locationfetc.location.map((d) => {
-
       const random = Math.floor(Math.random() * (300 - 200 + 1)) + 200;
-      return ({
+      return {
         name: d.name,
         total: d?.total * random,
         male: d?.male * random,
         female: d?.female * random,
-      })
-
-    })
-    console.log(location)
-    res.status(200).json({ success: true, loc: location })
+      };
+    });
+    console.log(location);
+    res.status(200).json({ success: true, loc: location });
   } catch (error) {
-    res.status(400).json({ success: false, message: "Something Went Wrong" })
+    res.status(400).json({ success: false, message: "Something Went Wrong" });
   }
-}
+};
 
 // locationofUsers()
 
 exports.loginwithgrovyo = async (req, res) => {
-  console.log("first", req.body)
+  console.log("first", req.body);
   try {
-    const { email, phone } = req.body
+    const { email, phone } = req.body;
     let logwithidentity;
-    let value
-    let user
+    let value;
+    let user;
     if (email && !phone) {
-      user = await User.findOne({ email })
-      logwithidentity = "email"
-      value = email
+      user = await User.findOne({ email });
+      logwithidentity = "email";
+      value = email;
     }
     if (phone && !email) {
-      let f = 91 + phone
-      user = await User.findOne({ phone: f })
-      logwithidentity = "phone"
-      value = f
+      let f = 91 + phone;
+      user = await User.findOne({ phone: f });
+      logwithidentity = "phone";
+      value = f;
     }
     if (!user) {
-
-      return res.status(404).json({ success: false, message: "User not Found" })
+      return res
+        .status(404)
+        .json({ success: false, message: "User not Found" });
     }
 
     function generateOTP() {
@@ -2735,17 +2810,17 @@ exports.loginwithgrovyo = async (req, res) => {
       return Math.floor(100000 + Math.random() * 900000);
     }
     let otp = generateOTP();
-    user.otp = otp
-    await user.save()
+    user.otp = otp;
+    await user.save();
 
-    const gid = "65a666a3e953a4573e6c7ecf"
-    const grovyo = await User.findById(gid)
+    const gid = "65a666a3e953a4573e6c7ecf";
+    const grovyo = await User.findById(gid);
     const convs = await Conversation.findOne({
       members: { $all: [user._id, gid] },
     });
     const senderpic = process.env.URL + grovyo.profilepic;
     const recpic = process.env.URL + user.profilepic;
-    const timestamp = new Date()
+    const timestamp = new Date();
     const mesId = msgid();
 
     if (convs) {
@@ -2771,7 +2846,7 @@ exports.loginwithgrovyo = async (req, res) => {
             convId: `${convs?._id}`,
             createdAt: `${timestamp}`,
             mesId: `${mesId}`,
-            typ: 'message',
+            typ: "message",
             senderuname: `${grovyo?.username}`,
             senderverification: `${grovyo.isverified}`,
             senderpic: `${senderpic}`,
@@ -2839,7 +2914,7 @@ exports.loginwithgrovyo = async (req, res) => {
             convId: `${convs?._id}`,
             createdAt: `${timestamp}`,
             mesId: `${mesId}`,
-            typ: 'message',
+            typ: "message",
             senderuname: `${user?.username}`,
             senderverification: `${user.isverified}`,
             senderpic: `${recpic}`,
@@ -2864,31 +2939,33 @@ exports.loginwithgrovyo = async (req, res) => {
       }
     }
 
-    res.status(200).json({ success: true, logwithidentity, value })
+    res.status(200).json({ success: true, logwithidentity, value });
   } catch (error) {
-    console.log(error)
-    res.status(400).json({ success: false, message: "Something Went Wrong" })
+    console.log(error);
+    res.status(400).json({ success: false, message: "Something Went Wrong" });
   }
-}
+};
 
 exports.verifyOtp = async (req, res) => {
   try {
-    const { otp, type, value } = req.body
-    console.log(req.body)
-    let user
+    const { otp, type, value } = req.body;
+    console.log(req.body);
+    let user;
     if (type == "email") {
-      user = await User.findOne({ email: value })
+      user = await User.findOne({ email: value });
     }
     if (type == "phone") {
-      user = await User.findOne({ phone: value })
+      user = await User.findOne({ phone: value });
     }
     if (!user) {
-      return res.status(400).json({ success: false, message: "User not found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found" });
     }
     if (user.otp === otp) {
-      const advertiser = await Advertiser.findOne({ userid: user._id })
+      const advertiser = await Advertiser.findOne({ userid: user._id });
       if (advertiser) {
-        const dp = process.env.URL + advertiser.image
+        const dp = process.env.URL + advertiser.image;
         const sessionId = generateSessionId();
         const newEditCount = {
           login: Date.now().toString(),
@@ -2912,13 +2989,13 @@ exports.verifyOtp = async (req, res) => {
           taxinfo: advertiser.taxinfo,
           email: advertiser.email,
           advertiserid: advertiser.advertiserid,
-          sessionId
+          sessionId,
         };
 
-        user.otp = undefined
-        await user.save()
-        const access_token = generateAccessToken(data)
-        const refresh_token = generateRefreshToken(data)
+        user.otp = undefined;
+        await user.save();
+        const access_token = generateAccessToken(data);
+        const refresh_token = generateRefreshToken(data);
         return res.status(200).json({
           advertiser,
           access_token,
@@ -2930,10 +3007,10 @@ exports.verifyOtp = async (req, res) => {
           success: true,
         });
       } else {
-        const firstname = user.fullname.split(" ")[0]
-        const lastname = user.fullname.split(" ")[1]
-        const dp = process.env.URL + user.profilepic
-        const phoneNumber = user.phone.substring(2)
+        const firstname = user.fullname.split(" ")[0];
+        const lastname = user.fullname.split(" ")[1];
+        const dp = process.env.URL + user.profilepic;
+        const phoneNumber = user.phone.substring(2);
         const data = {
           dp,
           firstname,
@@ -2945,16 +3022,16 @@ exports.verifyOtp = async (req, res) => {
           state: user.address.state,
           pincode: user.address.pincode,
           landmark: user.address.landmark,
-        }
-        res.status(203).json({ success: true, accountexist: false, data })
+        };
+        res.status(203).json({ success: true, accountexist: false, data });
       }
     } else {
-      return res.status(400).json({ success: false, message: "Invalid otp" })
+      return res.status(400).json({ success: false, message: "Invalid otp" });
     }
   } catch (error) {
-    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+    res.status(400).json({ success: false, message: "Something Went Wrong!" });
   }
-}
+};
 
 // exports.paybyphonepay = async (req, res) => {
 //   try {
@@ -2966,18 +3043,22 @@ exports.verifyOtp = async (req, res) => {
 
 exports.loginwithworkspace = async (req, res) => {
   try {
-    const { id, postid } = req.params
+    const { id, postid } = req.params;
 
-    const user = await User.findById(id)
+    const user = await User.findById(id);
 
     if (!user) {
-      return res.status(400).json({ success: false, message: "User Not Found" })
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found" });
     }
 
-    const post = await Post.findById(postid).populate("community", "title dp")
+    const post = await Post.findById(postid).populate("community", "title dp");
 
     if (!post) {
-      return res.status(400).json({ success: false, message: "Post not found!" })
+      return res
+        .status(400)
+        .json({ success: false, message: "Post not found!" });
     }
 
     const postData = {
@@ -2986,16 +3067,16 @@ exports.loginwithworkspace = async (req, res) => {
       media: post.post,
       communityId: post.community._id,
       communityName: post.community.title,
-      dp: process.env.URL + post.community.dp
-    }
+      dp: process.env.URL + post.community.dp,
+    };
 
-    let advertiser = ""
+    let advertiser = "";
     if (user?.advertiserid) {
-      advertiser = await Advertiser.findById(user?.advertiserid.toString())
+      advertiser = await Advertiser.findById(user?.advertiserid.toString());
     }
 
     if (advertiser) {
-      const dp = process.env.URL + advertiser.image
+      const dp = process.env.URL + advertiser.image;
       const newEditCount = {
         login: Date.now().toString(),
       };
@@ -3020,8 +3101,8 @@ exports.loginwithworkspace = async (req, res) => {
         advertiserid: advertiser.advertiserid,
       };
 
-      const access_token = generateAccessToken(data)
-      const refresh_token = generateRefreshToken(data)
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
 
       return res.status(200).json({
         message: "Advertiser exists",
@@ -3034,9 +3115,9 @@ exports.loginwithworkspace = async (req, res) => {
         success: true,
       });
     } else {
-      const firstname = user.fullname.split(" ")[0]
-      const lastname = user.fullname.split(" ")[1]
-      const dp = process.env.URL + user.profilepic
+      const firstname = user.fullname.split(" ")[0];
+      const lastname = user.fullname.split(" ")[1];
+      const dp = process.env.URL + user.profilepic;
 
       const advertisernew = new Advertiser({
         firstname,
@@ -3051,13 +3132,13 @@ exports.loginwithworkspace = async (req, res) => {
         pincode: user.address.pincode,
         landmark: user.address.landmark,
         userid: user._id,
-        advertiserid: generateUniqueID()
-      })
+        advertiserid: generateUniqueID(),
+      });
 
-      const savedAdvertiser = await advertisernew.save()
+      const savedAdvertiser = await advertisernew.save();
 
-      user.advertiserid = savedAdvertiser._id
-      await user.save()
+      user.advertiserid = savedAdvertiser._id;
+      await user.save();
 
       const data = {
         userid: savedAdvertiser.userid,
@@ -3074,14 +3155,39 @@ exports.loginwithworkspace = async (req, res) => {
         advertiserid: savedAdvertiser.advertiserid,
       };
 
-      const access_token = generateAccessToken(data)
-      const refresh_token = generateRefreshToken(data)
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
 
-      res.status(203).json({ success: true, message: "Account Created", access_token, refresh_token, postData })
+      res.status(203).json({
+        success: true,
+        message: "Account Created",
+        access_token,
+        refresh_token,
+        postData,
+      });
     }
-
   } catch (error) {
-    console.log(error)
-    res.status(400).json({ success: false, message: "Something Went Wrong" })
+    console.log(error);
+    res.status(400).json({ success: false, message: "Something Went Wrong" });
   }
-}
+};
+
+exports.addAccount = async (req, res) => {
+  try {
+    const { agencyId } = req.params;
+    const { email, phone, fullname, username } = req.body;
+
+    const user = new User({
+      email,
+      phone,
+      fullname,
+      username,
+      agency: agencyId,
+    });
+    await user.save();
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" });
+  }
+};
+
