@@ -87,16 +87,6 @@ const connectDB = async () => {
     mongoose.connect(process.env.PRODDB).then(() => {
       console.log("DB is connected");
     });
-    // mongoose.connect(process.env.DATABASE).then(() => {
-    //   console.log("DB is connected");
-    // });
-    // mongoose
-    //   .connect(
-    //     "mongodb+srv://fsayush100:shreyansh7@cluster0.mrnejwh.mongodb.net/your-database-name?retryWrites=true&w=majority"
-    //   )
-    //   .then(() => {
-    //     console.log("DB is connected");
-    //   });
   } catch (err) {
     console.log(err);
   }
@@ -115,28 +105,28 @@ const connectApp = () => {
 };
 connectApp();
 
-const userFInd = async () => {
-  try {
-    const users = await User.find({ fullname: "Ayush Dixit" });
+// const userFInd = async () => {
+//   try {
+//     const users = await User.find({ fullname: "Ayush Dixit" });
 
-    for (let i = 0; i < users.length; i++) {
-      console.log(users[i]._id, users[i].username);
-    }
-  } catch (error) {
-    console.log(error);
-  }
-};
+//     for (let i = 0; i < users.length; i++) {
+//       console.log(users[i]._id, users[i].username);
+//     }
+//   } catch (error) {
+//     console.log(error);
+//   }
+// };
 
 // userFInd()
 
-const userdelete = async () => {
-  try {
-    const users = await User.findById("660fd49e616bc2d9e31f732c");
-    await users.remove();
-  } catch (error) {
-    console.log(error);
-  }
-};
+// const userdelete = async () => {
+//   try {
+//     const users = await User.findById("660fd49e616bc2d9e31f732c");
+//     await users.remove();
+//   } catch (error) {
+//     console.log(error);
+//   }
+// };
 
 const decryptaes = (data) => {
   try {
