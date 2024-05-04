@@ -326,6 +326,11 @@ const userSchema = new mongoose.Schema(
         type: String,
       },
     },
+    agencyDetails: {
+      iscreatedbyagency: { type: Boolean, default: false },
+      agencyuserid: { type: ObjectId, ref: "User" },
+      agencyadvertiserid: { type: ObjectId, ref: "Advertiser" }
+    },
     showStoreSection: { type: Boolean, default: true },
     showCommunitySection: { type: Boolean, default: true },
     showAboutSection: { type: Boolean, default: true },

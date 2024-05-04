@@ -119,14 +119,17 @@ connectApp();
 
 // userFInd()
 
-// const userdelete = async () => {
-//   try {
-//     const users = await User.findById("660fd49e616bc2d9e31f732c");
-//     await users.remove();
-//   } catch (error) {
-//     console.log(error);
-//   }
-// };
+const userdelete = async () => {
+  try {
+    const users = await User.findOne({ fullname: "Ayush Dixit Test" });
+    console.log(users.username)
+    await users.remove();
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+// userdelete()
 
 const decryptaes = (data) => {
   try {
@@ -143,7 +146,7 @@ const decryptaes = (data) => {
   }
 };
 
-// userdelete()
+
 
 const findUser = async () => {
   try {
@@ -159,7 +162,7 @@ const findUser = async () => {
         phone: onlyseven[i].phone,
         u: onlyseven[i].username,
         gr: onlyseven[i].gr,
-        password: decryptaes(onlyseven[i].passw),
+        // password: decryptaes(onlyseven[i].passw),
       };
       console.log(data);
     }
@@ -269,3 +272,31 @@ const usersIds = async () => {
 // };
 
 // uses();
+
+function generateUniqueID() {
+  let advertiserID;
+  advertiserID = Date.now();
+  return advertiserID.toString();
+}
+
+const accountCreation = async () => {
+  try {
+    const adver = new Advertiser({
+      firstname: "Willow",
+      lastname: "wave",
+      image: "1705565597580_c0cfad66-2425-4f3c-8ecf-9f99e24a3fd3_a-profile.jpg",
+      userid: "65a8dd9ea9511349abd68ea9",
+      advertiserid: generateUniqueID(),
+      type: "Organization",
+      email: "arnavmehtaoff@gmail.com",
+      password: "arnavmehta"
+    })
+
+    await adver.save()
+
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// accountCreation()

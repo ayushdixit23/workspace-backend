@@ -16,6 +16,11 @@ const AdvertiserSchema = new mongoose.Schema({
   panphoto: { type: String },
   gst: { type: String },
   gstphoto: { type: String },
+  agencyDetails: {
+    iscreatedbyagency: { type: Boolean, default: false },
+    agencyuserid: { type: ObjectId, ref: "User" },
+    agencyadvertiserid: { type: ObjectId, ref: "Advertiser" }
+  },
   password: { type: String },
   retypepassword: { type: String },
   address: { type: String },

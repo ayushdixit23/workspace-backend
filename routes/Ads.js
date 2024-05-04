@@ -23,7 +23,9 @@ const {
   promotedposts,
   getAllPosts, createad, fetchingprosite, fetchLocations, loginwithgrovyo, verifyOtp,
   loginwithworkspace,
-  loginAdspace
+  loginAdspace,
+  addAccount,
+  loginforAdspace
 } = require("../controllers/Ads");
 const router = express.Router();
 const multer = require("multer");
@@ -61,5 +63,7 @@ router.get("/getprositedetails/:id", fetchingprosite)
 router.post("/loginwithgrovyo", loginwithgrovyo)
 router.post("/verifyotp", verifyOtp)
 router.get("/loginwithworkspace/:id/:postid", loginwithworkspace)
+router.get("/loginforAdspace/:id", loginforAdspace)
+router.post("/addAccount/:agencyuserid/:agencyadvertiserid", upload.any(), addAccount)
 
 module.exports = router;

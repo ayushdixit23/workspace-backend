@@ -184,73 +184,7 @@ function generateUniqueID() {
   return advertiserID.toString();
 }
 
-// exports.checkaccount = async (req, res) => {
-//   const { phone, email, password } = req.body;
-//   try {
-//     let advertiser;
-//     if (email && password) {
-//       advertiser = await Advertiser.findOne({ email, password });
-//     } else if (phone) {
-//       advertiser = await Advertiser.findOne({ phone });
-//     } else {
-//       return res.status(400).json({
-//         message: "Invalid request. Please provide email, password, or phone.",
-//         success: false,
-//       });
-//     }
-//     if (advertiser) {
-
-//       const dp = process.env.URL + advertiser.image
-//       const sessionId = generateSessionId();
-//       const newEditCount = {
-//         login: Date.now().toString(),
-//       };
-//       await Advertiser.updateOne(
-//         { _id: advertiser._id },
-//         {
-//           $push: { logs: newEditCount },
-//         }
-//       );
-//       const data = {
-//         userid: advertiser.userid,
-//         advid: advertiser._id,
-//         image: dp,
-//         firstname: advertiser.firstname,
-//         lastname: advertiser.lastname,
-//         country: advertiser.country,
-//         city: advertiser.city,
-//         address: advertiser.address,
-//         accounttype: advertiser.type,
-//         taxinfo: advertiser.taxinfo,
-//         email: advertiser.email,
-//         advertiserid: advertiser.advertiserid,
-//         sessionId
-//       };
-
-//       const access_token = generateAccessToken(data)
-//       const refresh_token = generateRefreshToken(data)
-//       return res.status(200).json({
-//         message: "Advertiser exists",
-//         advertiser,
-//         access_token,
-//         refresh_token,
-//         userid: advertiser.userid,
-//         dp,
-//         sessionId,
-//         success: true,
-//       });
-//     } else {
-
-//       return res
-//         .status(404)
-//         .json({ message: "Advertiser not found", success: false });
-//     }
-//   } catch (e) {
-//     console.log(e)
-//     res.status(400).json({ message: "Something went wrong", success: false });
-//   }
-// };
-
+// correct api
 exports.loginAdspace = async (req, res) => {
   const { phone, email, password } = req.body;
   try {
@@ -258,6 +192,7 @@ exports.loginAdspace = async (req, res) => {
     if (email && password) {
       advertiser = await Advertiser.findOne({ email, password });
     } else if (phone) {
+      // number(phone) is without 91
       advertiser = await Advertiser.findOne({ phone: "91" + phone });
     } else {
       return res.status(400).json({
@@ -277,20 +212,64 @@ exports.loginAdspace = async (req, res) => {
           $push: { logs: newEditCount },
         }
       );
-      const data = {
-        userid: advertiser?.userid,
-        advid: advertiser?._id,
-        image: dp,
-        firstname: advertiser?.firstname,
-        lastname: advertiser?.lastname,
-        country: advertiser?.country,
-        city: advertiser?.city,
-        address: advertiser?.address,
-        accounttype: advertiser?.type,
-        taxinfo: advertiser?.taxinfo,
-        email: advertiser?.email,
-        advertiserid: advertiser?.advertiserid,
-      };
+
+      let data
+
+      if (advertiser.type === "Individual") {
+        data = {
+          userid: advertiser?.userid,
+          advid: advertiser?._id,
+          image: process.env.URL + advertiser?.image,
+          firstname: advertiser?.firstname,
+          lastname: advertiser?.lastname,
+          country: advertiser?.country,
+          city: advertiser?.city,
+          address: advertiser?.address,
+          accounttype: advertiser?.type,
+          taxinfo: advertiser?.taxinfo,
+          email: advertiser?.email,
+          type: advertiser.type,
+          advertiserid: advertiser?.advertiserid,
+        };
+      } else {
+        const findAdvser = await Advertiser.find({
+          "agencyDetails.agencyadvertiserid": advertiser._id
+        })
+
+        let manageusers = []
+
+
+        for (let i = 0; i < findAdvser.length; i++) {
+          const user = await User.findById(findAdvser[i].userid)
+          const obj = {
+            fullname: findAdvser[i].firstname + " " + findAdvser[i].lastname,
+            firstname: findAdvser[i].firstname,
+            lastname: findAdvser[i].lastname,
+            image: process.env.URL + findAdvser[i].image,
+            userid: findAdvser[i].userid,
+            username: user.username,
+            advertiserid: findAdvser[i].advertiserid,
+            id: findAdvser[i]._id
+          }
+          manageusers.push(obj)
+        }
+        data = {
+          userid: advertiser?.userid,
+          advid: advertiser?._id,
+          image: process.env.URL + advertiser?.image,
+          firstname: advertiser?.firstname,
+          lastname: advertiser?.lastname,
+          country: advertiser?.country,
+          city: advertiser?.city,
+          address: advertiser?.address,
+          type: advertiser?.type,
+          accounttype: advertiser?.type,
+          taxinfo: advertiser?.taxinfo,
+          email: advertiser?.email,
+          advertiserid: advertiser?.advertiserid,
+          manageusers
+        }
+      }
 
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
@@ -299,6 +278,7 @@ exports.loginAdspace = async (req, res) => {
         advertiser,
         access_token,
         refresh_token,
+        type: advertiser.type,
         userid: advertiser.userid,
         dp,
         success: true,
@@ -330,6 +310,7 @@ exports.loginAdspace = async (req, res) => {
       const lastname = user.fullname.split(" ")[1];
       const dp = process.env.URL + user.profilepic;
 
+      // correct
       const advertisernew = new Advertiser({
         firstname,
         lastname,
@@ -343,6 +324,546 @@ exports.loginAdspace = async (req, res) => {
         pincode: user?.address.pincode,
         landmark: user?.address.landmark,
         userid: user?._id,
+        advertiserid: generateUniqueID(),
+      });
+
+      const savedAdvertiser = await advertisernew.save();
+
+      user.advertiserid = savedAdvertiser._id;
+      await user.save();
+
+      let data
+
+      if (savedAdvertiser.type === "Individual") {
+        data = {
+          userid: savedAdvertiser?.userid,
+          advid: savedAdvertiser?._id,
+          image: process.env.URL + savedAdvertiser?.image,
+          firstname: savedAdvertiser?.firstname,
+          lastname: savedAdvertiser?.lastname,
+          country: savedAdvertiser?.country,
+          city: savedAdvertiser?.city,
+          type: savedAdvertiser.type,
+          address: savedAdvertiser?.address,
+          accounttype: savedAdvertiser?.type,
+          taxinfo: savedAdvertiser?.taxinfo,
+          email: savedAdvertiser?.email,
+          advertiserid: savedAdvertiser?.advertiserid,
+        };
+      } else {
+        const findAdvser = await Advertiser.find({
+          "agencyDetails.agencyadvertiserid": savedAdvertiser._id
+        })
+
+        let manageusers = []
+
+
+        for (let i = 0; i < findAdvser.length; i++) {
+          const user = await User.findById(findAdvser[i].userid)
+          const obj = {
+            fullname: findAdvser[i].firstname + " " + findAdvser[i].lastname,
+            firstname: findAdvser[i].firstname,
+            lastname: findAdvser[i].lastname,
+            image: process.env.URL + findAdvser[i].image,
+            userid: findAdvser[i].userid,
+            username: user.username,
+            advertiserid: findAdvser[i].advertiserid,
+            id: findAdvser[i]._id
+          }
+          manageusers.push(obj)
+        }
+        data = {
+          userid: savedAdvertiser?.userid,
+          advid: savedAdvertiser?._id,
+          image: process.env.URL + savedAdvertiser?.image,
+          firstname: savedAdvertiser?.firstname,
+          lastname: savedAdvertiser?.lastname,
+          country: savedAdvertiser?.country,
+          city: savedAdvertiser?.city,
+          address: savedAdvertiser?.address,
+          accounttype: savedAdvertiser?.type,
+          type: savedAdvertiser.type,
+          taxinfo: savedAdvertiser?.taxinfo,
+          email: savedAdvertiser?.email,
+          advertiserid: savedAdvertiser?.advertiserid,
+          manageusers
+        }
+      }
+
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
+
+      res.status(203).json({
+        success: true,
+        type: savedAdvertiser.type,
+        message: "Account Created",
+        access_token,
+        refresh_token,
+      });
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(400).json({ message: "Something went wrong", success: false });
+  }
+};
+
+// correct api
+exports.loginwithworkspace = async (req, res) => {
+  try {
+    const { id, postid } = req.params;
+    const user = await User.findById(id)
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User Not Found" });
+    }
+
+    const post = await Post.findById(postid).populate("community", "title dp");
+
+    if (!post) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Post not found!" });
+    }
+
+    const postData = {
+      title: post.title,
+      desc: post.desc,
+      media: post.post,
+      communityId: post.community._id,
+      communityName: post.community.title,
+      dp: process.env.URL + post.community.dp,
+    };
+
+    let advertiser = "";
+    if (user?.advertiserid) {
+      advertiser = await Advertiser.findById(user?.advertiserid.toString());
+    }
+
+    if (advertiser) {
+      const dp = process.env.URL + advertiser.image;
+      const newEditCount = {
+        login: Date.now().toString(),
+      };
+      await Advertiser.updateOne(
+        { _id: advertiser._id },
+        {
+          $push: { logs: newEditCount },
+        }
+      );
+      const data = {
+        userid: advertiser.userid,
+        advid: advertiser._id,
+        image: dp,
+        firstname: advertiser.firstname,
+        lastname: advertiser.lastname,
+        country: advertiser.country,
+        city: advertiser.city,
+        address: advertiser.address,
+        accounttype: advertiser.type,
+        taxinfo: advertiser.taxinfo,
+        email: advertiser.email,
+        advertiserid: advertiser.advertiserid,
+      };
+
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
+
+      return res.status(200).json({
+        message: "Advertiser exists",
+        advertiser,
+        access_token,
+        refresh_token,
+        userid: advertiser.userid,
+        dp,
+        postData,
+        success: true,
+      });
+    } else {
+      const firstname = user.fullname.split(" ")[0];
+      const lastname = user.fullname.split(" ")[1];
+      const dp = process.env.URL + user.profilepic;
+
+      const advertisernew = new Advertiser({
+        firstname,
+        lastname,
+        image: user.profilepic,
+        password: decryptaes(user.passw),
+        phone: user.phone ? user.phone : undefined,
+        email: user.email,
+        address: user.address.streetaddress,
+        city: user.address.city,
+        state: user.address.state,
+        pincode: user.address.pincode,
+        landmark: user.address.landmark,
+        userid: user._id,
+        advertiserid: generateUniqueID(),
+      });
+
+      const savedAdvertiser = await advertisernew.save();
+
+      user.advertiserid = savedAdvertiser._id;
+      await user.save();
+
+      const data = {
+        userid: savedAdvertiser.userid,
+        advid: savedAdvertiser._id,
+        image: dp,
+        firstname: savedAdvertiser.firstname,
+        lastname: savedAdvertiser.lastname,
+        country: savedAdvertiser.country,
+        city: savedAdvertiser.city,
+        address: savedAdvertiser.address,
+        accounttype: savedAdvertiser.type,
+        taxinfo: savedAdvertiser.taxinfo,
+        email: savedAdvertiser.email,
+        advertiserid: savedAdvertiser.advertiserid,
+      };
+
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
+
+      res.status(203).json({
+        success: true,
+        message: "Account Created",
+        access_token,
+        refresh_token,
+        postData,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ success: false, message: "Something Went Wrong" });
+  }
+};
+
+// correct api
+exports.addAccount = async (req, res) => {
+  console.log(req.body, req.files)
+  try {
+    const { agencyuserid,
+      agencyadvertiserid } = req.params
+    const {
+      fullname,
+      // gender,
+      username,
+      phone,
+      email,
+      bio,
+      // dob,
+      // loc,
+      // device,
+      // type,
+      // time,
+      // token,
+    } = req.body;
+    const uuidString = uuid();
+
+
+
+    // const interestsArray = [interest];
+    // const interestsString = interestsArray[0];
+    // const individualInterests = interestsString.split(",");
+
+    //const contactsfinal = JSON.parse(contacts) || [];
+    // const contactsfinal = [];
+
+
+    if (req.files[0]?.originalname) {
+      const bucketName = "images";
+      const objectName = `${Date.now()
+        }_${uuidString}_${req.files[0]?.originalname}`;
+      const result = await s3.send(
+        new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: objectName,
+          Body: req.files[0].buffer,
+          ContentType: req.files[0].mimetype,
+        })
+      );
+
+      const agencyDetails = {
+        iscreatedbyagency: true,
+        agencyuserid,
+        agencyadvertiserid,
+      }
+
+      const user = new User({
+        fullname: fullname,
+        username: username,
+        phone,
+        email,
+        profilepic: objectName,
+        agencyDetails,
+        desc: bio,
+        // gender: gender,
+        // DOB: dob,
+      });
+      await user.save();
+
+
+      //updating membership
+      user.ismembershipactive = true;
+      user.memberships.membership = "65671e5204b7d0d07ef0e796";
+      user.memberships.ending = "infinite";
+      user.memberships.status = true;
+      const savedUser = await user.save();
+
+      const advid = generateUniqueID();
+      const splitname = fullname.split(" ")
+      const firstname = splitname[0]
+      const lastname = splitname[1]
+
+      const adv = new Advertiser({
+        firstname,
+        lastname,
+        email,
+        phone,
+        type: "Individual",
+        agencyDetails,
+        userid: savedUser._id,
+        advertiserid: advid,
+        image: objectName,
+      });
+
+      const savedAdv = await adv.save();
+      savedUser.advertiserid = savedAdv._id
+      savedUser.adid = advid
+      await savedUser.save()
+
+      //joining community by default of Grovyo
+      let comId = "65d313d46a4e4ae4c6eabd15";
+      let publictopic = [];
+      const community = await Community.findById(comId);
+      for (let i = 0; i < community.topics.length; i++) {
+        const topic = await Topic.findById({ _id: community.topics[i] });
+        if (topic.type === "free") {
+          publictopic.push(topic);
+        }
+      }
+
+      await Community.updateOne(
+        { _id: comId },
+        { $push: { members: user._id }, $inc: { memberscount: 1 } }
+      );
+      await User.updateOne(
+        { _id: user._id },
+        { $push: { communityjoined: community._id }, $inc: { totalcom: 1 } }
+      );
+
+      const topicIds = publictopic.map((topic) => topic._id);
+
+      await Topic.updateMany(
+        { _id: { $in: topicIds } },
+        {
+          $push: { members: user._id, notifications: user._id },
+          $inc: { memberscount: 1 },
+        }
+      );
+      await User.updateMany(
+        { _id: user._id },
+        {
+          $push: { topicsjoined: topicIds },
+          $inc: { totaltopics: 2 },
+        }
+      );
+      let pic = process.env.URL + user.profilepic;
+
+      const findAdvser = await Advertiser.find({
+        "agencyDetails.agencyadvertiserid": agencyadvertiserid
+      })
+
+      const agency = await Advertiser.findById(agencyadvertiserid)
+
+      let manageusers = []
+
+      for (let i = 0; i < findAdvser.length; i++) {
+        const user = await User.findById(findAdvser[i].userid)
+        const obj = {
+          fullname: findAdvser[i].firstname + " " + findAdvser[i].lastname,
+          firstname: findAdvser[i].firstname,
+          lastname: findAdvser[i].lastname,
+          image: process.env.URL + findAdvser[i].image,
+          userid: findAdvser[i].userid,
+          username: user.username,
+          advertiserid: findAdvser[i].advertiserid,
+          id: findAdvser[i]._id
+        }
+        manageusers.push(obj)
+      }
+      const data = {
+        userid: agency?.userid,
+        advid: agency?._id,
+        image: process.env.URL + agency?.image,
+        firstname: agency?.firstname,
+        lastname: agency?.lastname,
+        country: agency?.country,
+        city: agency?.city,
+        address: agency?.address,
+        accounttype: agency?.type,
+        taxinfo: agency?.taxinfo,
+        email: agency?.email,
+        type: agency.type,
+        advertiserid: agency?.advertiserid,
+        manageusers
+      }
+
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
+
+      res.status(200).json({
+        message: "Account created successfully",
+        user,
+        pic,
+        access_token,
+        refresh_token,
+        success: true,
+      });
+    } else {
+      res.status(400).json({ success: false, message: "Image is required!" })
+    }
+  }
+
+
+  catch (error) {
+    console.log(error)
+    res.status(400).json({ success: false, message: "Something Went Wrong!" });
+  }
+};
+
+// correct api
+exports.loginagency = async (req, res) => {
+  try {
+    const { agencyId } = req.params
+    const { phone } = req.body
+    const advertiser = await Advertiser.findOne({ phone })
+    if (!advertiser) {
+      return res.status(400).json({ success: false, message: "User not Found!" })
+    }
+
+    const findAdvser = await Advertiser.find({
+      "agencyDetails.agencyadvertiserid": agencyId
+    })
+
+    const agency = await Advertiser.findById(agencyId)
+
+    let manageusers = []
+
+    for (let i = 0; i < findAdvser.length; i++) {
+      const user = await User.findById(findAdvser[i].userid)
+      const obj = {
+        fullname: findAdvser[i].firstname + " " + findAdvser[i].lastname,
+        firstname: findAdvser[i].firstname,
+        lastname: findAdvser[i].lastname,
+        image: process.env.URL + findAdvser[i].image,
+        userid: findAdvser[i].userid,
+        username: user.username,
+        advertiserid: findAdvser[i].advertiserid,
+        id: findAdvser[i]._id
+      }
+      manageusers.push(obj)
+    }
+    const data = {
+      userid: agency?.userid,
+      advid: agency?._id,
+      image: process.env.URL + agency?.image,
+      firstname: agency?.firstname,
+      lastname: agency?.lastname,
+      country: agency?.country,
+      city: agency?.city,
+      address: agency?.address,
+      accounttype: agency?.type,
+      taxinfo: agency?.taxinfo,
+      email: agency?.email,
+      type: agency.type,
+      advertiserid: agency?.advertiserid,
+      manageusers
+    }
+
+    const access_token = generateAccessToken(data);
+    const refresh_token = generateRefreshToken(data);
+
+    res.status(203).json({
+      success: true,
+      type: agency.type,
+      message: "Account Created",
+      access_token,
+      refresh_token,
+    });
+  }
+  catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+  }
+}
+
+// correct api
+exports.loginforAdspace = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+    let advertiser = "";
+    if (user?.advertiserid) {
+      advertiser = await Advertiser.findById(user?.advertiserid.toString());
+    }
+
+    if (advertiser) {
+      const dp = process.env.URL + advertiser.image;
+      const newEditCount = {
+        login: Date.now().toString(),
+      };
+      await Advertiser.updateOne(
+        { _id: advertiser._id },
+        {
+          $push: { logs: newEditCount },
+        }
+      );
+      const data = {
+        userid: advertiser.userid,
+        advid: advertiser._id,
+        image: dp,
+        firstname: advertiser.firstname,
+        lastname: advertiser.lastname,
+        country: advertiser.country,
+        city: advertiser.city,
+        address: advertiser.address,
+        accounttype: advertiser.type,
+        taxinfo: advertiser.taxinfo,
+        email: advertiser.email,
+        advertiserid: advertiser.advertiserid,
+      };
+
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
+
+      return res.status(200).json({
+        message: "Advertiser exists",
+        advertiser,
+        access_token,
+        refresh_token,
+        userid: advertiser.userid,
+        dp,
+        success: true,
+      });
+    } else {
+      const firstname = user.fullname.split(" ")[0];
+      const lastname = user.fullname.split(" ")[1];
+      const dp = process.env.URL + user.profilepic;
+
+      const advertisernew = new Advertiser({
+        firstname,
+        lastname,
+        image: user.profilepic,
+        password: decryptaes(user.passw),
+        phone: user.phone ? user.phone : undefined,
+        email: user.email,
+        address: user.address.streetaddress,
+        city: user.address.city,
+        state: user.address.state,
+        pincode: user.address.pincode,
+        landmark: user.address.landmark,
+        userid: user._id,
         advertiserid: generateUniqueID(),
       });
 
@@ -376,11 +897,11 @@ exports.loginAdspace = async (req, res) => {
         refresh_token,
       });
     }
-  } catch (e) {
-    console.log(e);
-    res.status(400).json({ message: "Something went wrong", success: false });
+  } catch (error) {
+    res.status(400)
+    console.log(error)
   }
-};
+}
 
 //create adv account !!missing password hashing
 exports.createadvacc = async (req, res) => {
@@ -409,7 +930,7 @@ exports.createadvacc = async (req, res) => {
     const user = await User.findOne({
       $or: [{ email: email }, { phone: phone }],
     });
-    console.log(user.fullname, phone, email);
+
     let savedAdv;
     console.log(advertiser);
     console.log(!advertiser && !user);
@@ -459,9 +980,8 @@ exports.createadvacc = async (req, res) => {
         const min = 100;
         const max = 999;
         const randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;
-        const usernam = `${
-          firstname + lastname.replace(/\s/g, "").toLowerCase()
-        }_${randomNumber}`;
+        const usernam = `${firstname + lastname.replace(/\s/g, "").toLowerCase()
+          }_${randomNumber}`;
         return usernam;
       };
 
@@ -546,30 +1066,67 @@ exports.createadvacc = async (req, res) => {
       );
     }
 
-    console.log(savedAdv, "savedAdv");
 
-    const data = {
-      userid: savedAdv?.userid,
-      advid: savedAdv?._id,
-      image: process.env.URL + savedAdv?.image,
-      firstname: savedAdv?.firstname,
-      lastname: savedAdv?.lastname,
-      country: savedAdv?.country,
-      city: savedAdv?.city,
-      address: savedAdv?.address,
-      accounttype: savedAdv?.type,
-      taxinfo: savedAdv?.taxinfo,
-      email: savedAdv?.email,
-      advertiserid: savedAdv?.advertiserid,
-    };
+    let data
 
-    console.log(data);
+    if (savedAdv.type === "Individual") {
+      data = {
+        userid: savedAdv?.userid,
+        advid: savedAdv?._id,
+        image: process.env.URL + savedAdv?.image,
+        firstname: savedAdv?.firstname,
+        lastname: savedAdv?.lastname,
+        country: savedAdv?.country,
+        city: savedAdv?.city,
+        address: savedAdv?.address,
+        accounttype: savedAdv?.type,
+        type: savedAdv?.type,
+        taxinfo: savedAdv?.taxinfo,
+        email: savedAdv?.email,
+        advertiserid: savedAdv?.advertiserid,
+      };
+    } else {
+      const findAdvser = await Advertiser.find({
+        "agencyDetails.agencyadvertiserid": savedAdv._id
+      })
 
+      let manageusers = []
+
+      for (let i = 0; i < findAdvser.length; i++) {
+        const obj = {
+          fullname: findAdvser[i].firstname + " " + findAdvser[i].lastname,
+          firstname: findAdvser[i].firstname,
+          lastname: findAdvser[i].lastname,
+          image: process.env.URL + findAdvser[i].image,
+          userid: findAdvser[i].userid,
+          advertiserid: findAdvser[i].advertiserid,
+          id: findAdvser[i]._id
+        }
+        manageusers.push(obj)
+      }
+      data = {
+        userid: savedAdv?.userid,
+        advid: savedAdv?._id,
+        image: process.env.URL + savedAdv?.image,
+        firstname: savedAdv?.firstname,
+        lastname: savedAdv?.lastname,
+        country: savedAdv?.country,
+        city: savedAdv?.city,
+        address: savedAdv?.address,
+        accounttype: savedAdv?.type,
+        type: savedAdv?.type,
+        taxinfo: savedAdv?.taxinfo,
+        email: savedAdv?.email,
+        advertiserid: savedAdv?.advertiserid,
+        manageusers
+      }
+    }
     const access_token = generateAccessToken(data);
     const refresh_token = generateRefreshToken(data);
     res.status(200).json({
       success: true,
       access_token,
+      type: savedAdv.type,
       refresh_token,
     });
   } catch (e) {
@@ -613,6 +1170,9 @@ exports.newad = async (req, res) => {
     const user = await Advertiser.findById(id);
     const userauth = await User.findById(userId);
 
+    console.log(userauth.fullname, "fullname")
+    console.log(user.firstname, "firstname")
+
     let pos = [];
 
     const uuidString = uuid();
@@ -623,9 +1183,8 @@ exports.newad = async (req, res) => {
       let objectName;
       for (let i = 0; i < req.files.length; i++) {
         if (req.files[i].fieldname === "communityImage") {
-          objectName = `${Date.now()}_${uuidString}_${
-            req.files[i].originalname
-          }`;
+          objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname
+            }`;
           a = objectName;
           const result = await s3.send(
             new PutObjectCommand({
@@ -689,9 +1248,8 @@ exports.newad = async (req, res) => {
       let contents;
       for (let i = 0; i < req.files.length; i++) {
         if (req.files[i].fieldname === "file") {
-          objectName = `${Date.now()}_${uuidString}_${
-            req.files[i].originalname
-          }`;
+          objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname
+            }`;
           a = objectName;
           await s3.send(
             new PutObjectCommand({
@@ -836,9 +1394,8 @@ exports.createad = async (req, res) => {
     if (req.files && req.files.length > 0) {
       for (let i = 0; i < req.files.length; i++) {
         if (req.files[i].fieldname === "file") {
-          objectName = `${Date.now()}_${uuidString}_${
-            req.files[i].originalname
-          }`;
+          objectName = `${Date.now()}_${uuidString}_${req.files[i].originalname
+            }`;
           a = objectName;
           await s3.send(
             new PutObjectCommand({
@@ -1082,10 +1639,10 @@ exports.getAllPosts = async (req, res) => {
         p.views <= 0
           ? 0
           : ((parseInt(p?.sharescount) +
-              parseInt(p?.likes) +
-              parseInt(p?.totalcomments)) /
-              parseInt(p?.views)) *
-            100;
+            parseInt(p?.likes) +
+            parseInt(p?.totalcomments)) /
+            parseInt(p?.views)) *
+          100;
       eng.push(final);
     });
 
@@ -1105,10 +1662,10 @@ exports.getAllPosts = async (req, res) => {
         p.views <= 0
           ? 0
           : ((parseInt(p?.sharescount) +
-              parseInt(p?.likes) +
-              parseInt(p?.totalcomments)) /
-              parseInt(p?.views)) *
-            100;
+            parseInt(p?.likes) +
+            parseInt(p?.totalcomments)) /
+            parseInt(p?.views)) *
+          100;
       engpromoted.push(final);
     });
 
@@ -2753,6 +3310,7 @@ const locationofUsers = async () => {
     console.log(error);
   }
 };
+
 exports.fetchLocations = async (req, res) => {
   try {
     const locationfetc = await LocationData.findById(
@@ -2774,7 +3332,6 @@ exports.fetchLocations = async (req, res) => {
     res.status(400).json({ success: false, message: "Something Went Wrong" });
   }
 };
-
 // locationofUsers()
 
 exports.loginwithgrovyo = async (req, res) => {
@@ -3041,153 +3598,507 @@ exports.verifyOtp = async (req, res) => {
 //   }
 // }
 
-exports.loginwithworkspace = async (req, res) => {
-  try {
-    const { id, postid } = req.params;
+// exports.loginwithworkspace = async (req, res) => {
+//   try {
+//     const { id, postid } = req.params;
 
-    const user = await User.findById(id);
+//     const user = await User.findById(id);
 
-    if (!user) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User Not Found" });
-    }
+//     if (!user) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "User Not Found" });
+//     }
 
-    const post = await Post.findById(postid).populate("community", "title dp");
+//     const post = await Post.findById(postid).populate("community", "title dp");
 
-    if (!post) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Post not found!" });
-    }
+//     if (!post) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Post not found!" });
+//     }
 
-    const postData = {
-      title: post.title,
-      desc: post.desc,
-      media: post.post,
-      communityId: post.community._id,
-      communityName: post.community.title,
-      dp: process.env.URL + post.community.dp,
-    };
+//     const postData = {
+//       title: post.title,
+//       desc: post.desc,
+//       media: post.post,
+//       communityId: post.community._id,
+//       communityName: post.community.title,
+//       dp: process.env.URL + post.community.dp,
+//     };
 
-    let advertiser = "";
-    if (user?.advertiserid) {
-      advertiser = await Advertiser.findById(user?.advertiserid.toString());
-    }
+//     let advertiser = "";
+//     if (user?.advertiserid) {
+//       advertiser = await Advertiser.findById(user?.advertiserid.toString());
+//     }
 
-    if (advertiser) {
-      const dp = process.env.URL + advertiser.image;
-      const newEditCount = {
-        login: Date.now().toString(),
-      };
-      await Advertiser.updateOne(
-        { _id: advertiser._id },
-        {
-          $push: { logs: newEditCount },
-        }
-      );
-      const data = {
-        userid: advertiser.userid,
-        advid: advertiser._id,
-        image: dp,
-        firstname: advertiser.firstname,
-        lastname: advertiser.lastname,
-        country: advertiser.country,
-        city: advertiser.city,
-        address: advertiser.address,
-        accounttype: advertiser.type,
-        taxinfo: advertiser.taxinfo,
-        email: advertiser.email,
-        advertiserid: advertiser.advertiserid,
-      };
+//     if (advertiser) {
+//       const dp = process.env.URL + advertiser.image;
+//       const newEditCount = {
+//         login: Date.now().toString(),
+//       };
+//       await Advertiser.updateOne(
+//         { _id: advertiser._id },
+//         {
+//           $push: { logs: newEditCount },
+//         }
+//       );
+//       const data = {
+//         userid: advertiser.userid,
+//         advid: advertiser._id,
+//         image: dp,
+//         firstname: advertiser.firstname,
+//         lastname: advertiser.lastname,
+//         country: advertiser.country,
+//         city: advertiser.city,
+//         address: advertiser.address,
+//         accounttype: advertiser.type,
+//         taxinfo: advertiser.taxinfo,
+//         email: advertiser.email,
+//         advertiserid: advertiser.advertiserid,
+//       };
 
-      const access_token = generateAccessToken(data);
-      const refresh_token = generateRefreshToken(data);
+//       const access_token = generateAccessToken(data);
+//       const refresh_token = generateRefreshToken(data);
 
-      return res.status(200).json({
-        message: "Advertiser exists",
-        advertiser,
-        access_token,
-        refresh_token,
-        userid: advertiser.userid,
-        dp,
-        postData,
-        success: true,
-      });
-    } else {
-      const firstname = user.fullname.split(" ")[0];
-      const lastname = user.fullname.split(" ")[1];
-      const dp = process.env.URL + user.profilepic;
+//       return res.status(200).json({
+//         message: "Advertiser exists",
+//         advertiser,
+//         access_token,
+//         refresh_token,
+//         userid: advertiser.userid,
+//         dp,
+//         postData,
+//         success: true,
+//       });
+//     } else {
+//       const firstname = user.fullname.split(" ")[0];
+//       const lastname = user.fullname.split(" ")[1];
+//       const dp = process.env.URL + user.profilepic;
 
-      const advertisernew = new Advertiser({
-        firstname,
-        lastname,
-        image: user.profilepic,
-        password: decryptaes(user.passw),
-        phone: user.phone ? user.phone : undefined,
-        email: user.email,
-        address: user.address.streetaddress,
-        city: user.address.city,
-        state: user.address.state,
-        pincode: user.address.pincode,
-        landmark: user.address.landmark,
-        userid: user._id,
-        advertiserid: generateUniqueID(),
-      });
+//       const advertisernew = new Advertiser({
+//         firstname,
+//         lastname,
+//         image: user.profilepic,
+//         password: decryptaes(user.passw),
+//         phone: user.phone ? user.phone : undefined,
+//         email: user.email,
+//         address: user.address.streetaddress,
+//         city: user.address.city,
+//         state: user.address.state,
+//         pincode: user.address.pincode,
+//         landmark: user.address.landmark,
+//         userid: user._id,
+//         advertiserid: generateUniqueID(),
+//       });
 
-      const savedAdvertiser = await advertisernew.save();
+//       const savedAdvertiser = await advertisernew.save();
 
-      user.advertiserid = savedAdvertiser._id;
-      await user.save();
+//       user.advertiserid = savedAdvertiser._id;
+//       await user.save();
 
-      const data = {
-        userid: savedAdvertiser.userid,
-        advid: savedAdvertiser._id,
-        image: dp,
-        firstname: savedAdvertiser.firstname,
-        lastname: savedAdvertiser.lastname,
-        country: savedAdvertiser.country,
-        city: savedAdvertiser.city,
-        address: savedAdvertiser.address,
-        accounttype: savedAdvertiser.type,
-        taxinfo: savedAdvertiser.taxinfo,
-        email: savedAdvertiser.email,
-        advertiserid: savedAdvertiser.advertiserid,
-      };
+//       const data = {
+//         userid: savedAdvertiser.userid,
+//         advid: savedAdvertiser._id,
+//         image: dp,
+//         firstname: savedAdvertiser.firstname,
+//         lastname: savedAdvertiser.lastname,
+//         country: savedAdvertiser.country,
+//         city: savedAdvertiser.city,
+//         address: savedAdvertiser.address,
+//         accounttype: savedAdvertiser.type,
+//         taxinfo: savedAdvertiser.taxinfo,
+//         email: savedAdvertiser.email,
+//         advertiserid: savedAdvertiser.advertiserid,
+//       };
 
-      const access_token = generateAccessToken(data);
-      const refresh_token = generateRefreshToken(data);
+//       const access_token = generateAccessToken(data);
+//       const refresh_token = generateRefreshToken(data);
 
-      res.status(203).json({
-        success: true,
-        message: "Account Created",
-        access_token,
-        refresh_token,
-        postData,
-      });
-    }
-  } catch (error) {
-    console.log(error);
-    res.status(400).json({ success: false, message: "Something Went Wrong" });
-  }
-};
+//       res.status(203).json({
+//         success: true,
+//         message: "Account Created",
+//         access_token,
+//         refresh_token,
+//         postData,
+//       });
+//     }
+//   } catch (error) {
+//     console.log(error);
+//     res.status(400).json({ success: false, message: "Something Went Wrong" });
+//   }
+// };
 
-exports.addAccount = async (req, res) => {
-  try {
-    const { agencyId } = req.params;
-    const { email, phone, fullname, username } = req.body;
+// exports.addAccount = async (req, res) => {
+//   console.log(req.body, req.files)
+//   try {
+//     const { agencyuserid,
+//       agencyadvertiserid } = req.params
+//     const {
+//       fullname,
+//       // gender,
+//       username,
+//       phone,
+//       email,
+//       bio,
+//       // dob,
+//       // loc,
+//       // device,
+//       // type,
+//       // time,
+//       // token,
+//     } = req.body;
+//     const uuidString = uuid();
 
-    const user = new User({
-      email,
-      phone,
-      fullname,
-      username,
-      agency: agencyId,
-    });
-    await user.save();
-    res.status(200).json({ success: true });
-  } catch (error) {
-    res.status(400).json({ success: false, message: "Something Went Wrong!" });
-  }
-};
+
+
+//     // const interestsArray = [interest];
+//     // const interestsString = interestsArray[0];
+//     // const individualInterests = interestsString.split(",");
+
+//     //const contactsfinal = JSON.parse(contacts) || [];
+//     // const contactsfinal = [];
+
+
+//     if (req.files[0]?.originalname) {
+//       const bucketName = "images";
+//       const objectName = `${Date.now()
+//         }_${uuidString}_${req.files[0]?.originalname}`;
+//       const result = await s3.send(
+//         new PutObjectCommand({
+//           Bucket: BUCKET_NAME,
+//           Key: objectName,
+//           Body: req.files[0].buffer,
+//           ContentType: req.files[0].mimetype,
+//         })
+//       );
+
+//       const agencyDetails = {
+//         iscreatedbyagency: true,
+//         agencyuserid,
+//         agencyadvertiserid,
+//       }
+
+//       const user = new User({
+//         fullname: fullname,
+//         username: username,
+//         phone,
+//         email,
+//         profilepic: objectName,
+//         agencyDetails,
+//         desc: bio,
+//         // gender: gender,
+//         // DOB: dob,
+//       });
+//       await user.save();
+
+
+//       //updating membership
+//       user.ismembershipactive = true;
+//       user.memberships.membership = "65671e5204b7d0d07ef0e796";
+//       user.memberships.ending = "infinite";
+//       user.memberships.status = true;
+//       const savedUser = await user.save();
+
+//       const advid = generateUniqueID();
+//       const splitname = fullname.split(" ")
+//       const firstname = splitname[0]
+//       const lastname = splitname[1]
+
+//       const adv = new Advertiser({
+//         firstname,
+//         lastname,
+//         email,
+//         phone,
+//         type: "Individual",
+//         agencyDetails,
+//         userid: savedUser._id,
+//         advertiserid: advid,
+//         image: objectName,
+//       });
+
+//       const savedAdv = await adv.save();
+//       savedUser.advertiserid = savedAdv._id
+//       savedUser.adid = advid
+//       await savedUser.save()
+
+//       //joining community by default of Grovyo
+//       let comId = "65d313d46a4e4ae4c6eabd15";
+//       let publictopic = [];
+//       const community = await Community.findById(comId);
+//       for (let i = 0; i < community.topics.length; i++) {
+//         const topic = await Topic.findById({ _id: community.topics[i] });
+//         if (topic.type === "free") {
+//           publictopic.push(topic);
+//         }
+//       }
+
+//       await Community.updateOne(
+//         { _id: comId },
+//         { $push: { members: user._id }, $inc: { memberscount: 1 } }
+//       );
+//       await User.updateOne(
+//         { _id: user._id },
+//         { $push: { communityjoined: community._id }, $inc: { totalcom: 1 } }
+//       );
+
+//       const topicIds = publictopic.map((topic) => topic._id);
+
+//       await Topic.updateMany(
+//         { _id: { $in: topicIds } },
+//         {
+//           $push: { members: user._id, notifications: user._id },
+//           $inc: { memberscount: 1 },
+//         }
+//       );
+//       await User.updateMany(
+//         { _id: user._id },
+//         {
+//           $push: { topicsjoined: topicIds },
+//           $inc: { totaltopics: 2 },
+//         }
+//       );
+//       let pic = process.env.URL + user.profilepic;
+
+//       const findAdvser = await Advertiser.find({
+//         "agencyDetails.agencyadvertiserid": agencyadvertiserid
+//       })
+
+//       const agency = await Advertiser.findById(agencyadvertiserid)
+
+//       let manageusers = []
+
+//       for (let i = 0; i < findAdvser.length; i++) {
+//         const user = await User.findById(findAdvser[i].userid)
+//         const obj = {
+//           fullname: findAdvser[i].firstname + " " + findAdvser[i].lastname,
+//           firstname: findAdvser[i].firstname,
+//           lastname: findAdvser[i].lastname,
+//           image: process.env.URL + findAdvser[i].image,
+//           userid: findAdvser[i].userid,
+//           username: user.username,
+//           advertiserid: findAdvser[i].advertiserid,
+//           id: findAdvser[i]._id
+//         }
+//         manageusers.push(obj)
+//       }
+//       const data = {
+//         userid: agency?.userid,
+//         advid: agency?._id,
+//         image: process.env.URL + agency?.image,
+//         firstname: agency?.firstname,
+//         lastname: agency?.lastname,
+//         country: agency?.country,
+//         city: agency?.city,
+//         address: agency?.address,
+//         accounttype: agency?.type,
+//         taxinfo: agency?.taxinfo,
+//         email: agency?.email,
+//         type: agency.type,
+//         advertiserid: agency?.advertiserid,
+//         manageusers
+//       }
+
+//       const access_token = generateAccessToken(data);
+//       const refresh_token = generateRefreshToken(data);
+
+//       res.status(200).json({
+//         message: "Account created successfully",
+//         user,
+//         pic,
+//         access_token,
+//         refresh_token,
+//         success: true,
+//       });
+//     } else {
+//       res.status(400).json({ success: false, message: "Image is required!" })
+//     }
+//   }
+
+
+//   catch (error) {
+//     console.log(error)
+//     res.status(400).json({ success: false, message: "Something Went Wrong!" });
+//   }
+// };
+
+// exports.loginagency = async (req, res) => {
+//   try {
+//     const { agencyId } = req.params
+//     const { phone } = req.body
+//     const advertiser = await Advertiser.findOne({ phone })
+//     if (!advertiser) {
+//       return res.status(400).json({ success: false, message: "User not Found!" })
+//     }
+
+//     const findAdvser = await Advertiser.find({
+//       "agencyDetails.agencyadvertiserid": agencyId
+//     })
+
+//     const agency = await Advertiser.findById(agencyId)
+
+//     let manageusers = []
+
+//     for (let i = 0; i < findAdvser.length; i++) {
+//       const user = await User.findById(findAdvser[i].userid)
+//       const obj = {
+//         fullname: findAdvser[i].firstname + " " + findAdvser[i].lastname,
+//         firstname: findAdvser[i].firstname,
+//         lastname: findAdvser[i].lastname,
+//         image: process.env.URL + findAdvser[i].image,
+//         userid: findAdvser[i].userid,
+//         username: user.username,
+//         advertiserid: findAdvser[i].advertiserid,
+//         id: findAdvser[i]._id
+//       }
+//       manageusers.push(obj)
+//     }
+//     const data = {
+//       userid: agency?.userid,
+//       advid: agency?._id,
+//       image: process.env.URL + agency?.image,
+//       firstname: agency?.firstname,
+//       lastname: agency?.lastname,
+//       country: agency?.country,
+//       city: agency?.city,
+//       address: agency?.address,
+//       accounttype: agency?.type,
+//       taxinfo: agency?.taxinfo,
+//       email: agency?.email,
+//       type: agency.type,
+//       advertiserid: agency?.advertiserid,
+//       manageusers
+//     }
+
+//     const access_token = generateAccessToken(data);
+//     const refresh_token = generateRefreshToken(data);
+
+//     res.status(203).json({
+//       success: true,
+//       type: agency.type,
+//       message: "Account Created",
+//       access_token,
+//       refresh_token,
+//     });
+//   }
+//   catch (error) {
+//     res.status(400).json({ success: false, message: "Something Went Wrong!" })
+//   }
+// }
+
+// exports.loginforAdspace = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     const user = await User.findById(id);
+//     let advertiser = "";
+//     if (user?.advertiserid) {
+//       advertiser = await Advertiser.findById(user?.advertiserid.toString());
+//     }
+
+//     if (advertiser) {
+//       const dp = process.env.URL + advertiser.image;
+//       const newEditCount = {
+//         login: Date.now().toString(),
+//       };
+//       await Advertiser.updateOne(
+//         { _id: advertiser._id },
+//         {
+//           $push: { logs: newEditCount },
+//         }
+//       );
+//       const data = {
+//         userid: advertiser.userid,
+//         advid: advertiser._id,
+//         image: dp,
+//         firstname: advertiser.firstname,
+//         lastname: advertiser.lastname,
+//         country: advertiser.country,
+//         city: advertiser.city,
+//         address: advertiser.address,
+//         accounttype: advertiser.type,
+//         taxinfo: advertiser.taxinfo,
+//         email: advertiser.email,
+//         advertiserid: advertiser.advertiserid,
+//       };
+
+//       const access_token = generateAccessToken(data);
+//       const refresh_token = generateRefreshToken(data);
+
+//       return res.status(200).json({
+//         message: "Advertiser exists",
+//         advertiser,
+//         access_token,
+//         refresh_token,
+//         userid: advertiser.userid,
+//         dp,
+//         success: true,
+//       });
+//     } else {
+//       const firstname = user.fullname.split(" ")[0];
+//       const lastname = user.fullname.split(" ")[1];
+//       const dp = process.env.URL + user.profilepic;
+
+//       const advertisernew = new Advertiser({
+//         firstname,
+//         lastname,
+//         image: user.profilepic,
+//         password: decryptaes(user.passw),
+//         phone: user.phone ? user.phone : undefined,
+//         email: user.email,
+//         address: user.address.streetaddress,
+//         city: user.address.city,
+//         state: user.address.state,
+//         pincode: user.address.pincode,
+//         landmark: user.address.landmark,
+//         userid: user._id,
+//         advertiserid: generateUniqueID(),
+//       });
+
+//       const savedAdvertiser = await advertisernew.save();
+
+//       user.advertiserid = savedAdvertiser._id;
+//       await user.save();
+
+//       const data = {
+//         userid: savedAdvertiser.userid,
+//         advid: savedAdvertiser._id,
+//         image: dp,
+//         firstname: savedAdvertiser.firstname,
+//         lastname: savedAdvertiser.lastname,
+//         country: savedAdvertiser.country,
+//         city: savedAdvertiser.city,
+//         address: savedAdvertiser.address,
+//         accounttype: savedAdvertiser.type,
+//         taxinfo: savedAdvertiser.taxinfo,
+//         email: savedAdvertiser.email,
+//         advertiserid: savedAdvertiser.advertiserid,
+//       };
+
+//       const access_token = generateAccessToken(data);
+//       const refresh_token = generateRefreshToken(data);
+
+//       res.status(203).json({
+//         success: true,
+//         message: "Account Created",
+//         access_token,
+//         refresh_token,
+//       });
+//     }
+//   } catch (error) {
+//     res.status(400)
+//     console.log(error)
+//   }
+// }
+
+// exports.fetchCommunityByUsername = async (req, res) => {
+//   try {
+//     const { username } = req.params
+//     const user = await User.findOne({ username })
+
+//   } catch (error) {
+//     res.status(400).json({ success: false, message: "Something Went Wrong!" })
+//     console.log(error)
+//   }
+// }
 
