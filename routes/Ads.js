@@ -25,7 +25,8 @@ const {
   loginwithworkspace,
   loginAdspace,
   addAccount,
-  loginforAdspace
+  loginforAdspace,
+  loginagency
 } = require("../controllers/Ads");
 const router = express.Router();
 const multer = require("multer");
@@ -65,5 +66,6 @@ router.post("/verifyotp", verifyOtp)
 router.get("/loginwithworkspace/:id/:postid", loginwithworkspace)
 router.get("/loginforAdspace/:id", loginforAdspace)
 router.post("/addAccount/:agencyuserid/:agencyadvertiserid", upload.any(), addAccount)
+router.post("/loginagency/:agencyId", loginagency)
 
 module.exports = router;

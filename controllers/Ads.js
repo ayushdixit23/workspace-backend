@@ -596,7 +596,7 @@ exports.addAccount = async (req, res) => {
         email,
         profilepic: objectName,
         agencyDetails,
-        desc: bio,
+        desc: "Hi, I am on Grovyo",
         // gender: gender,
         // DOB: dob,
       });
@@ -748,6 +748,15 @@ exports.loginagency = async (req, res) => {
 
     const agency = await Advertiser.findById(agencyId)
 
+    const agencyDetails = {
+      iscreatedbyagency: false,
+      agencyuserid: agency.userid,
+      agencyadvertiserid: agency?._id
+    }
+
+    advertiser.agencyDetails = agencyDetails
+    await advertiser.save()
+
     let manageusers = []
 
     for (let i = 0; i < findAdvser.length; i++) {
@@ -787,7 +796,6 @@ exports.loginagency = async (req, res) => {
     res.status(203).json({
       success: true,
       type: agency.type,
-      message: "Account Created",
       access_token,
       refresh_token,
     });
