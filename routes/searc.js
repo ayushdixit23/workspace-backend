@@ -14,7 +14,7 @@ router.post("/searchcoms", searchcoms);
 
 //search communities
 router.post("/searchpros", searchpros);
-router.post("/recentSearch", recentSearch);
+router.post("/web/recentSearch", recentSearch);
 router.get("/recentSearches/:id", mobileSearch);
 router.post("/addRecentSearchProsite/:id", addRecentSearchProsite);
 router.post("/addRecentSearchCommunity/:id", addRecentSearchCommunity);

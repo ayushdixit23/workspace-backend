@@ -4,7 +4,7 @@ const { ObjectId } = mongoose.Schema;
 const AdsSchema = new mongoose.Schema(
   {
     adname: { type: String },
-    status: { type: String, default: "review" },
+    status: { type: String, default: "review", enum: ["review", "approved", "deleted", "paused", "active", "blocked", "stopped"], },
     engagementrate: { type: String },
     amountspent: [{ type: String }],
     postid: { type: ObjectId, ref: "Post" },

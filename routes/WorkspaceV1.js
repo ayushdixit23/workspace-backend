@@ -52,7 +52,7 @@ const {
   changemont,
   checkfordefault,
   updateproducvariant,
-  // fetchingprosite,
+  fetchingprosite,
 
   // base64upload,
   // getimage,
@@ -151,7 +151,7 @@ router.post("/errorsDetection", errorsDetection);
 router.get("/fetchCommunityStats/:userId", fetchCommunityStats);
 router.post("/monetization/:id/:comid", monetizationWorkSpace);
 router.post("/editpost/:userId/:postId", upload.any(), editPosts);
-// router.get("/getprositedetails/:id", fetchingprosite)
+router.get("/getprositedetails/:id", fetchingprosite)
 // prosite route
 // router.use("/uploadbase64", base64upload);
 // router.post("/devpost", devpost);

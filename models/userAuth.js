@@ -110,7 +110,7 @@ const userSchema = new mongoose.Schema(
     pendingpayments: { type: Number, default: 0 },
     revenue: { type: Number, default: 0 },
     cart: [{ type: ObjectId, ref: "Cart" }],
-    cartproducts: [{ type: "String" }],
+    cartproducts: [{ type: ObjectId, ref: "Subscriptions" }],
     web: { type: String },
     prositeid: { type: ObjectId, ref: "Prosite" },
     lastlogin: { type: [String] },

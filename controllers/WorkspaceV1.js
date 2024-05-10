@@ -2867,19 +2867,14 @@ exports.addbank = async (req, res) => {
 exports.fetchingprosite = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User Not Found" });
-    }
-    const user = await User.findById(id);
+    const user = await User.findOne({ username: id }).select("-password");
     if (!user) {
       return res
         .status(400)
         .json({ success: false, message: "User Not Found" });
     }
     const community = [];
-    const com = await Community.find({ creator: id });
+    const com = await Community.find({ creator: user._id });
     for (let i = 0; i < com.length; i++) {
       const id = com[i];
       let comm = await Community.findById(id).populate("members", "dp");
@@ -2911,11 +2906,16 @@ exports.fetchingprosite = async (req, res) => {
       return { ...f.toObject(), dps: communityDps[i], membersdp: membersdp[i] };
     });
 
-    const products = await Product.find({ creator: id });
+    const products = await Product.find({ creator: user._id });
 
     const productdps = await Promise.all(
       products.map(async (product) => {
-        const a = process.env.PRODUCT_URL + product.images[0].content;
+        let a
+        if (product.isvariant) {
+          a = process.env.PRODUCT_URL + product?.variants[0].category[0].content;
+        } else {
+          a = process.env.PRODUCT_URL + product?.images[0]?.content;
+        }
         return a;
       })
     );
@@ -2931,9 +2931,11 @@ exports.fetchingprosite = async (req, res) => {
       bio: user.desc,
       phone: user.phone,
       username: user.username,
+      isverified: user.isverified,
       fullname: user.fullname,
       dp: process.env.URL + user.profilepic,
       isStore: user.showStoreSection,
+      useDefaultProsite: user.useDefaultProsite,
       isAbout: user.showAboutSection,
       isCommunity: user.showCommunitySection,
       temp: user.prositeweb_template,
@@ -2955,6 +2957,7 @@ exports.fetchingprosite = async (req, res) => {
 
     res.status(200).json({ success: true, data, user });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: error.message, success: false });
   }
 };

@@ -103,7 +103,7 @@ const s3 = new S3Client({
 
 function generateAccessToken(data) {
   const access_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
-    expiresIn: "1h",
+    expiresIn: "8d",
   });
   return access_token;
 }
@@ -172,7 +172,7 @@ exports.refreshingsAdsTokens = async (req, res) => {
       }
     );
   } catch (err) {
-    console.log(err);
+    console.log(err,);
     res.status(400).json({ success: false, message: "Internal server error" });
   }
 };
@@ -235,10 +235,23 @@ exports.loginAdspace = async (req, res) => {
         const findAdvser = await Advertiser.find({
           "agencyDetails.agencyadvertiserid": advertiser._id
         })
+        const user = await User.findOne({ advertiserid: advertiser._id })
 
+        console.log(user.fullname)
         let manageusers = []
 
+        const agencyrobj = {
+          fullname: advertiser.firstname + " " + advertiser.lastname,
+          firstname: advertiser.firstname,
+          lastname: advertiser.lastname,
+          image: process.env.URL + advertiser.image,
+          userid: advertiser.userid,
+          username: user?.username,
+          advertiserid: advertiser.advertiserid,
+          id: advertiser._id
+        }
 
+        manageusers.push(agencyrobj)
         for (let i = 0; i < findAdvser.length; i++) {
           const user = await User.findById(findAdvser[i].userid)
           const obj = {
@@ -357,6 +370,18 @@ exports.loginAdspace = async (req, res) => {
 
         let manageusers = []
 
+        const agencyrobj = {
+          fullname: savedAdvertiser.firstname + " " + savedAdvertiser.lastname,
+          firstname: savedAdvertiser.firstname,
+          lastname: savedAdvertiser.lastname,
+          image: process.env.URL + savedAdvertiser.image,
+          userid: savedAdvertiser.userid,
+          username: user.username,
+          advertiserid: savedAdvertiser.advertiserid,
+          id: savedAdvertiser._id
+        }
+
+        manageusers.push(agencyrobj)
 
         for (let i = 0; i < findAdvser.length; i++) {
           const user = await User.findById(findAdvser[i].userid)
@@ -372,6 +397,7 @@ exports.loginAdspace = async (req, res) => {
           }
           manageusers.push(obj)
         }
+
         data = {
           userid: savedAdvertiser?.userid,
           advid: savedAdvertiser?._id,
@@ -678,6 +704,19 @@ exports.addAccount = async (req, res) => {
 
       let manageusers = []
 
+      const agencyrobj = {
+        fullname: agency.firstname + " " + agency.lastname,
+        firstname: agency.firstname,
+        lastname: agency.lastname,
+        image: process.env.URL + agency.image,
+        userid: agency.userid,
+        username: user.username,
+        advertiserid: agency.advertiserid,
+        id: agency._id
+      }
+
+      manageusers.push(agencyrobj)
+
       for (let i = 0; i < findAdvser.length; i++) {
         const user = await User.findById(findAdvser[i].userid)
         const obj = {
@@ -724,8 +763,6 @@ exports.addAccount = async (req, res) => {
       res.status(400).json({ success: false, message: "Image is required!" })
     }
   }
-
-
   catch (error) {
     console.log(error)
     res.status(400).json({ success: false, message: "Something Went Wrong!" });
@@ -757,7 +794,22 @@ exports.loginagency = async (req, res) => {
     advertiser.agencyDetails = agencyDetails
     await advertiser.save()
 
+    const user = await User.findOne({ advertiserid: advertiser._id })
+
     let manageusers = []
+
+    const agencyrobj = {
+      fullname: advertiser.firstname + " " + advertiser.lastname,
+      firstname: advertiser.firstname,
+      lastname: advertiser.lastname,
+      image: process.env.URL + advertiser.image,
+      userid: advertiser.userid,
+      username: user.username,
+      advertiserid: advertiser.advertiserid,
+      id: advertiser._id
+    }
+
+    manageusers.push(agencyrobj)
 
     for (let i = 0; i < findAdvser.length; i++) {
       const user = await User.findById(findAdvser[i].userid)
@@ -3597,6 +3649,32 @@ exports.verifyOtp = async (req, res) => {
     res.status(400).json({ success: false, message: "Something Went Wrong!" });
   }
 };
+
+exports.pausead = async (req, res) => {
+  try {
+    const { adid } = req.params
+    const ad = await Ads.findById(adid)
+    ad.status = "paused"
+    await ad.save()
+    res.status(200).json({ success: true })
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+    console.log(error)
+  }
+}
+
+exports.runad = async (req, res) => {
+  try {
+    const { adid } = req.params
+    const ad = await Ads.findById(adid)
+    ad.status = "active"
+    await ad.save()
+    res.status(200).json({ success: true })
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+    console.log(error)
+  }
+}
 
 // exports.paybyphonepay = async (req, res) => {
 //   try {

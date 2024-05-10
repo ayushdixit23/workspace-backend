@@ -26,7 +26,9 @@ const {
   loginAdspace,
   addAccount,
   loginforAdspace,
-  loginagency
+  loginagency,
+  pausead,
+  runad
 } = require("../controllers/Ads");
 const router = express.Router();
 const multer = require("multer");
@@ -56,6 +58,8 @@ router.post("/updatetransactionstatus/:id/:tid/:amount", updatetransactionstatus
 router.post("/logoutadv/:id", logoutadv);
 router.get("/getuser/:id", getuser)
 router.post("/refresh", refreshingsAdsTokens);
+router.post("/pausead/:adid", pausead)
+router.post("/runad/:adid", runad)
 router.get("/getcommunitiesforAd/:id", getCommunities)
 router.post("/promotedposts/:id/:comid", promotedposts)
 router.get("/getAllPostsforAd/:id/:comid", getAllPosts)
