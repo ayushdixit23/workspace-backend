@@ -237,7 +237,6 @@ exports.loginAdspace = async (req, res) => {
         })
         const user = await User.findOne({ advertiserid: advertiser._id })
 
-        console.log(user.fullname)
         let manageusers = []
 
         const agencyrobj = {
@@ -1430,6 +1429,7 @@ exports.createad = async (req, res) => {
     agerange,
     maxage,
     minage,
+    advertiserid,
     totalbudget,
     dailybudget,
     type,
@@ -1439,7 +1439,6 @@ exports.createad = async (req, res) => {
     gender,
     file,
     contenttype,
-    advertiserid,
     postid,
     comid,
   } = req.body;
@@ -1509,6 +1508,7 @@ exports.createad = async (req, res) => {
       desc,
       tags,
       location,
+      advertiserid,
       agerange,
       type,
       maxage,
@@ -1523,7 +1523,7 @@ exports.createad = async (req, res) => {
       creation: Date.now(),
       adid: adid,
       gender,
-      advertiserid,
+
     });
     const adSaved = await newAd.save();
     user.ads.push(adSaved._id);
@@ -1885,13 +1885,53 @@ exports.fetchdashboard = async (req, res) => {
   const { id } = req.params;
   try {
     const user = await Advertiser.findById(id);
+    console.log(user.type, user.firstname + user.lastname)
+    if (!user) {
+      res.status(404).json({ success: false, message: "User not found" });
+    } else {
+      return res.status(200).json({ success: true, user });
+    }
+  } catch (e) {
+    res.status(400).json({ message: "Something went wrong", success: false });
+  }
+};
+
+exports.fetchdashboardO = async (req, res) => {
+  const { id, advertiserid } = req.params;
+  try {
+    const agency = await Advertiser.findById(advertiserid)
+    const user = await Advertiser.findById(id);
 
     if (!user) {
       res.status(404).json({ success: false, message: "User not found" });
     } else {
-      res.status(200).json({ success: true, user });
+      const advertiser = await Advertiser.find({
+        "agencyDetails.agencyadvertiserid": agency._id
+      })
+      const data = []
+      const advertisers = [...advertiser, agency]
+      for (let i = 0; i < advertisers.length; i++) {
+        console.log(advertisers[i]._id.toString())
+        const ads = await Ads.find({ advertiserid: advertisers[i]._id.toString() })
+       
+        let totalSpent = 0;
+        ads.forEach(ad => {
+          totalSpent += ad.totalspent;
+        });
+
+        const obj = {
+          id: advertisers[i]._id,
+          fullname: advertisers[i].firstname + " " + advertisers[i].lastname,
+          totalads: ads.length,
+          totalSpent
+        }
+        data.push(obj)
+      }
+      return res.status(200).json({ success: true, user, data, currentbalance: agency.currentbalance });
     }
-  } catch (e) {
+  }
+  catch (e) {
+    console.log(e)
     res.status(400).json({ message: "Something went wrong", success: false });
   }
 };

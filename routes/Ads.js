@@ -28,7 +28,8 @@ const {
   loginforAdspace,
   loginagency,
   pausead,
-  runad
+  runad,
+  fetchdashboardO
 } = require("../controllers/Ads");
 const router = express.Router();
 const multer = require("multer");
@@ -42,9 +43,9 @@ router.get("/getad/:id", getad);
 router.get("/getallads/:id", getallads);
 router.post("/checkadvaccount", loginAdspace)
 // router.post("/checkadvaccount", checkaccount),
-router.post("/createadvacc", upload.single("image"), createadvacc),
-
-  router.get("/fetchdashboard/:id", fetchdashboard);
+router.post("/createadvacc", upload.single("image"), createadvacc);
+router.get("/fetchdashboard/:id", fetchdashboard);
+router.get("/fetchdashboardO/:id/:advertiserid", fetchdashboardO);
 router.get("/gettransactions/:id", gettransactions);
 router.get("/v1/getData", getData)
 router.post("/editcurrentad/:id/:adid", upload.any(), editcurrentad);

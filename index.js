@@ -309,3 +309,12 @@ function generateUniqueID() {
 
 
 // accountCreation()
+
+const userf = async () => {
+  const user = await User.findById("663e8dd2413b2c11427dea31")
+
+  const members = await Membership.findById(user.memberships.membership)
+  console.log(members.title)
+}
+
+// userf()
