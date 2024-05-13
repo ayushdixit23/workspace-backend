@@ -1913,7 +1913,7 @@ exports.fetchdashboardO = async (req, res) => {
       for (let i = 0; i < advertisers.length; i++) {
         console.log(advertisers[i]._id.toString())
         const ads = await Ads.find({ advertiserid: advertisers[i]._id.toString() })
-       
+
         let totalSpent = 0;
         ads.forEach(ad => {
           totalSpent += ad.totalspent;
@@ -2264,7 +2264,7 @@ exports.addmoneytowallet = async (req, res) => {
 
       axios
         .post(
-          "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay",
+          "https://api.phonepe.com/apis/hermes",
           { request: base64string },
           {
             headers: {
