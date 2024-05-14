@@ -461,13 +461,14 @@ exports.loginwithworkspace = async (req, res) => {
       dp: process.env.URL + post.community.dp,
     };
 
-    let advertiser = "";
+    let advertiser;
     if (user?.advertiserid) {
       advertiser = await Advertiser.findById(user?.advertiserid.toString());
     }
 
     if (advertiser) {
       const dp = process.env.URL + advertiser.image;
+
       const newEditCount = {
         login: Date.now().toString(),
       };
@@ -477,12 +478,15 @@ exports.loginwithworkspace = async (req, res) => {
           $push: { logs: newEditCount },
         }
       );
+
+
       const data = {
         userid: advertiser.userid,
         advid: advertiser._id,
         image: dp,
         firstname: advertiser.firstname,
         lastname: advertiser.lastname,
+        type: advertiser.type,
         country: advertiser.country,
         city: advertiser.city,
         address: advertiser.address,
@@ -499,6 +503,7 @@ exports.loginwithworkspace = async (req, res) => {
         message: "Advertiser exists",
         advertiser,
         access_token,
+
         refresh_token,
         userid: advertiser.userid,
         dp,
@@ -543,6 +548,7 @@ exports.loginwithworkspace = async (req, res) => {
         accounttype: savedAdvertiser.type,
         taxinfo: savedAdvertiser.taxinfo,
         email: savedAdvertiser.email,
+        type: advertiser.type,
         advertiserid: savedAdvertiser.advertiserid,
       };
 
@@ -2262,9 +2268,39 @@ exports.addmoneytowallet = async (req, res) => {
 
       let checkSum = shaString + "###" + process.env.keyIndex;
 
-      axios
+      // const options = {
+      //   method: 'post',
+      //   url: 'https://api-preprod.phonepe.com/apis/hermes/pg/v1/pay',
+      //   // url: "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     "X-VERIFY": checkSum,
+      //     accept: "application/json",
+      //   },
+      //   data: {
+      //     request: base64string
+      //   }
+      // }
+      // await axios
+      //   .request(options)
+      //   .then(function (response) {
+      //     console.log(
+      //       response.data,
+      //       response.data.data.instrumentResponse.redirectInfo.url
+      //     );
+      //     res.status(200).json({
+      //       success: true,
+      //       url: response.data.data.instrumentResponse.redirectInfo.url,
+      //     });
+      //   })
+      //   .catch(function (error) {
+      //     console.error(error);
+      //     return res.status({ success: false, message: error.message });
+      //   });
+
+      await axios
         .post(
-          "https://api.phonepe.com/apis/hermes",
+          "https://api.phonepe.com/apis/hermes/pg/v1/pay",
           { request: base64string },
           {
             headers: {
@@ -2288,6 +2324,8 @@ exports.addmoneytowallet = async (req, res) => {
           console.log(err);
           return res.status({ success: false, message: err.message });
         });
+
+      ;
     }
   } catch (e) {
     console.log(e);
@@ -2324,7 +2362,7 @@ exports.updatetransactionstatus = async (req, res) => {
     );
     const t = await Transaction.findById(tid);
     const response = await axios.get(
-      `https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`,
+      `https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`,
       {
         headers: {
           "Content-Type": "application/json",
