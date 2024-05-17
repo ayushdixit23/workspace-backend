@@ -803,7 +803,7 @@ exports.loginagency = async (req, res) => {
 
     let manageusers = []
 
-    const agencyrobj = {
+    const advertiserobj = {
       fullname: advertiser.firstname + " " + advertiser.lastname,
       firstname: advertiser.firstname,
       lastname: advertiser.lastname,
@@ -814,7 +814,18 @@ exports.loginagency = async (req, res) => {
       id: advertiser._id
     }
 
-    manageusers.push(agencyrobj)
+    const agencyObj = {
+      fullname: agency.firstname + " " + agency.lastname,
+      firstname: agency.firstname,
+      lastname: agency.lastname,
+      image: process.env.URL + agency.image,
+      userid: agency.userid,
+      username: user.username,
+      agencyid: agency.agencyid,
+      id: agency._id
+    }
+    manageusers.push(agencyObj)
+    manageusers.push(advertiserobj)
 
     for (let i = 0; i < findAdvser.length; i++) {
       const user = await User.findById(findAdvser[i].userid)
@@ -1005,8 +1016,6 @@ exports.createadvacc = async (req, res) => {
       const uuidString = uuid();
       const image = req.file;
 
-      console.log("first");
-
       const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
       const adv = new Advertiser({
         firstname,
@@ -1155,7 +1164,22 @@ exports.createadvacc = async (req, res) => {
         "agencyDetails.agencyadvertiserid": savedAdv._id
       })
 
+      const agency = await Advertiser.findById(savedAdv._id)
+
       let manageusers = []
+
+      const agencyrobj = {
+        fullname: agency.firstname + " " + agency.lastname,
+        firstname: agency.firstname,
+        lastname: agency.lastname,
+        image: process.env.URL + agency.image,
+        userid: agency.userid,
+        username: user.username,
+        advertiserid: agency.advertiserid,
+        id: agency._id
+      }
+
+      manageusers.push(agencyrobj)
 
       for (let i = 0; i < findAdvser.length; i++) {
         const obj = {
@@ -1848,16 +1872,81 @@ exports.getallads = async (req, res) => {
       let ads = [];
       for (let i = 0; i < user.ads.length; i++) {
         const id = user.ads[i].toString();
-        const h = await Ads.findById(id);
-        if (h) {
+        const ah = await Ads.findById(id);
+        if (ah) {
+          const post = await Post.findById(ah?.postid)
           const analytics = await Analytics.find({ id: id })
             .sort({ date: -1 })
             .limit(7);
-          const views = h?.views;
-          const clicks = h?.clicks;
-          const totalSpent = h?.totalspent;
+          const views = ah?.views;
+          let url
+          if (post) {
+            url = process.env.POST_URL + post.post[0].content
+          } else {
+            url = process.env.AD_URL + ah.content[0].name
+          }
+
+          const clicks = ah?.clicks;
+          const totalSpent = ah?.totalspent;
           const conversion = (clicks / views) * 100;
           const popularity = (clicks / views / totalSpent) * 100;
+          const h = { ...ah.toObject(), url }
+          const adsToPush = {
+            h,
+            analytics,
+            conversion,
+            popularity,
+          };
+          ads.push(adsToPush);
+        }
+      }
+      // for (let i = 0; i < ads.length; i++) {
+      //   const a = await generatePresignedUrl(
+      //     "ads",
+      //     ads[i]?.content[0]?.name ? ads[i]?.content[0]?.name : "",
+      //     60 * 60
+      //   );
+      //   content.push(a);
+      // }
+      const adsreversed = ads.reverse();
+      res.status(200).json({ ads: adsreversed, content, success: true });
+    } else {
+      res.status(404).json({ message: "User not found", success: false });
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(400).json({ message: e.message, success: false });
+  }
+};
+
+exports.getalladsforthirtyDays = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await Advertiser.findById(id);
+    if (user) {
+      const content = [];
+      let ads = [];
+      for (let i = 0; i < user.ads.length; i++) {
+        const id = user.ads[i].toString();
+        const ah = await Ads.findById(id);
+        if (ah) {
+          const post = await Post.findById(ah?.postid)
+          const analytics = await Analytics.find({ id: id })
+            .sort({ date: -1 })
+            .limit(30);
+          const views = ah?.views;
+          let url
+          if (post) {
+            url = process.env.POST_URL + post.post[0].content
+          } else {
+            url = process.env.AD_URL + ah.content[0].name
+          }
+
+          const clicks = ah?.clicks;
+          const totalSpent = ah?.totalspent;
+          const conversion = (clicks / views) * 100;
+          const popularity = (clicks / views / totalSpent) * 100;
+          const h = { ...ah.toObject(), url }
           const adsToPush = {
             h,
             analytics,

@@ -94,17 +94,16 @@ const encryptaes = async (data) => {
 	}
 };
 
-
 function generateAccessToken(data) {
 	const access_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
-		expiresIn: "5d",
+		expiresIn: "31d",
 	});
 	return access_token;
 }
 
 function generateRefreshToken(data) {
 	const refresh_token = jwt.sign(data, process.env.MY_SECRET_KEY, {
-		expiresIn: "10d",
+		expiresIn: "31d",
 	});
 	return refresh_token;
 }

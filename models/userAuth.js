@@ -230,6 +230,7 @@ const userSchema = new mongoose.Schema(
         },
       },
     ],
+    showContact: { type: Boolean, default: false },
     totalStoreVisit: { type: Number, default: 0 },
     salesCount: { type: Number, default: 0 },
     storeStats: [

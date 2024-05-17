@@ -29,7 +29,8 @@ const {
   loginagency,
   pausead,
   runad,
-  fetchdashboardO
+  fetchdashboardO,
+  getalladsforthirtyDays
 } = require("../controllers/Ads");
 const router = express.Router();
 const multer = require("multer");
@@ -41,6 +42,7 @@ router.post("/newad/:id/:userId", upload.any(), newad);
 router.post("/v1/createad/:id", upload.any(), createad);
 router.get("/getad/:id", getad);
 router.get("/getallads/:id", getallads);
+router.get("/getalladsforthirtyDays/:id", getalladsforthirtyDays);
 router.post("/checkadvaccount", loginAdspace)
 // router.post("/checkadvaccount", checkaccount),
 router.post("/createadvacc", upload.single("image"), createadvacc);

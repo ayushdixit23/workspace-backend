@@ -3,7 +3,7 @@ const { ObjectId } = mongoose.Schema;
 
 const PostSchema = new mongoose.Schema(
   {
-    likedby: [{ type: [ObjectId], ref: "User", required: true }],
+    likedby: [{ type: ObjectId, ref: "User", required: true }],
     likes: { type: Number, default: 0 },
     dislike: { type: Number, default: 0 },
     dislikedby: [{ type: ObjectId, ref: "User", required: true }],

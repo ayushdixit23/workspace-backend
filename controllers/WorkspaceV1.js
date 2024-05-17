@@ -494,9 +494,9 @@ exports.analyticsuser = async (req, res) => {
         product.map(async (f) => {
           let dp;
           if (f.isvariant) {
-            dp = process.env.PRODUCT_URL + f?.variants[0].category[0].content;
+            dp = process.env.PRODUCT_URL + f?.variants[0]?.category[0]?.content;
           } else {
-            dp = process.env.PRODUCT_URL + f?.images[0].content;
+            dp = process.env.PRODUCT_URL + f?.images[0]?.content;
           }
 
           return dp;
@@ -547,14 +547,14 @@ exports.analyticsuser = async (req, res) => {
           }
           if (f?.post[0].type.startsWith("video")) {
             if (!f?.post[0].thumbnail) {
-              dp = process.env.POST_URL + f?.post[0].content;
+              dp = process.env.POST_URL + f?.post[0]?.content;
               video = true;
             } else {
-              dp = process.env.POST_URL + f?.post[0].thumbnail;
+              dp = process.env.POST_URL + f?.post[0]?.thumbnail;
               video = false;
             }
           } else {
-            dp = process.env.POST_URL + f?.post[0].content;
+            dp = process.env.POST_URL + f?.post[0]?.content;
             video = false;
           }
 
@@ -736,9 +736,9 @@ exports.analyticsuserThirtyDays = async (req, res) => {
         product.map(async (f) => {
           let dp;
           if (f.isvariant) {
-            dp = process.env.PRODUCT_URL + f?.variants[0].category[0].content;
+            dp = process.env.PRODUCT_URL + f?.variants[0]?.category[0]?.content;
           } else {
-            dp = process.env.PRODUCT_URL + f?.images[0].content;
+            dp = process.env.PRODUCT_URL + f?.images[0]?.content;
           }
 
           return dp;
@@ -789,14 +789,14 @@ exports.analyticsuserThirtyDays = async (req, res) => {
           }
           if (f?.post[0].type.startsWith("video")) {
             if (!f?.post[0].thumbnail) {
-              dp = process.env.POST_URL + f?.post[0].content;
+              dp = process.env.POST_URL + f?.post[0]?.content;
               video = true;
             } else {
-              dp = process.env.POST_URL + f?.post[0].thumbnail;
+              dp = process.env.POST_URL + f?.post[0]?.thumbnail;
               video = false;
             }
           } else {
-            dp = process.env.POST_URL + f?.post[0].content;
+            dp = process.env.POST_URL + f?.post[0]?.content;
             video = false;
           }
 
@@ -2873,6 +2873,8 @@ exports.fetchingprosite = async (req, res) => {
         .status(400)
         .json({ success: false, message: "User Not Found" });
     }
+
+    console.log(user.fullname)
     const community = [];
     const com = await Community.find({ creator: user._id });
     for (let i = 0; i < com.length; i++) {
@@ -2931,7 +2933,7 @@ exports.fetchingprosite = async (req, res) => {
       products.map(async (product) => {
         let a
         if (product.isvariant) {
-          a = process.env.PRODUCT_URL + product?.variants[0].category[0].content;
+          a = process.env.PRODUCT_URL + product?.variants[0]?.category[0]?.content;
         } else {
           a = process.env.PRODUCT_URL + product?.images[0]?.content;
         }
@@ -2974,6 +2976,7 @@ exports.fetchingprosite = async (req, res) => {
       useDefaultProsite: user.useDefaultProsite,
       isAbout: user.showAboutSection,
       isCommunity: user.showCommunitySection,
+      location: user.address,
       temp: user.prositeweb_template,
       temp1: user.prositemob_template,
       email: user.email,

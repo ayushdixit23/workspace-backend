@@ -318,3 +318,63 @@ const userf = async () => {
 }
 
 // userf()
+// const com = async () => {
+//   try {
+//     // Find the community by ID
+
+//     const likedBy = [
+//     ]
+
+//     const user = await User.find()
+//     for (let i = 5050; i < 5057; i++) {
+//       likedBy.push(user[i]._id)
+//     }
+
+
+//     const post = await Post.findById("66422d07854b03c29736ef73");
+//     if (!post) {
+//       throw new Error('Post not found');
+//     }
+
+//     // Log the post title
+//     console.log(post.title);
+
+//     // Combine existing likes with the new likes and remove duplicates
+//     const likesSet = new Set([...post.likedby, ...likedBy]);
+//     const uniqueLikes = Array.from(likesSet);
+
+//     // Update the post's likedby field and save
+//     post.likedby = uniqueLikes;
+
+//     await post.save();
+
+//     // Log the combined likes and their count
+//     console.log(uniqueLikes);
+//     console.log(uniqueLikes.length);
+
+//     console.log('Post likes updated successfully');
+//     // await post.save()
+
+
+//   } catch (error) {
+//     console.error('An error occurred:', error);
+//   }
+// };
+
+// Call the function
+// com();
+
+const addressChange = async () => {
+  try {
+    const shreyansh = await User.findById("64a7bd59c9aab1a5960083e0")
+    console.log(shreyansh.address)
+    const partyBags = await User.findById("654fdd2a787d1b672bf37231")
+    partyBags.address = shreyansh.address
+    await partyBags.save()
+    console.log("done")
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// addressChange()
