@@ -45,6 +45,7 @@ const User = require("./models/userAuth");
 const Advertiser = require("./models/Advertiser");
 const Ads = require("./models/Ads");
 const Posts = require("./models/post");
+const Request = require("./models/Request");
 const Analytics = require("./models/Analytics");
 const Membership = require("./models/membership");
 const Post = require("./models/post");

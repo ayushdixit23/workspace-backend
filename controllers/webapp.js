@@ -26,6 +26,7 @@ const Product = require("../models/product");
 const Order = require("../models/orders");
 const Cart = require("../models/Cart");
 const Subscriptions = require("../models/Subscriptions");
+const Report = require("../models/reports");
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
 const PRODUCT_BUCKET = process.env.PRODUCT_BUCKET;
@@ -1278,6 +1279,7 @@ exports.fetchallchatsnew = async (req, res) => {
 exports.fetchconvs = async (req, res) => {
 	try {
 		const { id, convId, otherid } = req.params;
+
 		const user = await User.findById(id);
 		const otherperson = await User.findById(otherid);
 		if (!user || !otherperson) {
@@ -3213,3 +3215,245 @@ exports.fetchmoredata = async (req, res) => {
 		res.status(500).json({ message: err, success: false });
 	}
 }
+
+exports.hideconvmsg = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { msgid } = req.body;
+
+		const user = await User.findById(id);
+		if (!user) {
+			res.status(404).json({ message: "User not found", success: false });
+		} else {
+			await Message.updateMany(
+				{ mesId: { $in: msgid } },
+				{ $push: { hidden: user?._id } }
+			);
+			res.status(200).json({ success: true });
+		}
+	} catch (e) {
+		console.log(e);
+		res
+			.status(400)
+			.json({ message: "Something went wrong...", success: false });
+	}
+};
+
+//unhide conv message
+exports.unhideconvmsg = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { msgid } = req.body;
+
+		const user = await User.findById(id);
+		if (!user) {
+			res.status(404).json({ message: "User not found", success: false });
+		} else {
+			await Message.updateMany(
+				{ mesId: { $in: msgid } },
+				{ $pull: { hidden: user?._id } }
+			);
+			res.status(200).json({ success: true });
+		}
+	} catch (e) {
+		console.log(e);
+		res
+			.status(400)
+			.json({ message: "Something went wrong...", success: false });
+	}
+};
+
+exports.fetchhiddenconv = async (req, res) => {
+	try {
+		const { id, convId } = req.params;
+		const user = await User.findById(id);
+		if (!user) {
+			res.status(404).json({ message: "User not found", success: false });
+		} else {
+			const msg = await Message.find({
+				conversationId: convId,
+				status: "active",
+				hidden: { $in: [user._id.toString()] },
+				deletedfor: { $nin: [user._id] },
+			})
+				.limit(20)
+				.sort({ createdAt: -1 })
+				.populate("sender", "profilepic fullname isverified");
+
+			let messages = [];
+
+			for (let i = 0; i < msg?.length; i++) {
+				if (
+					msg[i].typ === "image" ||
+					msg[i].typ === "video" ||
+					msg[i].typ === "doc" ||
+					msg[i].typ === "glimpse"
+				) {
+					const url = process.env.MSG_URL + msg[i]?.content?.uri;
+
+					messages.push({ ...msg[i].toObject(), url });
+				} else {
+					messages.push(msg[i].toObject());
+				}
+			}
+
+			messages = messages.reverse();
+
+			res.status(200).json({ messages: messages, success: true });
+		}
+	} catch (e) {
+		console.log(e);
+		res
+			.status(400)
+			.json({ message: "Something went wrong...", success: false });
+	}
+};
+
+exports.fetchmorehiddenconv = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { convId, sequence } = req.body;
+		const user = await User.findById(id);
+		if (user) {
+			let gt = parseInt(sequence) - 1;
+			let lt = gt - 10;
+			const msg = await Message.find({
+				conversationId: convId,
+				status: "active",
+				hidden: { $in: [user._id.toString()] },
+				deletedfor: { $nin: [user._id] },
+				sequence: { $gte: lt, $lte: gt },
+			})
+				.limit(20)
+				.sort({ sequence: 1 })
+				.populate("sender", "profilepic fullname isverified");
+
+			let messages = [];
+
+			for (let i = 0; i < msg?.length; i++) {
+				if (
+					msg[i].typ === "image" ||
+					msg[i].typ === "video" ||
+					msg[i].typ === "doc"
+				) {
+					const url = process.env.MSG_URL + msg[i]?.content?.uri;
+					messages.push({ ...msg[i].toObject(), url });
+				} else {
+					messages.push(msg[i].toObject());
+				}
+			}
+
+			res.status(200).json({ messages, success: true });
+		} else {
+			res.status(404).json({ messgae: "User not found!", success: false });
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ success: false });
+	}
+};
+
+exports.deletemessages = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { convId, msgIds, action } = req.body;
+
+		const user = await User.findById(id);
+		// const rec = await User.findById(recId);
+		if (user) {
+			if (action === "everyone") {
+				await Message.updateMany(
+					{ mesId: { $in: msgIds }, conversationId: convId },
+					{ $set: { status: "deleted" } }
+				);
+			} else {
+				await Message.updateMany(
+					{ mesId: { $in: msgIds }, conversationId: convId },
+					{ $push: { deletedfor: user._id } }
+				);
+			}
+			res.status(200).json({ success: true });
+		} else {
+			res.status(404).json({ message: "User not found!", success: false });
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ success: false });
+	}
+};
+
+exports.reporting = async (req, res) => {
+	try {
+		const { userid } = req.params;
+		const { data, id, type } = req.body;
+		const user = await User.findById(userid);
+		if (!user) {
+			res.status(404).json({ message: "User not found", success: false });
+		} else {
+			const report = new Report({
+				senderId: user._id,
+				desc: data,
+				reportedid: { id: id, what: type },
+			});
+			await report.save();
+			res.status(200).json({ success: true });
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ success: false, message: "Something went wrong" });
+	}
+};
+
+exports.blockpeople = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { userid, time } = req.body;
+		const user = await User.findById(id);
+		if (!user) {
+			res.status(404).json({ message: "User not found", success: false });
+		} else {
+			const userblock = await User.findById(userid);
+			if (!userblock) {
+				res
+					.status(404)
+					.json({ message: "No blockable User found", success: false });
+			} else {
+				let isBlocked = false;
+				for (const blockedUser of user.blockedpeople) {
+					if (blockedUser.id.toString() === userid) {
+						isBlocked = true;
+						break;
+					}
+				}
+
+				if (isBlocked) {
+					await User.updateOne(
+						{ _id: id },
+						{
+							$pull: {
+								blockedpeople: { id: userid },
+							},
+						}
+					);
+					res.status(200).json({ success: true });
+				} else {
+					const block = {
+						id: userid,
+						time: time,
+					};
+					await User.updateOne(
+						{ _id: id },
+						{
+							$addToSet: {
+								blockedpeople: block,
+							},
+						}
+					);
+					res.status(200).json({ success: true });
+				}
+			}
+		}
+	} catch (e) {
+		res.status(400).json({ message: "Something went wrong", success: false });
+	}
+};

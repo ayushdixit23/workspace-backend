@@ -1236,8 +1236,8 @@ exports.postanything = async (req, res) => {
 };
 
 exports.postanythings3 = async (req, res) => {
-  const { userId, comId, topicId } = req.params;
-  console.log(req.files, "files")
+  const { userId, comId } = req.params;
+
   try {
     if (req.fileValidationError) {
       return res.status(400).json({
@@ -1246,12 +1246,21 @@ exports.postanythings3 = async (req, res) => {
       });
     }
 
-    const { title, desc, tags, category, thumbnail } = req.body;
+    const { title, desc, tags, category, topicId, thumbnail } = req.body;
     const tag = tags.split(",");
 
     const user = await User.findById(userId);
     const community = await Community.findById(comId);
-    const topic = await Topic.findById(topicId);
+
+    let topic
+    if (topicId && topicId != "undefined") {
+
+      topic = await Topic.findById(topicId);
+    } else {
+
+      topic = await Topic.findById(community.topics[0].toString());
+    }
+
 
     if (user && community && topic && req.files.length > 0) {
       let pos = [];
@@ -1313,7 +1322,7 @@ exports.postanythings3 = async (req, res) => {
         sender: userId,
         post: pos,
         tags: tag,
-        topicId: topicId,
+        topicId: topic._id,
       });
       const savedpost = await post.save();
 
@@ -1374,22 +1383,28 @@ exports.postanythings3 = async (req, res) => {
       }
 
       if (tokens?.length > 0) {
+
         const timestamp = `${new Date()}`;
         const msg = {
           notification: {
             title: `${community.title} - Posted!`,
-            body: `${post.title} `,
+            body: `${savedpost.title} `,
           },
           data: {
             screen: "CommunityChat",
             sender_fullname: `${user?.fullname}`,
             sender_id: `${user?._id}`,
-            text: `${post.title}`,
+            text: `${savedpost.title}`,
             comId: `${community?._id}`,
             createdAt: `${timestamp}`,
+            type: "post",
+            link: process.env.POST_URL + savedpost.post[0].content,
+            comdp: process.env.URL + community.dp
           },
+
+
           tokens: tokens,
-        };
+        }
 
         await admin
           .messaging()

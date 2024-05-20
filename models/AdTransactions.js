@@ -11,7 +11,7 @@ const AdTransactionsSchema = new mongoose.Schema(
    enum:["pending","completed","failed","processing"]
   },
  
-    type: { type: String },
+   type: { type: String },
   },
   { timestamps: true }
 );

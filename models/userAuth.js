@@ -338,7 +338,11 @@ const userSchema = new mongoose.Schema(
     gr: { type: Number, default: 0 },
     useDefaultProsite: { type: Boolean, default: false },
     recentPrositeSearches: [{ type: ObjectId, ref: "User", default: [] }],
-    recentCommunitySearches: [{ type: ObjectId, ref: "Community", default: [] }]
+    recentCommunitySearches: [{ type: ObjectId, ref: "Community", default: [] }],
+    membershipHistory: [{
+      id: { type: ObjectId, ref: "Membership" },
+      date: { type: Date, default: Date.now }
+    }]
     // for workspace membership
   },
 

@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const sharp = require("sharp");
 const Topic = require("../models/topic");
 // const Analytics = require("../models/Analytics");
+const Transaction = require("../models/AdTransactions");
 const Community = require("../models/community");
 const uuid = require("uuid").v4;
 const Post = require("../models/post");
@@ -69,6 +70,7 @@ const Montenziation = require("../models/Montenziation");
 const Request = require("../models/Request");
 const Analytics = require("../models/Analytics");
 const Approvals = require("../models/Approvals");
+const Advertiser = require("../models/Advertiser");
 
 const instance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -1602,7 +1604,6 @@ exports.createproduct = async (req, res) => {
     weight,
     type,
   } = req.body;
-  console.log(req.body, req.files);
   if (req.canCreateProduct) {
     const user = await User.findById(userId);
     if (!user) {
@@ -2768,27 +2769,101 @@ exports.memfinalize = async (req, res) => {
       paymentdetails: { mode: "online", amount: subscription.amount },
     };
 
+    const membershiphist = {
+      id: memid,
+      date: Date.now()
+    };
+
+    // Ensure membershipHistory array exists
+    if (!Array.isArray(user.membershipHistory)) {
+      user.membershipHistory = [];
+    }
+    // Add the new membership history entry
+    user.membershipHistory.push(membershiphist);
+
     user.deliveryforcity = deliverylimitcity;
     user.deliveryforcountry = deliverylimitcountry;
     const membership = await Membership.findById(memid);
     user.isverified = true;
     const saveduser = await user.save();
-    const sessionId = generateSessionId();
+
     const dp = process.env.URL + saveduser.profilepic;
+
+    if (saveduser.membershipHistory.length === 1) {
+      const advertiser = await Advertiser.findById(saveduser.advertiserid)
+      if (advertiser) {
+        const newid = Date.now();
+        advertiser.currentbalance = advertiser.currentbalance + 500
+        const savedOldAdvertiser = await advertiser.save()
+        const transactions = new Transaction({
+          transactionid: newid,
+          amount: 500,
+          type: "Credits",
+          status: "completed",
+          advertiserid: savedOldAdvertiser._id,
+        })
+        await transactions.save()
+      } else {
+        const firstname = saveduser.fullname.split(" ")[0];
+        const lastname = saveduser.fullname.split(" ")[1];
+        function generateUniqueID() {
+          let advertiserID;
+          advertiserID = Date.now();
+          return advertiserID.toString();
+        }
+
+        const advertisernew = new Advertiser({
+          firstname,
+          lastname,
+          image: saveduser.profilepic,
+          password: await decryptaes(saveduser.passw),
+          phone: saveduser.phone ? saveduser.phone : undefined,
+          email: saveduser.email,
+          address: saveduser.address.streetaddress,
+          city: saveduser.address.city,
+          currentbalance: 500,
+          state: saveduser.address.state,
+          pincode: saveduser.address.pincode,
+          landmark: saveduser.address.landmark,
+          userid: saveduser._id,
+          advertiserid: generateUniqueID(),
+        });
+        const newid = Date.now();
+        const savedAdvertiser = await advertisernew.save();
+
+        const transactions = new Transaction({
+          transactionid: newid,
+          amount: 500,
+          type: "Credits",
+          status: "completed",
+          advertiserid: savedAdvertiser._id,
+        })
+
+        await transactions.save()
+
+        await User.updateOne(
+          { _id: saveduser._id },
+          { $set: { advertiserid: savedAdvertiser._id } }
+        );
+      }
+    }
+
     const data = {
       dp,
       fullname: saveduser.fullname,
       username: saveduser.username,
       id: saveduser._id.toString(),
-      sessionId,
       memberships: membership.title,
     };
     const access_token = generateAccessToken(data);
     const refresh_token = generateRefreshToken(data);
     res
       .status(200)
-      .json({ success: true, refresh_token, sessionId, access_token });
-  } catch (error) { }
+      .json({ success: true, refresh_token, access_token });
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+    console.log(error)
+  }
 };
 
 // exports.approvalrequestbank = async (req, res) => {

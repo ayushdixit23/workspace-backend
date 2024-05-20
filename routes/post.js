@@ -24,8 +24,8 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage, limits: { fileSize: 200000000 } });
 
 router.post("/createphoto/:userId/:commId", upload.any(), createPhoto);
-router.post("/postanything/:userId/:comId", upload.any(), postanything);
-router.post("/postanything/:userId/:comId/:topicId", upload.any(), postanythings3);
+// router.post("/postanything/:userId/:comId", upload.any(), postanything);
+router.post("/postanything/:userId/:comId", upload.any(), postanythings3);
 router.post("/createvideo/:userId/:commId", upload.any(), createVideo);
 router.get("/getfeed/:userId", fetchfeed);
 router.get("/v1/getfeed/:userId", newfetchfeed);
