@@ -2713,6 +2713,7 @@ exports.membershipbuy = async (req, res) => {
       }
     );
   } catch (error) {
+
     res.status(500).json({ message: error.message, success: false });
   }
 };
@@ -2753,7 +2754,7 @@ exports.memfinalize = async (req, res) => {
     const currentDate = new Date();
     let endDate;
     if (period == "year") {
-      endDate = new Date(currentDate.getTime() + 365.25 * 24 * 60 * 60 * 1000);
+      endDate = new Date(currentDate.getTime() + 13 * 30.4375 * 24 * 60 * 60 * 1000);
     } else {
       endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
     }

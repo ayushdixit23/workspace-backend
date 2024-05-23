@@ -479,7 +479,6 @@ exports.loginwithworkspace = async (req, res) => {
         }
       );
 
-
       const data = {
         userid: advertiser.userid,
         advid: advertiser._id,
