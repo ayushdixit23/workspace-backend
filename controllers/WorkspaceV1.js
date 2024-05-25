@@ -2803,7 +2803,13 @@ exports.memfinalize = async (req, res) => {
           status: "completed",
           advertiserid: savedOldAdvertiser._id,
         })
-        await transactions.save()
+        const tId = await transactions.save()
+        if (!Array.isArray(savedOldAdvertiser.transactions)) {
+          savedOldAdvertiser.transactions = [];
+        }
+        savedOldAdvertiser.transactions.push(tId)
+        await savedOldAdvertiser.save()
+
       } else {
         const firstname = saveduser.fullname.split(" ")[0];
         const lastname = saveduser.fullname.split(" ")[1];
@@ -2840,7 +2846,12 @@ exports.memfinalize = async (req, res) => {
           advertiserid: savedAdvertiser._id,
         })
 
-        await transactions.save()
+        const tId = await transactions.save()
+        if (!Array.isArray(savedAdvertiser.transactions)) {
+          savedAdvertiser.transactions = [];
+        }
+        savedAdvertiser.transactions.push(tId)
+        await savedAdvertiser.save()
 
         await User.updateOne(
           { _id: saveduser._id },

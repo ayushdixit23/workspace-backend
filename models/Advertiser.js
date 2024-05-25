@@ -66,6 +66,10 @@ const AdvertiserSchema = new mongoose.Schema({
   userid: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   totalspent: { type: Number, default: 0 },
   message: [{ type: String }],
+  totalspent: [{
+    date: { type: Date, default: Date.now },
+    amount: { type: Number, default: 0 }
+  }]
 },
   { timestamps: true }
 );

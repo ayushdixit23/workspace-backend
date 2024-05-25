@@ -14,6 +14,7 @@ require("dotenv").config();
 const uuid = require("uuid").v4;
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/cloudfront-signer");
+const { startOfMonth } = require('date-fns');
 const {
   validatePaymentVerification,
   validateWebhookSignature,
@@ -427,7 +428,6 @@ exports.loginAdspace = async (req, res) => {
       });
     }
   } catch (e) {
-    console.log(e);
     res.status(400).json({ message: "Something went wrong", success: false });
   }
 };
@@ -2300,15 +2300,47 @@ exports.gettransactions = async (req, res) => {
       res.status(404).json({ success: false, message: "User not found" });
     } else {
       const transaction = [];
+      const credits = []
       let amount = user.currentbalance;
+
+      const now = new Date();
+      const firstDayOfCurrentMonth = startOfMonth(now);
+
       for (let i = 0; i < user.transactions.length; i++) {
-        const t = await Transaction.findById(user.transactions[i]);
-        transaction.push(t);
+        const t = await Transaction.findOne({ _id: user.transactions[i], createdAt: { $gte: firstDayOfCurrentMonth, $lte: now } });
+        if (t) {
+          if (t?.type === "Credits") {
+
+            credits.push(Number(t?.amount))
+          }
+          transaction.push(t);
+        }
       }
+
+      const sumOfCredits = credits.reduce((acc, curr) => acc + curr, 0);
+      const sumOfTransactionAmounts = transaction.reduce((acc, curr) => {
+        if (curr?.status === 'completed') {
+          return acc + Number(curr?.amount);
+        }
+        return acc;
+      }, 0);
+
+      // filter user.totalspent on starting date of month to current Date 
+      const filteredTotalSpent = user.totalspent.filter(spent => {
+        const spentDate = new Date(spent?.date);
+        return spentDate >= firstDayOfCurrentMonth && spentDate <= now;
+      });
+
+      const sumOfFilteredTotalSpent = filteredTotalSpent.reduce((acc, curr) => acc + curr.amount, 0);
+      const eighteenpercent = (sumOfFilteredTotalSpent * 0.18)
+
+      const netcost = sumOfFilteredTotalSpent - eighteenpercent
+
       transaction.reverse();
-      res.status(200).json({ success: true, transaction, amount });
+      res.status(200).json({ success: true, lastDate: transaction[0].createdAt, netcost, transaction, amount, credits: sumOfCredits, payments: sumOfTransactionAmounts });
     }
   } catch (e) {
+    console.log(e)
     res.status(400).json({ message: "Something went wrong", success: false });
   }
 };
