@@ -1209,7 +1209,7 @@ exports.fetchallchatsnew = async (req, res) => {
 					.limit(1)
 					.sort({ createdAt: -1 });
 
-				for (let j = 0; j < convs.members.length; j++) {
+				for (let j = 0; j < convs?.members?.length; j++) {
 					if (convs.members[j]._id?.toString() !== user._id.toString()) {
 						const pi = process.env.URL + convs?.members[j]?.profilepic;
 
@@ -2249,16 +2249,13 @@ exports.loadmorechatmsgs = async (req, res) => {
 
 exports.sendchatfile = async (req, res) => {
 	try {
-		console.log(req.body)
-		console.log(req.files)
+
 		const data = JSON.parse(req.body.data);
 		let pos = {};
 		if (data?.typ !== "gif") {
 			const uuidString = uuid();
 			const bucketName = "messages";
-			const objectName = `${Date.now()}${uuidString}${req.files[0]?.originalname
-				}`;
-
+			const objectName = `${Date.now()}${uuidString}${req.files[0]?.originalname}`;
 			const result = await s3.send(
 				new PutObjectCommand({
 					Bucket: Msgbucket,
@@ -3455,5 +3452,111 @@ exports.blockpeople = async (req, res) => {
 		}
 	} catch (e) {
 		res.status(400).json({ message: "Something went wrong", success: false });
+	}
+};
+
+exports.fetchallmsgreqs = async (req, res) => {
+	const { id } = req.params;
+	try {
+		const user = await User.findById(id).populate({
+			path: "messagerequests.id",
+			select: "fullname username isverified profilepic",
+		});
+		if (!user) {
+			res.status(404).json({
+				success: false,
+				message: "User not found",
+			});
+		} else {
+			let dps = [];
+			for (let i = 0; i < user.messagerequests.length; i++) {
+				const pic = process.env.URL + user?.messagerequests[i].id?.profilepic;
+
+				dps.push(pic);
+			}
+
+			res.status(200).json({ reqs: user.messagerequests, dps, success: true });
+		}
+	} catch (e) {
+		res.status(500).json({ message: e.message, success: false });
+	}
+};
+
+exports.acceptorrejectmesgreq = async (req, res) => {
+	const { sender, status, reciever } = req.body;
+	try {
+		const conv = await Conversation.findOne({
+			members: { $all: [sender, reciever] },
+		});
+		const user = await User.findById(reciever);
+		if (conv) {
+			res.status(203).json({ success: false, covId: conv._id });
+		} else if (!user) {
+			res.status(404).json({
+				success: false,
+				message: "User not found",
+			});
+		} else {
+			if (status === "accept") {
+				await User.updateOne(
+					{ _id: reciever },
+					{
+						$pull: {
+							messagerequests: { id: sender },
+						},
+					}
+				);
+				await User.updateOne(
+					{ _id: sender },
+					{
+						$pull: {
+							msgrequestsent: { id: reciever },
+						},
+					}
+				);
+				const conv = new Conversation({
+					members: [sender, reciever],
+				});
+				const savedconv = await conv.save();
+				await User.updateOne(
+					{ _id: sender },
+					{
+						$push: {
+							conversations: savedconv?._id,
+						},
+					}
+				);
+				await User.updateOne(
+					{ _id: reciever },
+					{
+						$push: {
+							conversations: savedconv?._id,
+						},
+					}
+				);
+				res.status(200).json({ savedconv, success: true });
+			} else {
+				await User.updateOne(
+					{ _id: reciever },
+					{
+						$pull: {
+							messagerequests: { id: sender },
+						},
+					}
+				);
+				await User.updateOne(
+					{ _id: sender },
+					{
+						$pull: {
+							msgrequestsent: { id: reciever },
+						},
+					}
+				);
+				res.status(200).json({ success: true });
+			}
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(500).json({ message: e.message, success: false });
 	}
 };
