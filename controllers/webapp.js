@@ -3560,3 +3560,57 @@ exports.acceptorrejectmesgreq = async (req, res) => {
 		res.status(500).json({ message: e.message, success: false });
 	}
 };
+
+exports.likepost = async (req, res) => {
+	const { userId, postId } = req.params;
+	const user = await User.findById(userId);
+	const post = await Post.findById(postId).populate("sender", "fullname");
+	if (!post) {
+		res.status(400).json({ message: "No post found" });
+	} else if (post.likedby.includes(user._id)) {
+		try {
+			await Post.updateOne(
+				{ _id: postId },
+				{ $pull: { likedby: user._id }, $inc: { likes: -1 } }
+			);
+			await User.updateOne(
+				{ _id: userId },
+				{ $pull: { likedposts: post._id } }
+			);
+			res.status(200).json({ success: true });
+		} catch (e) {
+			res.status(400).json({ message: e.message });
+		}
+	} else {
+		try {
+			await Post.updateOne(
+				{ _id: postId },
+				{ $push: { likedby: user._id }, $inc: { likes: 1, views: 4 } }
+			);
+			await User.updateOne(
+				{ _id: userId },
+				{ $push: { likedposts: post._id } }
+			);
+
+			if (user._id.toString() !== post.sender._id.toString()) {
+				const not = new Notification({
+					senderId: user._id,
+					recId: post.sender,
+					text: user.fullname + " liked your post",
+				});
+				await not.save();
+				await User.updateOne(
+					{ _id: not.recId },
+					{ $push: { notifications: not._id }, $inc: { notificationscount: 1 } }
+				);
+				console.log("noti");
+			} else if (user._id.toString() === post.sender._id.toString()) {
+				null;
+				console.log("no noti");
+			}
+			res.status(200).json({ success: true });
+		} catch (e) {
+			res.status(400).json({ message: e.message });
+		}
+	}
+};
