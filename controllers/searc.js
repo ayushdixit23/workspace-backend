@@ -142,6 +142,7 @@ exports.searchpros = async (req, res) => {
 exports.recentSearch = async (req, res) => {
   try {
     if (req.body.length > 0) {
+      let users = []
       for (let i = 0; i < req.body.length; i++) {
         const id = decryptaes(req.body[i])
         const userselect = await User.findById(id).select("profilepic isverified fullname username")
