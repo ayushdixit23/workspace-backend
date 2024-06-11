@@ -900,6 +900,7 @@ exports.loginforAdspace = async (req, res) => {
         image: dp,
         firstname: advertiser.firstname,
         lastname: advertiser.lastname,
+        type: advertiser.type,
         country: advertiser.country,
         city: advertiser.city,
         address: advertiser.address,
@@ -2445,7 +2446,7 @@ exports.addmoneytowallet = async (req, res) => {
           return res.status({ success: false, message: err.message });
         });
 
-        
+
 
       ;
     }

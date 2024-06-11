@@ -3687,7 +3687,7 @@ exports.createtopicporder = async (req, res) => {
 			await axios
 				.post(
 					// "https://api.phonepe.com/apis/hermes/pg/v1/pay",
-					`https://api-preprod.phonepe.com/apis/pg-sandbox`,
+					`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay`,
 
 					{ request: base64string },
 					{
@@ -3746,16 +3746,16 @@ exports.finalisetopicorder = async (req, res) => {
 
 				return checksum;
 			}
+			const sId = await Subscriptions.findById(ordId)
 
 			const checksum = generateChecksum(
 				process.env.TEST_MERCHANT_ID,
-				tid,
+				sId._id,
 				process.env.TEST_PHONE_PAY_KEY,
 				process.env.keyIndex
 			);
-			const sId = await Subscriptions.findById(ordId)
 			const response = await axios.get(
-				`https://api-preprod.phonepe.com/apis/hermes/pg/v1/status/${process.env.TEST_MERCHANT_ID}/${sId._id}`,
+				`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.TEST_MERCHANT_ID}/${sId._id}`,
 				// `https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`,
 				{
 					headers: {
