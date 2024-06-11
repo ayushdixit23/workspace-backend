@@ -12,7 +12,9 @@ const uuid = require("uuid").v4;
 const Post = require("../models/post");
 const Tag = require("../models/Tag");
 const Comment = require("../models/comment");
+const sha256 = require("sha256")
 const Conversation = require("../models/conversation");
+const Notification = require("../models/notification");
 const admin = require("../fireb");
 const {
 	S3Client,
@@ -27,6 +29,7 @@ const Order = require("../models/orders");
 const Cart = require("../models/Cart");
 const Subscriptions = require("../models/Subscriptions");
 const Report = require("../models/reports");
+const { default: axios } = require("axios");
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
 const PRODUCT_BUCKET = process.env.PRODUCT_BUCKET;
@@ -1297,10 +1300,10 @@ exports.fetchconvs = async (req, res) => {
 		});
 
 		//can i block
-		let canblock = false;
+		let canblock = true;
 		user.blockedpeople.forEach((p) => {
 			if (p?.id?.toString() === otherperson._id.toString()) {
-				canblock = true;
+				canblock = false;
 			}
 		});
 
@@ -1363,7 +1366,7 @@ exports.fetchconvs = async (req, res) => {
 		}
 
 		if (isblocked) {
-			res.status(200).json({ canblock, isblocked, otheruserdetails, success: true });
+			res.status(200).json({ canblock, isblocked, otheruserdetails, messages, success: true });
 		} else {
 			res.status(200).json({ canblock, isblocked, otheruserdetails, messages, success: true });
 		}
@@ -2076,6 +2079,7 @@ exports.gettopicmessages = async (req, res) => {
 					desc: topic?.message,
 					members: topic?.memberscount,
 					name: topic?.title,
+					type: topic?.type
 				};
 
 				if (
@@ -2104,7 +2108,8 @@ exports.gettopicmessages = async (req, res) => {
 							});
 						} else {
 							res.status(203).json({
-								messages: ["Not joined"],
+								// messages: ["Not joined"],
+								messages: [],
 								// messages: "Not joined",
 								success: true,
 								topicjoined: false,
@@ -3381,8 +3386,10 @@ exports.deletemessages = async (req, res) => {
 
 exports.reporting = async (req, res) => {
 	try {
+		console.log("first")
 		const { userid } = req.params;
 		const { data, id, type } = req.body;
+		console.log(data)
 		const user = await User.findById(userid);
 		if (!user) {
 			res.status(404).json({ message: "User not found", success: false });
@@ -3411,19 +3418,23 @@ exports.blockpeople = async (req, res) => {
 		} else {
 			const userblock = await User.findById(userid);
 			if (!userblock) {
+				console.log("1")
 				res
 					.status(404)
 					.json({ message: "No blockable User found", success: false });
 			} else {
 				let isBlocked = false;
+				console.log("5")
 				for (const blockedUser of user.blockedpeople) {
 					if (blockedUser.id.toString() === userid) {
+						console.log("4")
 						isBlocked = true;
 						break;
 					}
 				}
 
 				if (isBlocked) {
+					console.log("2")
 					await User.updateOne(
 						{ _id: id },
 						{
@@ -3446,6 +3457,7 @@ exports.blockpeople = async (req, res) => {
 							},
 						}
 					);
+					console.log("3")
 					res.status(200).json({ success: true });
 				}
 			}
@@ -3611,6 +3623,232 @@ exports.likepost = async (req, res) => {
 			res.status(200).json({ success: true });
 		} catch (e) {
 			res.status(400).json({ message: e.message });
+			console.log(e)
 		}
+	}
+};
+
+exports.createtopicporder = async (req, res) => {
+	try {
+		const { id, topicId } = req.params;
+		const { path } = req.body
+
+		const user = await User.findById(id);
+		const topic = await Topic.findById(topicId);
+
+		if (!user && !topic) {
+			return res.status(404).json({ message: "User or topic not found" });
+		} else {
+			const currentValidity = new Date();
+			const thirtyDaysInMillis = 30 * 24 * 60 * 60 * 1000;
+			const newValidity = new Date(
+				currentValidity.getTime() + thirtyDaysInMillis
+			).toISOString();
+			let oi = Math.floor(Math.random() * 9000000) + 1000000;
+			//a new subscription is created
+			const subscription = new Subscriptions({
+				topic: topic._id,
+				community: topic.community,
+				validity: newValidity,
+				amount: topic.price,
+				orderId: oi,
+				paymentMode: "UPI",
+				currentStatus: "pending",
+			});
+			const tId = await subscription.save();
+
+			//upating subscription of customers
+			await User.updateOne(
+				{ _id: id },
+				{ $push: { subscriptions: tId._id } }
+			);
+
+			let payload = {
+				merchantId: process.env.TEST_MERCHANT_ID,
+				merchantTransactionId: tId._id,
+				merchantUserId: user._id,
+				amount: topic.price * 100,
+				redirectUrl: `http://localhost:3000/${path}`,
+				redirectMode: "REDIRECT",
+				callbackUrl: `https://work.grovyo.xyz/api/v1/finalisetopicorder/${user._id}/${tId._id}/${topic._id}`,
+				paymentInstrument: {
+					type: "PAY_PAGE",
+				},
+			};
+			let bufferObj = Buffer.from(JSON.stringify(payload), "utf8");
+
+			let base64string = bufferObj.toString("base64");
+
+			let string = base64string + "/pg/v1/pay" + process.env.TEST_PHONE_PAY_KEY;
+			let shaString = sha256(string);
+
+			let checkSum = shaString + "###" + process.env.keyIndex;
+
+			await axios
+				.post(
+					// "https://api.phonepe.com/apis/hermes/pg/v1/pay",
+					`https://api-preprod.phonepe.com/apis/pg-sandbox`,
+
+					{ request: base64string },
+					{
+						headers: {
+							"Content-Type": "application/json",
+							"X-VERIFY": checkSum,
+							accept: "application/json",
+						},
+					}
+				)
+				.then((response) => {
+					console.log(
+						response.data,
+						response.data.data.instrumentResponse.redirectInfo.url
+					);
+					res.status(200).json({
+						success: true,
+						url: response.data.data.instrumentResponse.redirectInfo.url,
+					});
+				})
+				.catch((err) => {
+					console.log(err);
+					return res.status({ success: false, message: err.message });
+				});
+
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ success: false });
+	}
+};
+
+//finalising the topic order
+exports.finalisetopicorder = async (req, res) => {
+	try {
+		const { id, ordId, topicId } = req.params;
+
+
+		const user = await User.findById(id);
+		const topic = await Topic.findById(topicId);
+		const community = await Community.findById(topic?.community);
+		if (!user) {
+			return res.status(404).json({ message: "User or Product not found" });
+		} else {
+
+			function generateChecksum(
+				merchantId,
+				merchantTransactionId,
+				saltKey,
+				saltIndex
+			) {
+				const stringToHash =
+					`/pg/v1/status/${merchantId}/${merchantTransactionId}` + saltKey;
+				const shaHash = sha256(stringToHash).toString();
+				const checksum = shaHash + "###" + saltIndex;
+
+				return checksum;
+			}
+
+			const checksum = generateChecksum(
+				process.env.TEST_MERCHANT_ID,
+				tid,
+				process.env.TEST_PHONE_PAY_KEY,
+				process.env.keyIndex
+			);
+			const sId = await Subscriptions.findById(ordId)
+			const response = await axios.get(
+				`https://api-preprod.phonepe.com/apis/hermes/pg/v1/status/${process.env.TEST_MERCHANT_ID}/${sId._id}`,
+				// `https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`,
+				{
+					headers: {
+						"Content-Type": "application/json",
+						"X-VERIFY": checksum,
+						"X-MERCHANT-ID": process.env.TEST_MERCHANT_ID,
+					},
+				}
+			);
+			if (response.data.code === "PAYMENT_SUCCESS") {
+				console.log("Payment Successful");
+				let purchase = { id: user._id, broughton: Date.now() };
+				await Subscriptions.updateOne(
+					{ _id: ordId },
+					{
+						$set: {
+							currentStatus: "success",
+							purchasedby: user?._id,
+						},
+					}
+				);
+				await Topic.updateOne(
+					{ _id: topic._id },
+					{
+						$addToSet: {
+							purchased: purchase,
+							members: user._id,
+							notifications: user?._id,
+						},
+						$inc: { memberscount: 1, earnings: topic.price },
+					}
+				);
+				//updating paid members count
+				await Community.updateOne(
+					{ _id: user._id },
+					{ $inc: { paidmemberscount: 1 } }
+				);
+				//person who brought status update
+				await User.updateOne(
+					{ _id: user._id },
+					{ $addToSet: { topicsjoined: topic._id }, $inc: { totaltopics: 1 } }
+				);
+				//person who created the topic gets money
+				await User.updateOne(
+					{ _id: community?.creator },
+					{
+						$inc: { moneyearned: topic.price, topicearning: topic.price },
+						$addToSet: {
+							earningtype: {
+								how: "Topic Purchase",
+								when: Date.now(),
+							},
+							subscriptions: ordId,
+						},
+					}
+				);
+
+				//stats increase
+				let today = new Date();
+
+				let year = today.getFullYear();
+				let month = String(today.getMonth() + 1).padStart(2, "0");
+				let day = String(today.getDate()).padStart(2, "0");
+
+				let formattedDate = `${day}/${month}/${year}`;
+
+				let analytcis = await Analytics.findOne({
+					date: formattedDate,
+					id: community._id,
+				});
+
+				//Graph Stats
+				if (!analytcis.paidmembers.includes(user._id)) {
+					await Analytics.updateOne(
+						{ _id: analytcis._id },
+						{
+							$addToSet: { paidmembers: user._id },
+						}
+					);
+				}
+				res.status(200).json({ success: true });
+			} else if (response.data.code === "PAYMENT_ERROR") {
+				console.log("payment false")
+				await Subscriptions.updateOne(
+					{ _id: ordId },
+					{ $set: { currentStatus: "failed" } }
+				);
+
+				res.status(200).json({ success: true });
+			}
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ success: false });
 	}
 };

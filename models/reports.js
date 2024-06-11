@@ -10,9 +10,8 @@ const ReportSchema = new mongoose.Schema(
     },
     text: {
       type: String,
-      required: true,
     },
-    desc: { type: String, required: true },
+    desc: [{ type: String, required: true }],
     status: {
       type: String,
       default: "Pending",

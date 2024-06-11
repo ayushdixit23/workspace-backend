@@ -2328,10 +2328,10 @@ exports.createtopic = async (req, res) => {
       price: price,
     });
 
-    await topic.save();
+    const topics = await topic.save();
 
     await Topic.updateOne(
-      { _id: topic._id },
+      { _id: topics._id },
       { $push: { members: userId }, $inc: { memberscount: 1 } }
     );
     // await Community.updateOne(
@@ -2343,7 +2343,7 @@ exports.createtopic = async (req, res) => {
     // );
     await User.updateOne(
       { _id: userId },
-      { $push: { topicsjoined: topic._id }, $inc: { totaltopics: 1 } }
+      { $push: { topicsjoined: topics._id }, $inc: { totaltopics: 1 } }
     );
 
     if (comId) {

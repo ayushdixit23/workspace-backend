@@ -90,7 +90,7 @@ router.post("/updatedetails/:id", updatedetails);
 router.post("/screentrack/:id", screentrack);
 router.get("/appcheck/:id", appcheck);
 router.get("/fetchblocklist/:id", fetchblocklist);
-router.post("/blockpeople/:id", blockpeople);
+// router.post("/blockpeople/:id", blockpeople);
 router.post("/contactsuggestions/:id", contactsuggestions);
 router.post("/checkconversations/:id", checkconversations);
 router.post("/v1/checkconversations/:id", checkconversationsnew);

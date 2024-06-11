@@ -4,7 +4,7 @@ const router = express.Router();
 const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage, limits: { fileSize: 1000000000 } });
-const { checkid, joinmember, unjoinmember, postanythings3, newfetchfeeds3, joinedcomnews3, fetchallchatsnew, fetchconvs, compostfeed, fetchallposts, gettopicmessages, searchcoms, searchpros, checkemail, loadmorechatmsgs, sendchatfile, fetchcart, fetchorders, mobileSearch, addRecentSearchCommunity, addRecentSearchProsite, removeRecentSearchProsite, removeRecentSearchCommunity, fetchmoredata, fetchallsubscriptions, updatequantity, removecartorder, hideconvmsg, unhideconvmsg, fetchhiddenconv, fetchmorehiddenconv, deletemessages, blockpeople, reporting, fetchallmsgreqs, acceptorrejectmesgreq, likepost } = require("../controllers/webapp");
+const { checkid, joinmember, unjoinmember, postanythings3, newfetchfeeds3, joinedcomnews3, fetchallchatsnew, fetchconvs, compostfeed, fetchallposts, gettopicmessages, searchcoms, searchpros, checkemail, loadmorechatmsgs, sendchatfile, fetchcart, fetchorders, mobileSearch, addRecentSearchCommunity, addRecentSearchProsite, removeRecentSearchProsite, removeRecentSearchCommunity, fetchmoredata, fetchallsubscriptions, updatequantity, removecartorder, hideconvmsg, unhideconvmsg, fetchhiddenconv, fetchmorehiddenconv, deletemessages, blockpeople, reporting, fetchallmsgreqs, acceptorrejectmesgreq, likepost, createtopicporder, finalisetopicorder } = require("../controllers/webapp");
 
 router.post("/webapplogin", checkid)
 router.post("/webcheckemail", checkemail)
@@ -40,11 +40,17 @@ router.get("/fetchhiddenconv/:id/:convId", fetchhiddenconv)
 router.get("/fetchmorehiddenconv/:id", fetchmorehiddenconv)
 router.post("/deletemessages/:id", deletemessages)
 router.post("/blockpeople/:id", blockpeople)
-router.post("/reporting/:userid", reporting)
+router.post("/web/reporting/:userid", reporting)
 
 router.get("/fetchallmsgreqs/:id", fetchallmsgreqs)
 router.post("/acceptorrejectmesgreq", acceptorrejectmesgreq)
 router.post("/likepost/:userId/:postId", likepost)
+
+//create topic order new
+router.post("/v1/createtopicporder/:id/:topicId", createtopicporder);
+
+//finalisetopicorder new
+router.post("/v1/finalisetopicorder/:id/:ordId/:topicId", finalisetopicorder);
 
 
 module.exports = router;
