@@ -380,3 +380,27 @@ const addressChange = async () => {
 }
 
 // addressChange()
+const giveMembership = async () => {
+  try {
+    const currentDate = new Date();
+    let endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const id = "65314cd99db37d9109914f3f"
+    const memid = "6606955f269e752ce4e5e92c"
+    const user = await User.findById(id)
+    user.memberships = {
+      membership: memid,
+      status: true,
+      ending: endDate,
+      paymentdetails: { mode: "online", amount: 499 },
+    };
+    user.isverified = true;
+    await user.save();
+
+    console.log("done", user.fullname)
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// giveMembership()

@@ -4,10 +4,11 @@ const router = express.Router();
 const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage, limits: { fileSize: 1000000000 } });
-const { checkid, joinmember, unjoinmember, postanythings3, newfetchfeeds3, joinedcomnews3, fetchallchatsnew, fetchconvs, compostfeed, fetchallposts, gettopicmessages, searchcoms, searchpros, checkemail, loadmorechatmsgs, sendchatfile, fetchcart, fetchorders, mobileSearch, addRecentSearchCommunity, addRecentSearchProsite, removeRecentSearchProsite, removeRecentSearchCommunity, fetchmoredata, fetchallsubscriptions, updatequantity, removecartorder, hideconvmsg, unhideconvmsg, fetchhiddenconv, fetchmorehiddenconv, deletemessages, blockpeople, reporting, fetchallmsgreqs, acceptorrejectmesgreq, likepost, createtopicporder, finalisetopicorder } = require("../controllers/webapp");
+const { checkid, joinmember, unjoinmember, postanythings3, newfetchfeeds3, joinedcomnews3, fetchallchatsnew, fetchconvs, compostfeed, fetchallposts, gettopicmessages, searchcoms, searchpros, checkemail, loadmorechatmsgs, sendchatfile, fetchcart, fetchorders, mobileSearch, addRecentSearchCommunity, addRecentSearchProsite, removeRecentSearchProsite, removeRecentSearchCommunity, fetchmoredata, fetchallsubscriptions, updatequantity, removecartorder, hideconvmsg, unhideconvmsg, fetchhiddenconv, fetchmorehiddenconv, deletemessages, blockpeople, reporting, fetchallmsgreqs, acceptorrejectmesgreq, likepost, createtopicporder, finalisetopicorder, muting, removeconversation, checkqr, mutecom, fetchallcomments, createcomment, deletemessagestopic, setcomtype, getallmembers, removecomwithposts, addtocart } = require("../controllers/webapp");
 
 router.post("/webapplogin", checkid)
 router.post("/webcheckemail", checkemail)
+router.post("/webcheckqr", checkqr)
 router.post("/joinmember/:userId/:comId", joinmember)
 router.post("/unjoinmember/:userId/:comId", unjoinmember)
 router.post("/postanythings3/:userId/:comId/:topicId", postanythings3)
@@ -41,7 +42,6 @@ router.get("/fetchmorehiddenconv/:id", fetchmorehiddenconv)
 router.post("/deletemessages/:id", deletemessages)
 router.post("/blockpeople/:id", blockpeople)
 router.post("/web/reporting/:userid", reporting)
-
 router.get("/fetchallmsgreqs/:id", fetchallmsgreqs)
 router.post("/acceptorrejectmesgreq", acceptorrejectmesgreq)
 router.post("/likepost/:userId/:postId", likepost)
@@ -51,6 +51,16 @@ router.post("/v1/createtopicporder/:id/:topicId", createtopicporder);
 
 //finalisetopicorder new
 router.post("/v1/finalisetopicorder/:id/:ordId/:topicId", finalisetopicorder);
+router.post("/muting", muting);
+router.post("/removeconversation/:id", removeconversation);
+router.post("/mutecom/:id/:comId", mutecom);
+router.get("/fetchallcomments/:userId/:postId", fetchallcomments);
+router.post("/createcomment/:userId/:postId", createcomment);
+router.post("/web/deletemessagestopic/:id", deletemessagestopic);
+router.post("/setcomtype/:id/:comId", setcomtype);
+router.get("/web/getallmembers/:id/:comId", getallmembers);
+router.post("/web/removecomwithposts/:id/:comId", removecomwithposts);
+router.post("/webaddtocart/:userId/:productId", addtocart);
 
 
 module.exports = router;

@@ -193,6 +193,41 @@ exports.checkemail = async (req, res) => {
 	}
 }
 
+exports.checkqr = async (req, res) => {
+	try {
+		const { id } = req.body;
+		const user = await User.findById(id);
+
+		const memberships = await Membership.findById(user.memberships.membership);
+
+		if (user) {
+			const dp = process.env.URL + user.profilepic;
+			const data = {
+				dp,
+				fullname: user.fullname,
+				username: user.username,
+				isverified: user?.isverified,
+				id: user._id.toString(),
+				memberships: memberships.title,
+			};
+			const access_token = generateAccessToken(data);
+			const refresh_token = generateRefreshToken(data);
+
+			res.status(200).json({
+				access_token,
+				refresh_token,
+				userexists: true,
+				success: true,
+			});
+		} else {
+			res.status(204).json({ message: "User not found", success: true, userexists: false });
+		}
+	} catch (err) {
+		console.log(err)
+		res.status(400).json({ message: "Something Went Wrong", success: false });
+	}
+};
+
 //community join
 exports.joinmember = async (req, res) => {
 	const { userId, comId } = req.params;
@@ -1253,7 +1288,7 @@ exports.fetchallchatsnew = async (req, res) => {
 							isverified: convs?.members[j]?.isverified,
 							pic: pi,
 							msgs: isblocked ? [] : msg,
-							ismuted: user.muted?.includes(convs._id),
+							ismuted: user.muted?.includes(convs._id.toString()) || false,
 							unread,
 						};
 
@@ -1292,6 +1327,9 @@ exports.fetchconvs = async (req, res) => {
 		}
 		//blocking/unblocking status
 		//am i blocked
+
+		const isMuted = user.muted.includes(convId);
+
 		let isblocked = false;
 		otherperson.blockedpeople.forEach((p) => {
 			if (p?.id?.toString() === user._id.toString()) {
@@ -1366,9 +1404,9 @@ exports.fetchconvs = async (req, res) => {
 		}
 
 		if (isblocked) {
-			res.status(200).json({ canblock, isblocked, otheruserdetails, messages, success: true });
+			res.status(200).json({ canblock, isblocked, isMuted, otheruserdetails, messages, success: true });
 		} else {
-			res.status(200).json({ canblock, isblocked, otheruserdetails, messages, success: true });
+			res.status(200).json({ canblock, isblocked, isMuted, otheruserdetails, messages, success: true });
 		}
 	} catch (e) {
 		console.error(e);
@@ -2021,25 +2059,26 @@ exports.gettopicmessages = async (req, res) => {
 				) {
 					const url = process.env.MSG_URL + msg[i]?.content?.uri;
 
-					messages.push({ ...msg[i].toObject(), url });
+					messages.push({ ...msg[i].toObject(), url, dp: process.env.URL + msg[i].sender.profilepic, });
 				} else if (msg[i].typ === "gif") {
 					const url = msg[i]?.content?.uri;
 
-					messages.push({ ...msg[i].toObject(), url });
+					messages.push({ ...msg[i].toObject(), url, dp: process.env.URL + msg[i].sender.profilepic, });
 				} else if (msg[i].typ === "post") {
 					const url = process.env.POST_URL + msg[i]?.content?.uri;
 					const post = await Post.findById(msg[i].forwardid);
 					messages.push({
 						...msg[i].toObject(),
 						url,
+						dp: process.env.URL + msg[i].sender.profilepic,
 						comId: post?.community,
 					});
 				} else if (msg[i].typ === "product") {
 					const url = process.env.PRODUCT_URL + msg[i]?.content?.uri;
 
-					messages.push({ ...msg[i].toObject(), url });
+					messages.push({ ...msg[i].toObject(), url, dp: process.env.URL + msg[i].sender.profilepic, });
 				} else {
-					messages.push(msg[i].toObject());
+					messages.push({ ...msg[i].toObject(), dp: process.env.URL + msg[i].sender.profilepic });
 				}
 			}
 
@@ -2384,7 +2423,7 @@ exports.fetchorders = async (req, res) => {
 			const image = [];
 			if (orders) {
 				for (let j = 0; j < orders.length; j++) {
-					console.log(orders[j].productId[0]);
+
 					if (orders[j].productId[0]) {
 						const a =
 							process.env.PRODUCT_URL +
@@ -2406,7 +2445,7 @@ exports.fetchorders = async (req, res) => {
 				.json({ data: merge, address: user.location, success: true });
 		}
 	} catch (e) {
-		console.log(e);
+
 		res.status(400).json({ message: e.message, success: false });
 	}
 };
@@ -2518,6 +2557,7 @@ exports.fetchcart = async (req, res) => {
 
 //add to cart
 exports.addtocart = async (req, res) => {
+
 	const { userId, productId } = req.params;
 	const { quantity, cartId, action, cat } = req.body;
 	try {
@@ -2582,6 +2622,7 @@ exports.addtocart = async (req, res) => {
 			}
 		}
 	} catch (e) {
+		console.log(e)
 		res.status(400).json({ message: e.message, success: false });
 	}
 };
@@ -2912,9 +2953,9 @@ exports.mobileSearch = async (req, res) => {
 			const data = {
 				id: anotherCommunity?._id,
 				title: anotherCommunity?.title,
-				dp: process.env.URL + anotherCommunity.dp,
-				member: anotherCommunity.memberscount,
-				isverified: anotherCommunity.isverified,
+				dp: process.env.URL + anotherCommunity?.dp,
+				member: anotherCommunity?.memberscount,
+				isverified: anotherCommunity?.isverified,
 			};
 
 			recentSearchesCommunity.push(data);
@@ -3389,7 +3430,7 @@ exports.reporting = async (req, res) => {
 		console.log("first")
 		const { userid } = req.params;
 		const { data, id, type } = req.body;
-		console.log(data)
+
 		const user = await User.findById(userid);
 		if (!user) {
 			res.status(404).json({ message: "User not found", success: false });
@@ -3850,5 +3891,357 @@ exports.finalisetopicorder = async (req, res) => {
 	} catch (e) {
 		console.log(e);
 		res.status(400).json({ success: false });
+	}
+};
+
+exports.muting = async (req, res) => {
+	try {
+		const { id, convId } = req.body;
+		const user = await User.findById(id);
+		if (!user) {
+			res.status(404).json({ success: false, message: "User not found!" });
+		} else {
+			const exists = user.muted.includes(convId);
+
+			if (exists) {
+				await User.updateOne({ _id: user._id }, { $pull: { muted: convId } });
+			} else {
+				await User.updateOne(
+					{ _id: user._id },
+					{ $addToSet: { muted: convId } }
+				);
+			}
+			res.status(200).json({ success: true });
+		}
+	} catch (e) {
+		console.log(e);
+		res
+			.status(400)
+			.json({ message: "Something went wrong...", success: false });
+	}
+};
+
+exports.removeconversation = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { convId } = req.body;
+		const user = await User.findById(id);
+		if (!user) {
+			res.status(404).json({ message: "User not found", success: false });
+		} else {
+			await User.updateOne(
+				{ _id: id },
+				{
+					$pull: {
+						conversations: convId,
+					},
+				}
+			);
+			res.status(200).json({ success: true });
+		}
+	} catch (e) {
+		res.status(400).json({ message: e.message, success: false });
+	}
+};
+
+exports.deletemessagestopic = async (req, res) => {
+
+	try {
+		const { id } = req.params;
+		const { topicId, msgIds, action } = req.body;
+		const user = await User.findById(id);
+		const topic = await Topic.findById(topicId)
+
+		if (user) {
+			if (action === "everyone") {
+				await Message.updateMany(
+					{ mesId: { $in: msgIds }, topicId: topicId },
+					{ $set: { status: "deleted" } }
+				);
+			} else {
+				await Message.updateMany(
+					{ mesId: { $in: msgIds }, topicId: topicId },
+					{ $push: { deletedfor: user._id } }
+				);
+			}
+			res.status(200).json({ success: true });
+		} else {
+			res.status(404).json({ message: "User not found!", success: false });
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ success: false });
+	}
+};
+
+exports.createcomment = async (req, res) => {
+	const { userId, postId } = req.params;
+	const { text } = req.body;
+	const post = await Post.findById(postId);
+	if (!post) {
+		res.status(404).json({ message: "Post not found" });
+	} else {
+		try {
+			const newComment = new Comment({
+				senderId: userId,
+				postId: postId,
+				text: text,
+			});
+			await newComment.save();
+			await Post.updateOne(
+				{ _id: postId },
+				{ $push: { comments: newComment._id }, $inc: { totalcomments: 1 } }
+			);
+			res.status(200).json({ success: true, newComment });
+		} catch (e) {
+			res.status(400).json(e.message);
+		}
+	}
+};
+
+exports.fetchallcomments = async (req, res) => {
+	const { userId, postId } = req.params;
+	try {
+		const user = await User.findById(userId);
+		const comment = await Comment.find({ postId: postId })
+			.populate("senderId", "fullname profilepic username")
+			.limit(50)
+			.sort({ createdAt: -1 });
+
+		if (!comment) {
+			res.status(404).json({ success: false });
+		} else {
+			const liked = [];
+			for (let i = 0; i < comment.length; i++) {
+				if (comment[i].likedby.includes(user._id)) {
+					liked.push("liked");
+				} else {
+					liked.push("not liked");
+				}
+			}
+			const dps = [];
+			for (let i = 0; i < comment.length; i++) {
+				const a = process.env.URL + comment[i].senderId.profilepic;
+				dps.push(a);
+			}
+
+			//merging all the data
+			const merged = dps?.map((dp, i) => ({
+				dp,
+				comments: comment[i],
+				likes: liked[i],
+			}));
+			res.status(200).json({ success: true, merged });
+		}
+	} catch (e) {
+		res.status(400).json({ message: e.message, success: false });
+	}
+};
+
+exports.mutecom = async (req, res) => {
+	try {
+		const { id, comId } = req.params;
+		const user = await User.findById(id);
+		const com = await Community.findById(comId);
+
+		if (!user || !com) {
+			return res
+				.status(404)
+				.json({ message: "User or Community not found", success: false });
+		}
+
+		//muting the whole community
+		if (com.notifications?.length > 0) {
+			const notificationIndex = com.notifications.findIndex(
+				(notification) => notification.id.toString() === user._id.toString()
+			);
+
+			if (notificationIndex !== -1) {
+				com.notifications[notificationIndex].muted =
+					!com.notifications[notificationIndex].muted;
+				await com.save();
+			}
+		}
+
+		//muting topics individually
+		for (let i = 0; i < com.topics.length; i++) {
+			const topic = await Topic.findById(com.topics[i]);
+
+			if (topic) {
+				const notificationIndex = topic.notifications.findIndex(
+					(notification) => notification.id?.toString() === user._id?.toString()
+				);
+
+				if (notificationIndex !== -1) {
+					topic.notifications[notificationIndex].muted =
+						!topic.notifications[notificationIndex].muted;
+					await topic.save();
+				}
+			}
+		}
+
+		res.status(200).json({ success: true });
+	} catch (e) {
+		console.error(e);
+		res.status(400).json({ message: e.message, success: false });
+	}
+};
+
+exports.setcomtype = async (req, res) => {
+	try {
+		const { id, comId } = req.params;
+		const user = await User.findById(id);
+		const com = await Community.findById(comId);
+		if (user && com) {
+			console.log(com.type);
+			await Community.updateOne(
+				{ _id: comId },
+				{
+					$set: { type: com.type === "public" ? "private" : "public" },
+				}
+			);
+
+			res.status(200).json({ success: true });
+		} else {
+			res.status(404).json({ message: "User not found!", success: false });
+		}
+	} catch (e) {
+		console.log(e);
+		res
+			.status(400)
+			.json({ success: false, message: "Something went wrong..." });
+	}
+};
+
+exports.getallmembers = async (req, res) => {
+	try {
+		const { id, comId } = req.params;
+		const user = await User.findById(id);
+		if (!user) {
+			res.status(404).json({ message: "User not found", success: false });
+		} else {
+			const community = await Community.findById(comId)
+				.populate({
+					path: "members",
+					select: "fullname pic isverified username profilepic",
+					options: { limit: 150 },
+				})
+				.populate({
+					path: "admins",
+					model: "User",
+					select: "fullname pic isverified username profilepic",
+				})
+				.populate({
+					path: "blocked",
+					model: "User",
+					select: "fullname pic isverified username profilepic",
+				});
+
+			if (!community) {
+				res
+					.status(404)
+					.json({ message: "Community not found", success: false });
+			} else {
+				let dps = [];
+
+				let isadmin =
+					community?.admins[0]._id?.toString === user._id?.toString();
+				const admindp = process.env.URL + community?.admins[0].profilepic;
+
+				for (let j = 0; j < community?.members?.length; j++) {
+					const a = process.env.URL + community.members[j].profilepic;
+
+					dps.push(a);
+				}
+
+				let block = [];
+				community?.members?.some((blockedId) =>
+					community.blocked?.some((b, i) => {
+						block.push(blockedId?._id?.toString() === b?._id?.toString());
+					})
+				);
+
+				const nonBlockedMembers = community.members?.map((c, i) => ({
+					c,
+					dp: dps[i],
+					blocked: block[i],
+				}));
+
+				const members = nonBlockedMembers?.filter(
+					(member) => member.c._id?.toString() !== community.creator.toString()
+				);
+
+				res.status(200).json({
+					success: true,
+					members,
+					admin: community?.admins[0],
+					admindp,
+					isadmin,
+				});
+			}
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ message: e.message, success: false });
+	}
+};
+
+exports.removecomwithposts = async (req, res) => {
+	try {
+		const { id, comId } = req.params;
+		const user = await User.findById(id);
+		if (user) {
+			const community = await Community.findById(comId);
+			new DeleteObjectCommand({
+				Bucket: BUCKET_NAME,
+				Key: community?.dp,
+			});
+			if (community) {
+				for (let i = 0; i < community.posts.length; i++) {
+					const post = await Post.findById(community.posts[i]);
+					if (post) {
+						for (let j = 0; j < post.post.length; j++) {
+							const result = await s3.send(
+								new DeleteObjectCommand({
+									Bucket: POST_BUCKET,
+									Key: post.post[j].content,
+								})
+							);
+						}
+						post.remove();
+					}
+				}
+				//remove all topics of community
+				const topics = await Topic.find({ community: community._id });
+				if (topics?.length > 0) {
+					for (let i = 0; i < topics.length; i++) {
+						await User.findByIdAndUpdate(
+							{ _id: user._id },
+							{ $pull: { topicsjoined: topics[i]._id } }
+						);
+						topics[i].remove();
+					}
+				}
+
+				await User.findByIdAndUpdate(
+					{ _id: user._id },
+					{
+						$pull: {
+							communityjoined: community?._id,
+							communitycreated: community?._id,
+						},
+						$inc: { totaltopics: -topics?.length, totalcom: 1 },
+					}
+				);
+
+				community.remove();
+			}
+			res.status(200).json({ success: true });
+		} else {
+			res.status(404).json({ message: "User not found!", success: false });
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ message: "Something went wrong", success: false });
 	}
 };
