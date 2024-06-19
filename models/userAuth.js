@@ -328,6 +328,29 @@ const userSchema = new mongoose.Schema(
         type: String,
       },
     },
+    recentProsites: [{
+      htmlContent: { type: String },
+      canvasImage: { type: String },
+      template: { type: Number },
+      headline: { type: String },
+      description: { type: String },
+      backgroundColor: { type: String },
+      backgroundImage: { type: String },
+      color: { type: String },
+      image: { type: String },
+      fonts: [{
+        fontFamily: { type: String },
+        link: { type: String },
+        type: { type: String },
+        id: { type: ObjectId, ref: "Font" }
+      }],
+      button: {
+        text: { type: String },
+        link: { type: String },
+        id: { type: ObjectId, ref: "Buttonss" }
+      }
+    }],
+
     agencyDetails: {
       iscreatedbyagency: { type: Boolean, default: false },
       agencyuserid: { type: ObjectId, ref: "User" },

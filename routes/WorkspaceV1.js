@@ -53,6 +53,7 @@ const {
   checkfordefault,
   updateproducvariant,
   fetchingprosite,
+  deleteRecentProsites,
 
   // base64upload,
   // getimage,
@@ -180,6 +181,7 @@ router.get("/fetchSingleProduct/:productId", fetchSingleProduct);
 router.post("/defaultprositeselector/:id", defaultprositeselector);
 router.post("/changemont/:comid", changemont);
 router.get("/checkfordefault/:id", checkfordefault);
+router.post("/deleteRecentProsites/:userId/:prositeId", deleteRecentProsites);
 // router.post("/approvalrequestbank/:id", approvalrequestbank)
 
 module.exports = router;

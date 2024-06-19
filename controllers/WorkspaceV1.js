@@ -11,6 +11,8 @@ const uuid = require("uuid").v4;
 const Post = require("../models/post");
 require("dotenv").config();
 const Collection = require("../models/Collectionss");
+const Font = require("../models/Font");
+const Buttonss = require("../models/buttonScema");
 const Product = require("../models/product");
 const moment = require("moment");
 const Order = require("../models/orders");
@@ -842,7 +844,13 @@ exports.analyticsuserThirtyDays = async (req, res) => {
 exports.checkfordefault = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findById(id);
+    const user = await User.findById(id).populate({
+      path: 'recentProsites.fonts.id',
+      model: 'Font'
+    }).populate({
+      path: 'recentProsites.button.id',
+      model: 'Buttonss'
+    });
     if (!user) {
       return res
         .status(400)
@@ -850,8 +858,9 @@ exports.checkfordefault = async (req, res) => {
     }
     res
       .status(200)
-      .json({ success: true, useDefaultProsite: user.useDefaultProsite });
+      .json({ success: true, useDefaultProsite: user.useDefaultProsite, recentProsites: user.recentProsites });
   } catch (error) {
+    console.log(error)
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -3695,3 +3704,28 @@ exports.changemont = async (req, res) => {
     console.log(error);
   }
 };
+
+exports.deleteRecentProsites = async (req, res) => {
+  try {
+    const { userId, prositeId } = req.params
+
+    const user = await User.findById(userId)
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found!" });
+    }
+
+    const updateProsite = user.recentProsites.filter((d) => d?._id.toString() !== prositeId.toString())
+
+    user.recentProsites = updateProsite
+    await user.save()
+
+    res.status(200).json({ success: true })
+
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+
+  }
+}

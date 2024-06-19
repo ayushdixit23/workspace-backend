@@ -2292,57 +2292,124 @@ exports.logoutadv = async (req, res) => {
 };
 
 //fetching adv payments and balance
+// exports.gettransactions = async (req, res) => {
+//   const { id } = req.params;
+//   try {
+//     const user = await Advertiser.findById(id);
+
+//     if (!user) {
+//       res.status(404).json({ success: false, message: "User not found" });
+//     } else {
+//       const transaction = [];
+//       const credits = []
+//       let amount = user.currentbalance
+
+//       const now = new Date();
+//       const firstDayOfCurrentMonth = startOfMonth(now);
+
+//       for (let i = 0; i < user.transactions.length; i++) {
+//         const t = await Transaction.findOne({ _id: user.transactions[i], createdAt: { $gte: firstDayOfCurrentMonth, $lte: now } });
+//         if (t) {
+//           if (t?.type === "Credits") {
+
+//             credits.push(Number(t?.amount))
+//           }
+//           transaction.push(t);
+//         }
+//       }
+
+//       const sumOfCredits = credits.reduce((acc, curr) => acc + curr, 0);
+//       const sumOfTransactionAmounts = transaction.reduce((acc, curr) => {
+//         if (curr?.status === 'completed') {
+//           return acc + Number(curr?.amount);
+//         }
+//         return acc;
+//       }, 0);
+
+//       // filter user.totalspent on starting date of month to current Date 
+//       const filteredTotalSpent = user.totalspent.filter(spent => {
+//         const spentDate = new Date(spent?.date);
+//         return spentDate >= firstDayOfCurrentMonth && spentDate <= now;
+//       });
+
+//       const sumOfFilteredTotalSpent = filteredTotalSpent.reduce((acc, curr) => acc + curr.amount, 0);
+//       const eighteenpercent = (sumOfFilteredTotalSpent * 0.18)
+
+//       const netcost = sumOfFilteredTotalSpent - eighteenpercent
+
+//       transaction.reverse();
+//       res.status(200).json({ success: true, lastDate: transaction[0].createdAt, netcost, transaction, amount, credits: sumOfCredits, payments: sumOfTransactionAmounts });
+//     }
+//   } catch (e) {
+//     console.log(e)
+//     res.status(400).json({ message: "Something went wrong", success: false });
+//   }
+// };
 exports.gettransactions = async (req, res) => {
   const { id } = req.params;
   try {
     const user = await Advertiser.findById(id);
 
     if (!user) {
-      res.status(404).json({ success: false, message: "User not found" });
-    } else {
-      const transaction = [];
-      const credits = []
-      let amount = user.currentbalance;
-
-      const now = new Date();
-      const firstDayOfCurrentMonth = startOfMonth(now);
-
-      for (let i = 0; i < user.transactions.length; i++) {
-        const t = await Transaction.findOne({ _id: user.transactions[i], createdAt: { $gte: firstDayOfCurrentMonth, $lte: now } });
-        if (t) {
-          if (t?.type === "Credits") {
-
-            credits.push(Number(t?.amount))
-          }
-          transaction.push(t);
-        }
-      }
-
-      const sumOfCredits = credits.reduce((acc, curr) => acc + curr, 0);
-      const sumOfTransactionAmounts = transaction.reduce((acc, curr) => {
-        if (curr?.status === 'completed') {
-          return acc + Number(curr?.amount);
-        }
-        return acc;
-      }, 0);
-
-      // filter user.totalspent on starting date of month to current Date 
-      const filteredTotalSpent = user.totalspent.filter(spent => {
-        const spentDate = new Date(spent?.date);
-        return spentDate >= firstDayOfCurrentMonth && spentDate <= now;
-      });
-
-      const sumOfFilteredTotalSpent = filteredTotalSpent.reduce((acc, curr) => acc + curr.amount, 0);
-      const eighteenpercent = (sumOfFilteredTotalSpent * 0.18)
-
-      const netcost = sumOfFilteredTotalSpent - eighteenpercent
-
-      transaction.reverse();
-      res.status(200).json({ success: true, lastDate: transaction[0].createdAt, netcost, transaction, amount, credits: sumOfCredits, payments: sumOfTransactionAmounts });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
+
+    const transaction = [];
+    const credits = [];
+    let amount = user.currentbalance;
+
+    const now = new Date();
+    const firstDayOfCurrentMonth = startOfMonth(now);
+
+    for (let i = 0; i < user.transactions.length; i++) {
+      const t = await Transaction.findOne({
+        _id: user.transactions[i],
+        createdAt: { $gte: firstDayOfCurrentMonth, $lte: now }
+      });
+      if (t) {
+        if (t.type === "Credits") {
+          credits.push(Number(t.amount));
+        }
+        transaction.push(t);
+      }
+    }
+
+    const sumOfCredits = credits.reduce((acc, curr) => acc + curr, 0);
+    const sumOfTransactionAmounts = transaction.reduce((acc, curr) => {
+      if (curr.status === 'completed') {
+        return acc + Number(curr.amount);
+      }
+      return acc;
+    }, 0);
+
+    // filter user.totalspent on starting date of month to current Date 
+    const filteredTotalSpent = user.totalspent.filter(spent => {
+      const spentDate = new Date(spent.date);
+      return spentDate >= firstDayOfCurrentMonth && spentDate <= now;
+    });
+
+    const sumOfFilteredTotalSpent = filteredTotalSpent.reduce((acc, curr) => acc + curr.amount, 0);
+    const eighteenpercent = (sumOfFilteredTotalSpent * 0.18);
+
+    const netcost = sumOfFilteredTotalSpent - eighteenpercent;
+
+    transaction.reverse();
+
+    // Ensure the transaction array is not empty before accessing transaction[0].createdAt
+    const lastDate = transaction.length > 0 ? transaction[0].createdAt : null;
+
+    return res.status(200).json({
+      success: true,
+      lastDate,
+      netcost,
+      transaction,
+      amount,
+      credits: sumOfCredits,
+      payments: sumOfTransactionAmounts
+    });
   } catch (e) {
-    console.log(e)
-    res.status(400).json({ message: "Something went wrong", success: false });
+    console.log(e);
+    return res.status(400).json({ message: "Something went wrong", success: false });
   }
 };
 
@@ -2389,39 +2456,10 @@ exports.addmoneytowallet = async (req, res) => {
 
       let checkSum = shaString + "###" + process.env.keyIndex;
 
-      // const options = {
-      //   method: 'post',
-      //   url: 'https://api-preprod.phonepe.com/apis/hermes/pg/v1/pay',
-      //   // url: "https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     "X-VERIFY": checkSum,
-      //     accept: "application/json",
-      //   },
-      //   data: {
-      //     request: base64string
-      //   }
-      // }
-      // await axios
-      //   .request(options)
-      //   .then(function (response) {
-      //     console.log(
-      //       response.data,
-      //       response.data.data.instrumentResponse.redirectInfo.url
-      //     );
-      //     res.status(200).json({
-      //       success: true,
-      //       url: response.data.data.instrumentResponse.redirectInfo.url,
-      //     });
-      //   })
-      //   .catch(function (error) {
-      //     console.error(error);
-      //     return res.status({ success: false, message: error.message });
-      //   });
-
       await axios
         .post(
           "https://api.phonepe.com/apis/hermes/pg/v1/pay",
+
           { request: base64string },
           {
             headers: {
@@ -2445,9 +2483,6 @@ exports.addmoneytowallet = async (req, res) => {
           console.log(err);
           return res.status({ success: false, message: err.message });
         });
-
-
-
       ;
     }
   } catch (e) {
@@ -2486,6 +2521,7 @@ exports.updatetransactionstatus = async (req, res) => {
     const t = await Transaction.findById(tid);
     const response = await axios.get(
       `https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`,
+      // `https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.MERCHANT_ID}/${tid}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -2524,7 +2560,7 @@ exports.updatetransactionstatus = async (req, res) => {
           },
         }
       );
-      res.status(400).json({ success: false });
+      res.status(200).json({ success: false });
     }
   } catch (error) {
     console.log(error);
