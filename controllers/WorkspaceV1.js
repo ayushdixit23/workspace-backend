@@ -321,7 +321,7 @@ exports.refresh = async (req, res) => {
               .status(400)
               .json({ success: false, message: "Invalid refresh token" });
           }
-          const sessionId = payload.sessionId;
+
           const user = await User.findById(payload.id);
           const memberships = await Membership.findById(
             user.memberships.membership
@@ -338,9 +338,11 @@ exports.refresh = async (req, res) => {
             fullname: user.fullname,
             username: user.username,
             id: user._id.toString(),
-            sessionId,
+
             memberships: memberships.title,
           };
+
+          clg
           const access_token = generateAccessToken(data);
           const refresh_token = generateRefreshToken(data);
 
@@ -2737,6 +2739,8 @@ exports.memfinalize = async (req, res) => {
       status,
       paymentMethod,
       memid,
+      dm,
+      tagging,
       deliverylimitcity,
       deliverylimitcountry,
       period,
@@ -2772,6 +2776,8 @@ exports.memfinalize = async (req, res) => {
     const newSub = await subscription.save();
     user.activeSubscription.push(newSub._id);
     user.ismembershipactive = true;
+    user.tagging = tagging
+    user.dm = dm
     user.memberships = {
       membership: memid,
       status: true,
@@ -2970,9 +2976,8 @@ exports.fetchingprosite = async (req, res) => {
         .json({ success: false, message: "User Not Found" });
     }
 
-    console.log(user.fullname)
     const community = [];
-    const com = await Community.find({ creator: user._id });
+    const com = await Community.find({ creator: user._id, type: "public" });
     for (let i = 0; i < com.length; i++) {
       const id = com[i];
       let comm = await Community.findById(id).populate("members", "dp").populate("posts");
@@ -3036,23 +3041,6 @@ exports.fetchingprosite = async (req, res) => {
         return a;
       })
     );
-
-
-    // const posts = await Post.find({}).sort({ likes: -1 }).limit(3);
-
-    // const postdp = await Promise.all(
-    //   posts.map(async (post) => {
-    //     const a = process.env.POST_URL + post.post[0].content
-    //     return a;
-    //   })
-    // );
-
-    // const postsWithDps = posts.map((post, index) => {
-    //   return {
-    //     ...post.toObject(),
-    //     dp: postdp[index],
-    //   };
-    // });
 
     const productsWithDps = products.map((product, index) => {
       return {

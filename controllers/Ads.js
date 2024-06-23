@@ -502,7 +502,6 @@ exports.loginwithworkspace = async (req, res) => {
         message: "Advertiser exists",
         advertiser,
         access_token,
-
         refresh_token,
         userid: advertiser.userid,
         dp,
@@ -1008,9 +1007,7 @@ exports.createadvacc = async (req, res) => {
     });
 
     let savedAdv;
-    console.log(advertiser);
-    console.log(!advertiser && !user);
-    console.log(!advertiser && user);
+
     if (!advertiser && !user) {
       const advid = generateUniqueID();
       const uuidString = uuid();
@@ -1215,6 +1212,10 @@ exports.createadvacc = async (req, res) => {
     res.status(200).json({
       success: true,
       access_token,
+      fullname: savedAdv?.firstname + " " + savedAdv?.lastname,
+      userid: savedAdv?.userid,
+      advertiserid: savedAdv?.advertiserid,
+      image: process.env.URL + savedAdv?.image,
       type: savedAdv.type,
       refresh_token,
     });
@@ -3913,6 +3914,32 @@ exports.runad = async (req, res) => {
   }
 }
 
+exports.deleteAd = async (req, res) => {
+  try {
+    const { advid, adid } = req.params
+    const advertiser = await Advertiser.findById(advid)
+
+    if (!advertiser && !adid) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Ad or Advertiser not Found" });
+    }
+
+    await Advertiser.updateOne({ _id: advertiser._id }, { $pull: { ads: adid } })
+
+    await Ads.findByIdAndDelete(adid)
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Ad deleted successfully" });
+
+  }
+  catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+    console.log(error)
+  }
+}
+
 // exports.paybyphonepay = async (req, res) => {
 //   try {
 
@@ -4424,4 +4451,3 @@ exports.runad = async (req, res) => {
 //     console.log(error)
 //   }
 // }
-

@@ -1,14 +1,18 @@
 const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema;
 
-const deliveries = new mongoose.Schema({
+const Deliveries = new mongoose.Schema({
   title: { type: String },
-  amount: { type: Number },
+  amount: { type: Number }, //to be collected
   orderId: { type: Number },
   time: { type: Number },
+  earning: { type: Number },
   partner: { type: ObjectId, ref: "DelUser" },
-  status: { type: String, ref: "Not started" },
+  status: { type: String, default: "Not started" },
   type: { type: String },
+  mode: { type: String },
+
+  reason: { type: String },
   pickupaddress: {
     streetaddress: { type: String },
     state: { type: String },
@@ -46,8 +50,19 @@ const deliveries = new mongoose.Schema({
   phonenumber: { type: Number },
   remarks: { type: String },
   timing: { type: String },
+  data: [
+    {
+      product: { type: ObjectId, ref: "Product" },
+      qty: { type: Number },
+      seller: { type: ObjectId, ref: "User" },
+      price: { type: Number, default: 0 },
+    },
+  ],
+  verifypic: [{ type: String }],
+  marks: [{ latitude: String, longitude: String }],
+  where: { type: String, enum: ["affiliate", "customer"] },
 });
 
-deliveries.index({ title: "text" });
+Deliveries.index({ title: "text" });
 
-module.exports = mongoose.model("Deliveries", deliveries);
+module.exports = mongoose.model("DeliveriesSchema", Deliveries);

@@ -10,7 +10,10 @@ const membership = new mongoose.Schema({
   productlimit: { type: Number },
   topiclimit: { type: Number },
   communitylimit: { type: Number },
+
   collectionlimit: { type: Number },
+  dms: { type: Number },
+  tagging: { type: Number },
   deliverylimit: { type: Number },
   discountedprice: { type: Number },
   plantype: { type: String, enum: ["monthly", "yearly"], default: "monthly" },

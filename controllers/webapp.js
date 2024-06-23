@@ -1,4 +1,3 @@
-
 const aesjs = require("aes-js");
 const User = require("../models/userAuth");
 const jwt = require("jsonwebtoken");
@@ -11,6 +10,8 @@ const Analytics = require("../models/Analytics");
 const uuid = require("uuid").v4;
 const Post = require("../models/post");
 const Tag = require("../models/Tag");
+const Admin = require("../models/admin");
+const SellerOrder = require("../models/SellerOrder")
 const Comment = require("../models/comment");
 const sha256 = require("sha256")
 const Conversation = require("../models/conversation");
@@ -43,6 +44,59 @@ const minioClient = new Minio.Client({
 	accessKey: "shreyansh379",
 	secretKey: "shreyansh379",
 });
+
+function sumArray(arr) {
+	let total = 0;
+	for (let i = 0; i < arr.length; i++) {
+		total += arr[i];
+	}
+	return total;
+}
+
+function calculateTotalDistance(coordinates) {
+	let totalDistance = 0;
+
+	for (let i = 1; i < coordinates.length; i++) {
+		const coord1 = coordinates[i - 1];
+		const coord2 = coordinates[i];
+		totalDistance += geolib.getDistance(coord1, coord2);
+	}
+
+	return totalDistance / 1000;
+}
+
+function generateRandomNumber() {
+	let min = 100000000;
+	let max = 999999999;
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function formatDate(date) {
+	const day = String(date.getDate()).padStart(2, "0");
+	const month = String(date.getMonth() + 1).padStart(2, "0"); // January is 0!
+	const year = String(date.getFullYear()).slice(-2);
+
+	return `${day}/${month}/${year}`;
+}
+
+//string matching function
+function findBestMatch(inputString, stringArray) {
+	let bestMatch = null;
+	let bestScore = -1;
+
+	stringArray.forEach((str) => {
+		const distance = natural.LevenshteinDistance(inputString, str);
+		const similarity = 1 - distance / Math.max(inputString.length, str.length);
+
+		if (similarity > bestScore) {
+			bestScore = similarity;
+			bestMatch = str;
+		}
+	});
+
+	return { bestMatch, bestScore };
+}
+
 
 //function to generate a presignedurl of minio
 async function generatePresignedUrl(bucketName, objectName, expiry = 604800) {
@@ -2522,16 +2576,6 @@ exports.fetchcart = async (req, res) => {
 				dis += t;
 			}
 			discount.push(dis);
-			let completeaddress =
-				user.address.streetaddress +
-				", " +
-				user.address.landmark +
-				", " +
-				user.address.city +
-				", " +
-				user.address.pincode +
-				", " +
-				user.address.state;
 
 			const cart = user.cart;
 			const imgs = image;
@@ -2544,7 +2588,7 @@ exports.fetchcart = async (req, res) => {
 				discountedtotal: discountedTotal,
 				data: merge,
 				discount: discount,
-				address: completeaddress,
+				address: user.address,
 				success: true,
 				ids,
 			});
@@ -3765,8 +3809,6 @@ exports.createtopicporder = async (req, res) => {
 exports.finalisetopicorder = async (req, res) => {
 	try {
 		const { id, ordId, topicId } = req.params;
-
-
 		const user = await User.findById(id);
 		const topic = await Topic.findById(topicId);
 		const community = await Community.findById(topic?.community);
@@ -4239,6 +4281,1668 @@ exports.removecomwithposts = async (req, res) => {
 			res.status(200).json({ success: true });
 		} else {
 			res.status(404).json({ message: "User not found!", success: false });
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ message: "Something went wrong", success: false });
+	}
+};
+
+exports.createcartorder = async (req, res) => {
+	const { userId } = req.params;
+	const { quantity, deliverycharges, productId, total } = req.body;
+
+	try {
+		const user = await User.findById(userId);
+		const product = await Product.findById(productId).populate(
+			"creator",
+			"storeAddress"
+		);
+		let oi = Math.floor(Math.random() * 9000000) + 1000000;
+
+		if (!user && !product) {
+			return res.status(404).json({ message: "User or Product not found" });
+		} else {
+			//a new order is created
+			const order = new Order({
+				buyerId: userId,
+				productId: productId,
+				quantity: quantity,
+				total: total,
+				orderId: oi,
+				paymentMode: "Cash",
+				currentStatus: "success",
+				deliverycharges: deliverycharges,
+				timing: "Tommorow, by 7:00 pm",
+			});
+			await order.save();
+			//upating order in customers purchase history
+			await User.updateOne(
+				{ _id: userId },
+				{ $push: { puchase_history: order._id } }
+			);
+			await User.updateOne(
+				{ _id: user._id },
+				{ $unset: { cart: [], cartproducts: [] } }
+			);
+
+			//assigning the delivery to the nearest driver
+			const cuslat = user.address.coordinates.latitude;
+			const cuslong = user.address.coordinates.longitude;
+
+			//business address
+			const businessaddress = product?.creator;
+
+			const locs = await Locations.find();
+			const custcity = user.address.city;
+
+			let checkeddistance;
+			//checking distance btw customer and business
+			const checkdistance = async () => {
+				const businesslatlong = product?.creator?.storeAddress[0]?.coordinates;
+				const ispointinrange = geolib.isPointWithinRadius(
+					{ latitude: cuslat, longitude: cuslong },
+					businesslatlong,
+					10000
+				);
+
+				checkeddistance = ispointinrange;
+			};
+			checkdistance();
+
+			// if business and custmer location are near each other i.e. within range of 10km to be exact
+			if (checkeddistance) {
+				let firstresult;
+				for (let i = 0; i < locs.length; i++) {
+					const titleArray = Array.isArray(locs[i]?.title)
+						? locs[i]?.title
+						: [locs[i]?.title];
+					firstresult = findBestMatch(
+						businessaddress?.storeAddress[0]?.city.toLowerCase().trim() ||
+						businessaddress?.storeAddress[0]?.city.toLowerCase(),
+						titleArray
+					);
+				}
+				const assigntodriver = async () => {
+					let storedlocs = [];
+					const cityofbusiness = await Locations.findOne({
+						title: firstresult?.bestMatch,
+					});
+					for (let i = 0; i < cityofbusiness.stores.length; i++) {
+						storedlocs.push({
+							latitude: cityofbusiness.stores[i].address.coordinates.latitude,
+							longitude: cityofbusiness.stores[i].address.coordinates.longitude,
+							storeid: cityofbusiness.stores[i].storeid,
+						});
+					}
+
+					const neareststore = geolib.findNearest(
+						{ latitude: cuslat, longitude: cuslong },
+						storedlocs
+					);
+
+					const storeuser = await Deluser.findById(neareststore?.storeid);
+					let eligibledriver = [];
+
+					for (let i = 0; i < storeuser?.deliverypartners?.length; i++) {
+						const deliverypartner = await Deluser.findById(
+							storeuser?.deliverypartners[i]?.id
+						);
+
+						if (
+							deliverypartner &&
+							deliverypartner.accstatus !== "blocked" &&
+							deliverypartner.accstatus !== "review" &&
+							deliverypartner.deliveries?.length < 21 &&
+							deliverypartner?.balance?.amount < 3000
+						) {
+							let driverloc = {
+								latitude: deliverypartner.currentlocation?.latitude,
+								longitude: deliverypartner.currentlocation?.longitude,
+								id: deliverypartner?._id,
+							};
+							eligibledriver.push(driverloc);
+						}
+					}
+
+					if (eligibledriver?.length > 0) {
+						const nearestpartner = geolib.findNearest(
+							{ latitude: cuslat, longitude: cuslong },
+							eligibledriver
+						);
+
+						if (nearestpartner) {
+							const driver = await Deluser?.findById(nearestpartner?.id);
+
+							let droppingaddress = {
+								streetaddress: user?.address?.streetaddress,
+								landmark: user?.address?.landmark,
+								city: user?.address?.city,
+								pincode: user?.address?.pincode,
+								state: user?.address?.state,
+								country: user?.address?.country,
+								coordinates: {
+									latitude: user?.address?.coordinates?.latitude,
+									longitude: user?.address?.coordinates?.longitude,
+									accuracy: user?.address?.coordinates?.accuracy,
+									provider: user?.address?.coordinates?.provider,
+									bearing: user?.address?.coordinates?.bearing,
+									altitude: user?.address?.coordinates?.altitude,
+								},
+							};
+							let pickupaddress = {
+								streetaddress: businessaddress?.storeAddress[0]?.streetaddress,
+								landmark: businessaddress?.storeAddress[0]?.landmark,
+								city: businessaddress?.storeAddress[0]?.city,
+								pincode: businessaddress?.storeAddress[0]?.pincode,
+								state: businessaddress?.storeAddress[0]?.state,
+								country: businessaddress?.storeAddress[0]?.country,
+								coordinates: {
+									latitude:
+										businessaddress?.storeAddress[0]?.coordinates?.latitude,
+									longitude:
+										businessaddress?.storeAddress[0]?.coordinates?.longitude,
+									accuracy:
+										businessaddress?.storeAddress[0]?.coordinates?.accuracy,
+									provider:
+										businessaddress?.storeAddress[0]?.coordinates?.provider,
+									bearing: businessaddress?.storeAddress[0]?.coordinates?.bearing,
+									altitude:
+										businessaddress?.storeAddress[0]?.coordinates?.altitude,
+								},
+							};
+
+							//checking current time
+							const currentHour = new Date().getHours();
+							if (currentHour >= 15) {
+								const newDeliveries = new Delivery({
+									title: product?.name,
+									amount: total,
+									orderId: oi,
+									type: "pick & drop",
+									pickupaddress: pickupaddress,
+									droppingaddress: droppingaddress,
+									partner: driver?._id,
+									status: "Not Started",
+									timing: "Today, by 7:00pm",
+									phonenumber: user?.phone,
+								});
+								await newDeliveries.save();
+
+								const data = {
+									name: user?.fullname,
+									pickupaddress: pickupaddress,
+									droppingaddress: droppingaddress,
+									amount: total,
+									id: newDeliveries?._id,
+									status: "Not Started",
+									timing: "Today, by 7:00pm",
+									phonenumber: user?.phone,
+									type: "pick & drop",
+								};
+
+								await Deluser.updateOne(
+									{ _id: driver?._id },
+									{
+										$push: { deliveries: data },
+									}
+								);
+
+								const msg = {
+									notification: {
+										title: "A new order has arrived.",
+										body: `From ${user?.fullname} Total ₹${total}`,
+									},
+									data: {},
+									tokens: [
+										// user?.notificationtoken,
+										driver?.notificationtoken,
+										storeuser?.notificationtoken,
+									],
+								};
+
+								await admin
+									.messaging()
+									.sendEachForMulticast(msg)
+									.then((response) => {
+										console.log("Successfully sent message");
+									})
+									.catch((error) => {
+										console.log("Error sending message:", error);
+									});
+							}
+						}
+					} else {
+						console.log("No delivery partner is available at the moment!");
+					}
+				};
+				assigntodriver();
+			}
+			// if business and customer are away from each other i.e. out of 10km range
+			else {
+				//getting the nearest affiliatestore of business
+				let firstresult;
+				for (let i = 0; i < locs.length; i++) {
+					const titleArray = Array.isArray(locs[i]?.title)
+						? locs[i]?.title
+						: [locs[i]?.title];
+					firstresult = findBestMatch(
+						businessaddress?.storeAddress[0]?.city.toLowerCase().trim() ||
+						businessaddress?.storeAddress[0]?.city.toLowerCase(),
+						titleArray
+					);
+				}
+				const assigntodriver = async () => {
+					let storedlocs = [];
+					const cityofbusiness = await Locations.findOne({
+						title: firstresult?.bestMatch,
+					});
+					for (let i = 0; i < cityofbusiness.stores.length; i++) {
+						storedlocs.push({
+							latitude: cityofbusiness.stores[i].address.coordinates.latitude,
+							longitude: cityofbusiness.stores[i].address.coordinates.longitude,
+							storeid: cityofbusiness.stores[i].storeid,
+						});
+					}
+
+					const neareststore = geolib.findNearest(
+						{ latitude: cuslat, longitude: cuslong },
+						storedlocs
+					);
+
+					const storeuser = await Deluser.findById(neareststore?.storeid);
+					let eligibledriver = [];
+
+					for (let i = 0; i < storeuser?.deliverypartners?.length; i++) {
+						const deliverypartner = await Deluser.findById(
+							storeuser?.deliverypartners[i]?.id
+						);
+
+						if (
+							deliverypartner &&
+							deliverypartner.accstatus !== "blocked" &&
+							deliverypartner.accstatus !== "review" &&
+							deliverypartner.deliveries?.length < 21 &&
+							deliverypartner?.balance?.amount < 3000
+						) {
+							let driverloc = {
+								latitude: deliverypartner.currentlocation?.latitude,
+								longitude: deliverypartner.currentlocation?.longitude,
+								id: deliverypartner?._id,
+							};
+							eligibledriver.push(driverloc);
+						}
+					}
+
+					if (eligibledriver?.length > 0) {
+						const nearestpartner = geolib.findNearest(
+							{ latitude: cuslat, longitude: cuslong },
+							eligibledriver
+						);
+
+						if (nearestpartner) {
+							const driver = await Deluser?.findById(nearestpartner?.id);
+
+							let droppingaddress = {
+								streetaddress: storeuser?.address?.streetaddress,
+								landmark: storeuser?.address?.landmark,
+								city: storeuser?.address?.city,
+								pincode: storeuser?.address?.pincode,
+								state: storeuser?.address?.state,
+								country: storeuser?.address?.country,
+								coordinates: {
+									latitude: storeuser?.address?.coordinates?.latitude,
+									longitude: storeuser?.address?.coordinates?.longitude,
+									accuracy: storeuser?.address?.coordinates?.accuracy,
+									provider: storeuser?.address?.coordinates?.provider,
+									bearing: storeuser?.address?.coordinates?.bearing,
+									altitude: storeuser?.address?.coordinates?.altitude,
+								},
+							};
+							let pickupaddress = {
+								streetaddress: businessaddress?.storeAddress[0]?.streetaddress,
+								landmark: businessaddress?.storeAddress[0]?.landmark,
+								city: businessaddress?.storeAddress[0]?.city,
+								pincode: businessaddress?.storeAddress[0]?.pincode,
+								state: businessaddress?.storeAddress[0]?.state,
+								country: businessaddress?.storeAddress[0]?.country,
+								coordinates: {
+									latitude:
+										businessaddress?.storeAddress[0]?.coordinates?.latitude,
+									longitude:
+										businessaddress?.storeAddress[0]?.coordinates?.longitude,
+									accuracy:
+										businessaddress?.storeAddress[0]?.coordinates?.accuracy,
+									provider:
+										businessaddress?.storeAddress[0]?.coordinates?.provider,
+									bearing: businessaddress?.storeAddress[0]?.coordinates?.bearing,
+									altitude:
+										businessaddress?.storeAddress[0]?.coordinates?.altitude,
+								},
+							};
+
+							//checking current time
+							const currentHour = new Date().getHours();
+							if (currentHour >= 15) {
+								const newDeliveries = new Delivery({
+									title: product?.name,
+									amount: total,
+									orderId: oi,
+									type: "pickup",
+									pickupaddress: pickupaddress,
+									droppingaddress: droppingaddress,
+									partner: driver?._id,
+									status: "Not Started",
+									timing: "Today, by 7:00pm",
+									phonenumber: user?.phone,
+								});
+								await newDeliveries.save();
+
+								const data = {
+									name: user?.fullname,
+									pickupaddress: pickupaddress,
+									droppingaddress: droppingaddress,
+									amount: total,
+									id: newDeliveries?._id,
+									status: "Not Started",
+									timing: "Today, by 7:00pm",
+									phonenumber: user?.phone,
+									type: "pickup",
+								};
+
+								await Deluser.updateOne(
+									{ _id: driver?._id },
+									{
+										$push: { deliveries: data },
+									}
+								);
+
+								const msg = {
+									notification: {
+										title: "A new order has arrived.",
+										body: `From ${user?.fullname} Total ₹${total}`,
+									},
+									data: {},
+									tokens: [
+										// user?.notificationtoken,
+										driver?.notificationtoken,
+										storeuser?.notificationtoken,
+									],
+								};
+
+								await admin
+									.messaging()
+									.sendEachForMulticast(msg)
+									.then((response) => {
+										console.log("Successfully sent message");
+									})
+									.catch((error) => {
+										console.log("Error sending message:", error);
+									});
+							}
+						}
+					} else {
+						console.log("No delivery partner is available at the moment!");
+					}
+				};
+				assigntodriver();
+			}
+
+			res.status(200).json({ orderId: order._id, success: true });
+		}
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ message: e.message, success: false });
+	}
+};
+
+exports.updatecartorder = async (req, res) => {
+	const { userId, orderId } = req.params;
+	const { paymentId, success, paymentmode } = req.body;
+	try {
+		const user = await User.findById(userId);
+		if (!user) {
+			return res.status(404).json({ message: "User not found" });
+		} else {
+			const o = await Order.findById(orderId);
+			await Order.updateOne(
+				{ _id: o._id },
+				{
+					$set: {
+						currentStatus: success,
+						paymentId: paymentId,
+						paymentMode: paymentmode,
+					},
+				}
+			);
+			if (success) {
+				await User.updateOne({ _id: user._id }, { $unset: { cart: [] } });
+			}
+			await res.status(200).json({ success: true });
+		}
+	} catch (e) {
+		res.status(400).json({ message: e.message, success: false });
+	}
+};
+
+exports.changeAddress = async (req, res) => {
+	try {
+		const { id } = req.params
+		const { streetaddress, city, state, pincode, landmark, country } = req.body
+
+		console.log(req.body, "req")
+
+		const user = await User.findById(id)
+
+		if (!user) {
+			return res.status(404).json({ message: "User or Product not found", success: false });
+		}
+
+		user.address = {
+			coordinates: {}, streetaddress, city, country, landmark, pincode, state
+		}
+
+		const savedUser = await user.save()
+
+		res.status(200).json({ success: true, address: savedUser.address })
+
+	} catch (error) {
+		console.log(error)
+		res.status(400).json({ success: false, message: "Something Went Wrong!" })
+	}
+}
+
+const credeli = async ({ id, storeids, oid, total, instant }) => {
+	try {
+		const user = await User.findById(id);
+		const order = await Order.findOne({ orderId: oid });
+		let foodadmount = 7;
+		let usualamount = 5;
+
+		if (instant) {
+			let coordinates = [];
+			for (let storeid of storeids) {
+				const store = await User.findById(storeid);
+				coordinates.push({
+					latitude: store.storeAddress.coordinates.latitude,
+					longitude: store.storeAddress.coordinates.longitude,
+					address: store.storeAddress,
+					id: store._id,
+				});
+			}
+
+			//sorting locations
+			const sortedCoordinates = geolib.orderByDistance(
+				{
+					latitude: user.address.coordinates.latitude,
+					longitude: user.address.coordinates.longitude,
+				},
+				coordinates
+			);
+
+			//finding the nearest driver from the last location
+			let partners = [];
+
+			const deliverypartners = await Deluser.find({
+				accounttype: "partner",
+				primaryloc: user.address.city,
+			});
+			for (let deliverypartner of deliverypartners) {
+				if (
+					deliverypartner &&
+					deliverypartner.accstatus !== "banned" &&
+					deliverypartner.accstatus !== "review" &&
+					deliverypartner.deliveries?.length < 21 &&
+					deliverypartner.totalbalance < 3000
+				) {
+					let driverloc = {
+						latitude: deliverypartner.currentlocation?.latitude,
+						longitude: deliverypartner.currentlocation?.longitude,
+						id: deliverypartner?._id,
+					};
+					partners.push(driverloc);
+				}
+			}
+
+			let eligiblepartner = geolib.findNearest(
+				sortedCoordinates[sortedCoordinates.length - 1],
+				partners
+			);
+
+			if (eligiblepartner) {
+				const driver = await Deluser?.findById(eligiblepartner?.id);
+
+				const finalcoordinates = [
+					{
+						latitude: user.address.coordinates.latitude,
+						longitude: user.address.coordinates.longitude,
+					},
+					...sortedCoordinates.map((coord) => ({
+						latitude: coord.latitude,
+						longitude: coord.longitude,
+					})),
+					{
+						latitude: eligiblepartner.latitude,
+						longitude: eligiblepartner.longitude,
+					},
+				];
+				//total distance travelled
+				const totalDistance = calculateTotalDistance(finalcoordinates);
+				//earning of driver
+				const earning = totalDistance * foodadmount;
+
+				//markings
+				let marks = [
+					{
+						latitude: eligiblepartner.latitude,
+						longitude: eligiblepartner.longitude,
+					},
+				];
+
+				for (let final of sortedCoordinates) {
+					marks.push({ latitude: final.latitude, longitude: final.longitude });
+				}
+
+				marks.push({
+					latitude: user.address.coordinates.latitude,
+					longitude: user.address.coordinates.longitude,
+				});
+
+				const newDeliveries = new Delivery({
+					title: user?.fullname,
+					amount: total,
+					orderId: oid,
+					pickupaddress: sortedCoordinates[0].address,
+					partner: driver?._id,
+					droppingaddress: user?.address,
+					phonenumber: user.phone,
+					mode: order.paymentMode ? order?.paymentMode : "Cash",
+					marks: marks,
+					earning: earning,
+					where: "customer",
+				});
+				await newDeliveries.save();
+
+				//pushing delivery for driver
+				await Deluser.updateOne(
+					{ _id: driver._id },
+					{ $push: { deliveries: newDeliveries._id } }
+				);
+
+				const msg = {
+					notification: {
+						title: "A new delivery has arrived.",
+						body: `From ${user?.fullname} OrderId #${oid}`,
+					},
+					data: {},
+					tokens: [
+						driver?.notificationtoken,
+						// user?.notificationtoken,
+						// store?.notificationtoken, //person who selles this item
+					],
+				};
+
+				await admin
+					.messaging()
+					.sendEachForMulticast(msg)
+					.then((response) => {
+						console.log("Successfully sent message");
+					})
+					.catch((error) => {
+						console.log("Error sending message:", error);
+					});
+				console.log("Booked Instant");
+			} else {
+				console.log("No drivers available at the moment!");
+			}
+		} else {
+			//all stores
+			let coordinates = [];
+			for (let storeid of storeids) {
+				const store = await User.findById(storeid);
+				coordinates.push({
+					latitude: store.storeAddress.coordinates.latitude,
+					longitude: store.storeAddress.coordinates.longitude,
+					address: store.storeAddress,
+					id: store._id,
+				});
+			}
+
+			//checking if any store is more than 40kms away from customer
+
+			let check;
+			for (let store of coordinates) {
+				check = geolib.isPointWithinRadius(
+					{
+						latitude: user?.address?.coordinates?.latitude,
+						longitude: user?.address?.coordinates?.longitude,
+					},
+					{
+						latitude: store?.latitude,
+						longitude: store?.longitude,
+					},
+					40000
+				);
+			}
+
+			if (!check) {
+				//stores are away then first all items will go to affiliate
+
+				//assign all the deliveries to all the partners
+				let partners = [];
+
+				const deliverypartners = await Deluser.find({
+					accounttype: "partner",
+					primaryloc: user.address.city,
+				});
+				for (let deliverypartner of deliverypartners) {
+					if (
+						deliverypartner &&
+						deliverypartner.accstatus !== "banned" &&
+						deliverypartner.accstatus !== "review" &&
+						deliverypartner.deliveries?.length < 21 &&
+						deliverypartner.totalbalance < 3000
+					) {
+						let driverloc = {
+							latitude: deliverypartner.currentlocation?.latitude,
+							longitude: deliverypartner.currentlocation?.longitude,
+							id: deliverypartner?._id,
+						};
+						partners.push(driverloc);
+					}
+				}
+
+				//finding an affiliate store near customer loc
+
+				let storecoordinates = [];
+
+				const affiliatestore = await Deluser.find({
+					accounttype: "affiliate",
+					primaryloc: user.address.city,
+				});
+
+				for (let store of affiliatestore) {
+					storecoordinates.push({
+						latitude: store.address.coordinates.latitude,
+						longitude: store.address.coordinates.longitude,
+						address: store.address,
+						id: store._id,
+					});
+				}
+
+				const neareststore = geolib.findNearest(
+					{
+						latitude: user?.address?.coordinates?.latitude,
+						longitude: user?.address?.coordinates?.longitude,
+					},
+					storecoordinates
+				);
+
+				for (let storeid of storeids) {
+					const seller = await User.findById(storeid);
+
+					//finding delivery partner near seller
+					let eligiblepartner = geolib.findNearest(
+						{
+							latitude: seller.address.coordinates.latitude,
+							longitude: seller.address.coordinates.longitude,
+						},
+						partners
+					);
+
+					const driver = await Deluser?.findById(eligiblepartner?.id);
+
+					//sorted locations
+					const marks = [
+						{
+							latitude: eligiblepartner.latitude,
+							longitude: eligiblepartner.longitude,
+						},
+						{
+							latitude: seller.storeAddress.coordinates.latitude,
+							longitude: seller.storeAddress.coordinates.longitude,
+						},
+						{
+							latitude: neareststore.address.coordinates.latitude,
+							longitude: neareststore.address.coordinates.longitude,
+						},
+					];
+
+					const finalcoordinates = [
+						{
+							latitude: eligiblepartner.latitude,
+							longitude: eligiblepartner.longitude,
+						},
+						{
+							latitude: seller.storeAddress.coordinates.latitude,
+							longitude: seller.storeAddress.coordinates.longitude,
+						},
+						{
+							latitude: neareststore.address.coordinates.latitude,
+							longitude: neareststore.address.coordinates.longitude,
+						},
+					];
+
+					//total distance travelled
+					const totalDistance = calculateTotalDistance(finalcoordinates);
+					//earning of driver
+					const earning = totalDistance * usualamount;
+
+					const newDeliveries = new Delivery({
+						title: user?.fullname,
+						//amount: total,
+						orderId: oid,
+						pickupaddress: seller.address,
+						partner: driver?._id,
+						droppingaddress: neareststore.address,
+						phonenumber: user.phone,
+						//  mode: order.paymentMode ? order?.paymentMode : "Cash",
+						marks: marks,
+						earning: earning,
+						where: "affiliate",
+					});
+					await newDeliveries.save();
+
+					//pushing delivery for driver
+					await Deluser.updateOne(
+						{ _id: driver._id },
+						{ $push: { deliveries: newDeliveries._id } }
+					);
+
+					const msg = {
+						notification: {
+							title: "A new delivery has arrived.",
+							body: `From ${user?.fullname} OrderId #${oid}`,
+						},
+						data: {},
+						tokens: [
+							driver?.notificationtoken,
+							// user?.notificationtoken,
+							// store?.notificationtoken, //person who selles this item
+						],
+					};
+
+					await admin
+						.messaging()
+						.sendEachForMulticast(msg)
+						.then((response) => {
+							console.log("Successfully sent message");
+						})
+						.catch((error) => {
+							console.log("Error sending message:", error);
+						});
+					console.log("Booked affiliate");
+				}
+			} else {
+				//stores are near then usually deliver all items
+
+				//sorting locations
+				const sortedCoordinates = geolib.orderByDistance(
+					{
+						latitude: user.address.coordinates.latitude,
+						longitude: user.address.coordinates.longitude,
+					},
+					coordinates
+				);
+
+				//finding the nearest driver from the last location
+				let partners = [];
+
+				const deliverypartners = await Deluser.find({
+					accounttype: "partner",
+					primaryloc: user.address.city,
+				});
+				for (let deliverypartner of deliverypartners) {
+					if (
+						deliverypartner &&
+						deliverypartner.accstatus !== "banned" &&
+						deliverypartner.accstatus !== "review" &&
+						deliverypartner.deliveries?.length < 21 &&
+						deliverypartner.totalbalance < 3000
+					) {
+						let driverloc = {
+							latitude: deliverypartner.currentlocation?.latitude,
+							longitude: deliverypartner.currentlocation?.longitude,
+							id: deliverypartner?._id,
+						};
+						partners.push(driverloc);
+					}
+				}
+				let eligiblepartner = geolib.findNearest(
+					sortedCoordinates[sortedCoordinates.length - 1],
+					partners
+				);
+
+				if (eligiblepartner) {
+					//markings
+					let marks = [
+						{
+							latitude: eligiblepartner.latitude,
+							longitude: eligiblepartner.longitude,
+						},
+					];
+
+					for (let final of sortedCoordinates) {
+						marks.push({
+							latitude: final.latitude,
+							longitude: final.longitude,
+						});
+					}
+
+					marks.push({
+						latitude: user.address.coordinates.latitude,
+						longitude: user.address.coordinates.longitude,
+					});
+
+					const driver = await Deluser?.findById(eligiblepartner?.id);
+
+					const finalcoordinates = [
+						{
+							latitude: user.address.coordinates.latitude,
+							longitude: user.address.coordinates.longitude,
+						},
+						...sortedCoordinates.map((coord) => ({
+							latitude: coord.latitude,
+							longitude: coord.longitude,
+						})),
+						{
+							latitude: eligiblepartner.latitude,
+							longitude: eligiblepartner.longitude,
+						},
+					];
+					//total distance travelled
+					const totalDistance = calculateTotalDistance(finalcoordinates);
+					//earning of driver
+					const earning = totalDistance * usualamount;
+
+					const newDeliveries = new Delivery({
+						title: user?.fullname,
+						amount: total,
+						orderId: oid,
+						pickupaddress: sortedCoordinates[0].address,
+						partner: driver?._id,
+						droppingaddress: user?.address,
+						phonenumber: user.phone,
+						mode: order.paymentMode ? order?.paymentMode : "Cash",
+						marks: marks,
+						earning: earning,
+						where: "customer",
+					});
+					await newDeliveries.save();
+
+					//pushing delivery for driver
+					await Deluser.updateOne(
+						{ _id: driver._id },
+						{ $push: { deliveries: newDeliveries._id } }
+					);
+
+					const msg = {
+						notification: {
+							title: "A new delivery has arrived.",
+							body: `From ${user?.fullname} OrderId #${oid}`,
+						},
+						data: {},
+						tokens: [
+							driver?.notificationtoken,
+							// user?.notificationtoken,
+							// store?.notificationtoken, //person who selles this item
+						],
+					};
+
+					await admin
+						.messaging()
+						.sendEachForMulticast(msg)
+						.then((response) => {
+							console.log("Successfully sent message");
+						})
+						.catch((error) => {
+							console.log("Error sending message:", error);
+						});
+					console.log("Booked Usual");
+				} else {
+					console.log("Delivery Partner not available for usual");
+				}
+			}
+		}
+	} catch (e) {
+		console.log(e, "Cannot assign delivery");
+	}
+};
+
+exports.cod = async (req, res) => {
+	try {
+		const { userId } = req.params;
+		const { quantity, deliverycharges, productId, total } = req.body;
+		const orderno = await Order.countDocuments();
+		const user = await User.findById(userId).populate(
+			"cart",
+			"quantity product"
+		);
+		const products = await Product.find({ _id: { $in: productId } })
+			.populate("creator", "storeAddress")
+			.populate("collectionss", "category");
+
+		let fast = [];
+		let slow = [];
+
+		//generating mesId
+		function msgid() {
+			return Math.floor(100000 + Math.random() * 900000);
+		}
+
+		if (user && products.length > 0) {
+			for (let product of products) {
+				//seperating food and grocery
+
+				if (
+					product.collectionss &&
+					product.collectionss.category === "Food and Grocery"
+				) {
+					fast.push(product._id);
+				} else {
+					slow.push(product._id);
+				}
+			}
+
+			let finalmaindata = [];
+
+			//processing orders seprately
+
+			//for F&G
+			if (fast.length > 0) {
+				let sellers = [];
+				let maindata = [];
+				let qty = [];
+				let prices = [];
+				let oi = Math.floor(Math.random() * 9000000) + 1000000;
+
+				//checking for products in fast
+				let matchedObjects = [];
+				user.cart.forEach((obj1) => {
+					let matchingObj = fast.find(
+						(obj2) => obj2.toString() === obj1.product.toString()
+					);
+
+					if (matchingObj) {
+						matchedObjects.push(obj1);
+					}
+				});
+
+				for (let i = 0; i < matchedObjects.length; i++) {
+					const product = await Product.findById(
+						matchedObjects[i].product
+					).populate("creator", "storeAddress");
+					prices.push(product?.discountedprice);
+					sellers.push(product?.creator?._id);
+					qty.push(matchedObjects[i].quantity);
+					maindata.push({
+						product: product._id,
+						seller: product?.creator?._id,
+						price: product?.discountedprice,
+						qty: matchedObjects[i].quantity,
+					});
+
+					finalmaindata.push({
+						product: product._id,
+						seller: product?.creator?._id,
+						price: product?.discountedprice,
+						qty: matchedObjects[i].quantity,
+					});
+				}
+
+				let finalqty = sumArray(qty);
+				let finalamount = sumArray(prices);
+
+				//a new order is created
+				const order = new Order({
+					buyerId: user._id,
+					productId: fast,
+					quantity: finalqty,
+					total: finalamount,
+					orderId: oi,
+					paymentMode: "Cash",
+					currentStatus: "success",
+					deliverycharges: deliverycharges,
+					timing: "Arriving Soon!",
+					orderno: orderno + 1,
+					data: maindata,
+					sellerId: sellers,
+				});
+				await order.save();
+
+				//upating order in customers purchase history
+				await User.updateOne(
+					{ _id: user._id },
+					{ $push: { puchase_history: order._id } }
+				);
+
+				//sending notfication to sellers
+				for (let i = 0; i < maindata.length; i++) {
+					const sellerorder = new SellerOrder({
+						buyerId: user._id,
+						productId: maindata[i].product,
+						quantity: maindata[i].qty,
+						total: maindata[i].price,
+						orderId: oi,
+						paymentMode: "Cash",
+						currentStatus: "processing",
+						deliverycharges: deliverycharges,
+						timing: "Delivery Soon!",
+						sellerId: maindata[i].seller,
+						orderno: parseInt((await Order.countDocuments()) + 1),
+					});
+					await sellerorder.save();
+
+					//commission taken by company until membership is purchased by the creator (10%)
+					const product = await Product.findById(maindata[i].product).populate(
+						"creator",
+						"storeAddress ismembershipactive memberships"
+					);
+
+					let deduction = 0; //10% amount earned by company and substracted from creator as fees
+
+					if (
+						product.creator?.ismembershipactive === false ||
+						product.creator?.memberships?.membership?.toString() ===
+						"65671e5204b7d0d07ef0e796"
+					) {
+						deduction = product.discountedprice * 0.1;
+					}
+
+					//earning distribution
+					let today = new Date();
+
+					let year = today.getFullYear();
+					let month = String(today.getMonth() + 1).padStart(2, "0");
+					let day = String(today.getDate()).padStart(2, "0");
+
+					let formattedDate = `${day}/${month}/${year}`;
+
+					if (deduction > 0) {
+						//admin earning
+						let earned = {
+							how: "Sales Commission",
+							amount: deduction,
+							when: Date.now(),
+							id: order._id,
+						};
+
+						await Admin.updateOne(
+							{ date: formattedDate },
+							{
+								$inc: { todayearning: deduction },
+								$push: { earningtype: earned },
+							}
+						);
+					}
+
+					//creator earning
+					let storeearning = product.discountedprice - deduction;
+
+					let earning = { how: "product", when: Date.now() };
+					await User.updateOne(
+						{ _id: product?.creator?._id },
+						{
+							$addToSet: { customers: user._id, earningtype: earning },
+							$inc: { storeearning: storeearning },
+						}
+					);
+					await Product.updateOne(
+						{ _id: product._id },
+						{ $inc: { itemsold: 1 } }
+					);
+				}
+
+				//sending notification to each store creator that a new order has arrived
+				const workspace = await User.findById("65f5539d09dbe77dea51400d");
+				for (const sell of sellers) {
+					const seller = await User.findById(sell);
+					const convs = await Conversation.findOne({
+						members: { $all: [seller?._id, workspace._id] },
+					});
+					const senderpic = process.env.URL + workspace.profilepic;
+					const recpic = process.env.URL + seller.profilepic;
+					const timestamp = `${new Date()}`;
+					const mesId = msgid();
+
+					if (convs) {
+						let data = {
+							conversationId: convs._id,
+							sender: workspace._id,
+							text: `A new order with orderId ${oi} has arrived.`,
+							mesId: mesId,
+						};
+						const m = new Message(data);
+						await m.save();
+
+						if (seller?.notificationtoken) {
+							const msg = {
+								notification: {
+									title: `Workspace`,
+									body: `A new order with orderId ${oi} has arrived.`,
+								},
+								data: {
+									screen: "Conversation",
+									sender_fullname: `${workspace?.fullname}`,
+									sender_id: `${workspace?._id}`,
+									text: `A new order with orderId ${oi} has arrived.`,
+									convId: `${convs?._id}`,
+									createdAt: `${timestamp}`,
+									mesId: `${mesId}`,
+									typ: `message`,
+									senderuname: `${workspace?.username}`,
+									senderverification: `${workspace.isverified}`,
+									senderpic: `${senderpic}`,
+									reciever_fullname: `${seller.fullname}`,
+									reciever_username: `${seller.username}`,
+									reciever_isverified: `${seller.isverified}`,
+									reciever_pic: `${recpic}`,
+									reciever_id: `${seller._id}`,
+								},
+								token: seller?.notificationtoken,
+							};
+
+							await admin
+								.messaging()
+								.send(msg)
+								.then((response) => {
+									console.log("Successfully sent message");
+								})
+								.catch((error) => {
+									console.log("Error sending message:", error);
+								});
+						}
+					} else {
+						const conv = new Conversation({
+							members: [workspace._id, seller._id],
+						});
+						const savedconv = await conv.save();
+						let data = {
+							conversationId: conv._id,
+							sender: workspace._id,
+							text: `A new order with orderId ${oi} has arrived.`,
+							mesId: mesId,
+						};
+						await User.updateOne(
+							{ _id: workspace._id },
+							{
+								$addToSet: {
+									conversations: savedconv?._id,
+								},
+							}
+						);
+						await User.updateOne(
+							{ _id: seller._id },
+							{
+								$addToSet: {
+									conversations: savedconv?._id,
+								},
+							}
+						);
+
+						const m = new Message(data);
+						await m.save();
+
+						const msg = {
+							notification: {
+								title: `Workspace`,
+								body: `A new order with orderId ${oi} has arrived.`,
+							},
+							data: {
+								screen: "Conversation",
+								sender_fullname: `${seller?.fullname}`,
+								sender_id: `${seller?._id}`,
+								text: `A new order with orderId ${oi} has arrived.`,
+								convId: `${convs?._id}`,
+								createdAt: `${timestamp}`,
+								mesId: `${mesId}`,
+								typ: `message`,
+								senderuname: `${seller?.username}`,
+								senderverification: `${seller.isverified}`,
+								senderpic: `${recpic}`,
+								reciever_fullname: `${workspace.fullname}`,
+								reciever_username: `${workspace.username}`,
+								reciever_isverified: `${workspace.isverified}`,
+								reciever_pic: `${senderpic}`,
+								reciever_id: `${workspace._id}`,
+							},
+							token: seller?.notificationtoken,
+						};
+
+						await admin
+							.messaging()
+							.send(msg)
+							.then((response) => {
+								console.log("Successfully sent message");
+							})
+							.catch((error) => {
+								console.log("Error sending message:", error);
+							});
+					}
+				}
+
+				//sending notification to admin
+				let flashid = "655e189fb919c70bf6895485";
+				const flash = await User.findById(flashid);
+				const mainuser = await User.findById("65314cd99db37d9109914f3f");
+				const timestamp = `${new Date()}`;
+
+				const senderpic = process.env.URL + flash.profilepic;
+				const recpic = process.env.URL + mainuser.profilepic;
+
+				const mesId = msgid();
+				const convs = await Conversation.findOne({
+					members: { $all: [mainuser?._id, flash._id] },
+				});
+
+				let data = {
+					conversationId: convs._id,
+					sender: flash._id,
+					text: `A new order with orderId ${oi} has arrived.`,
+					mesId: mesId,
+				};
+				const m = new Message(data);
+				await m.save();
+				if (mainuser?.notificationtoken) {
+					const msg = {
+						notification: {
+							title: `Grovyo Flash`,
+							body: `A new order with orderId ${oi} has arrived.`,
+						},
+						data: {
+							screen: "Conversation",
+							sender_fullname: `${mainuser?.fullname}`,
+							sender_id: `${mainuser?._id}`,
+							text: `A new order with orderId ${oi} has arrived.`,
+							convId: `${convs?._id}`,
+							createdAt: `${timestamp}`,
+							mesId: `${mesId}`,
+							typ: `message`,
+							senderuname: `${mainuser?.username}`,
+							senderverification: `${mainuser.isverified}`,
+							senderpic: `${recpic}`,
+							reciever_fullname: `${flash.fullname}`,
+							reciever_username: `${flash.username}`,
+							reciever_isverified: `${flash.isverified}`,
+							reciever_pic: `${senderpic}`,
+							reciever_id: `${flash._id}`,
+						},
+						token: mainuser?.notificationtoken,
+					};
+
+					await admin
+						.messaging()
+						.send(msg)
+						.then((response) => {
+							console.log("Successfully sent message");
+						})
+						.catch((error) => {
+							console.log("Error sending message:", error);
+						});
+				}
+
+				//creating delivery
+				credeli({
+					oid: order.orderId,
+					id: user._id,
+					storeids: sellers,
+					total: order.total,
+					instant: true,
+				});
+			}
+
+			//for Usual
+			if (slow.length > 0) {
+				let sellers = [];
+				let maindata = [];
+				let qty = [];
+				let prices = [];
+				let oi = Math.floor(Math.random() * 9000000) + 1000000;
+
+				//checking for products in fast
+				let matchedObjects = [];
+				user.cart.forEach((obj1) => {
+					let matchingObj = slow.find(
+						(obj2) => obj2.toString() === obj1.product.toString()
+					);
+
+					if (matchingObj) {
+						matchedObjects.push(obj1);
+					}
+				});
+
+				for (let i = 0; i < matchedObjects.length; i++) {
+					const product = await Product.findById(
+						matchedObjects[i].product
+					).populate("creator", "storeAddress");
+					prices.push(product?.discountedprice);
+					sellers.push(product?.creator?._id);
+					qty.push(matchedObjects[i].quantity);
+					maindata.push({
+						product: product._id,
+						seller: product?.creator?._id,
+						price: product?.discountedprice,
+						qty: matchedObjects[i].quantity,
+					});
+
+					finalmaindata.push({
+						product: product._id,
+						seller: product?.creator?._id,
+						price: product?.discountedprice,
+						qty: matchedObjects[i].quantity,
+					});
+				}
+
+				let finalqty = sumArray(qty);
+
+				let finalamount = sumArray(prices);
+
+				//a new order is created
+				const order = new Order({
+					buyerId: user._id,
+					productId: slow,
+					quantity: finalqty,
+					total: finalamount,
+					orderId: oi,
+					paymentMode: "Cash",
+					currentStatus: "success",
+					deliverycharges: deliverycharges,
+					timing: "Tommorow, by 7:00 pm",
+					orderno: orderno + 1,
+					data: maindata,
+					sellerId: sellers,
+				});
+				await order.save();
+
+				//upating order in customers purchase history
+				await User.updateOne(
+					{ _id: user._id },
+					{ $push: { puchase_history: order._id } }
+				);
+
+				//sending notfication to sellers
+				for (let i = 0; i < maindata.length; i++) {
+					const sellerorder = new SellerOrder({
+						buyerId: user._id,
+						productId: maindata[i].product,
+						quantity: maindata[i].qty,
+						total: maindata[i].price,
+						orderId: oi,
+						paymentMode: "Cash",
+						currentStatus: "processing",
+						deliverycharges: deliverycharges,
+						timing: "Delivery Soon!",
+						sellerId: maindata[i].seller,
+						orderno: parseInt((await Order.countDocuments()) + 1),
+					});
+					await sellerorder.save();
+
+					//commission taken by company until membership is purchased by the creator (10%)
+					const product = await Product.findById(maindata[i].product).populate(
+						"creator",
+						"storeAddress ismembershipactive memberships"
+					);
+
+					let deduction = 0; //10% amount earned by company and substracted from creator as fees
+
+					if (
+						product.creator?.ismembershipactive === false ||
+						product.creator?.memberships?.membership?.toString() ===
+						"65671e5204b7d0d07ef0e796"
+					) {
+						deduction = product.discountedprice * 0.1;
+					}
+
+					//earning distribution
+					let today = new Date();
+
+					let year = today.getFullYear();
+					let month = String(today.getMonth() + 1).padStart(2, "0");
+					let day = String(today.getDate()).padStart(2, "0");
+
+					let formattedDate = `${day}/${month}/${year}`;
+
+					if (deduction > 0) {
+						//admin earning
+						let earned = {
+							how: "Sales Commission",
+							amount: deduction,
+							when: Date.now(),
+							id: order._id,
+						};
+
+						await Admin.updateOne(
+							{ date: formattedDate },
+							{
+								$inc: { todayearning: deduction },
+								$push: { earningtype: earned },
+							}
+						);
+					}
+
+					//creator earning
+					let storeearning = product.discountedprice - deduction;
+
+					let earning = { how: "product", when: Date.now() };
+					await User.updateOne(
+						{ _id: product?.creator?._id },
+						{
+							$addToSet: { customers: user._id, earningtype: earning },
+							$inc: { storeearning: storeearning },
+						}
+					);
+					await Product.updateOne(
+						{ _id: product._id },
+						{ $inc: { itemsold: 1 } }
+					);
+				}
+
+				//sending notification to each store creator that a new order has arrived
+				const workspace = await User.findById("65f5539d09dbe77dea51400d");
+				for (const sell of sellers) {
+					const seller = await User.findById(sell);
+					const convs = await Conversation.findOne({
+						members: { $all: [seller?._id, workspace._id] },
+					});
+					const senderpic = process.env.URL + workspace.profilepic;
+					const recpic = process.env.URL + seller.profilepic;
+					const timestamp = `${new Date()}`;
+					const mesId = msgid();
+
+					if (convs) {
+						let data = {
+							conversationId: convs._id,
+							sender: workspace._id,
+							text: `A new order with orderId ${oi} has arrived.`,
+							mesId: mesId,
+						};
+						const m = new Message(data);
+						await m.save();
+
+						if (seller?.notificationtoken) {
+							const msg = {
+								notification: {
+									title: `Workspace`,
+									body: `A new order with orderId ${oi} has arrived.`,
+								},
+								data: {
+									screen: "Conversation",
+									sender_fullname: `${workspace?.fullname}`,
+									sender_id: `${workspace?._id}`,
+									text: `A new order with orderId ${oi} has arrived.`,
+									convId: `${convs?._id}`,
+									createdAt: `${timestamp}`,
+									mesId: `${mesId}`,
+									typ: `message`,
+									senderuname: `${workspace?.username}`,
+									senderverification: `${workspace.isverified}`,
+									senderpic: `${senderpic}`,
+									reciever_fullname: `${seller.fullname}`,
+									reciever_username: `${seller.username}`,
+									reciever_isverified: `${seller.isverified}`,
+									reciever_pic: `${recpic}`,
+									reciever_id: `${seller._id}`,
+								},
+								token: seller?.notificationtoken,
+							};
+
+							await admin
+								.messaging()
+								.send(msg)
+								.then((response) => {
+									console.log("Successfully sent message");
+								})
+								.catch((error) => {
+									console.log("Error sending message:", error);
+								});
+						}
+					} else {
+						const conv = new Conversation({
+							members: [workspace._id, seller._id],
+						});
+						const savedconv = await conv.save();
+						let data = {
+							conversationId: conv._id,
+							sender: workspace._id,
+							text: `A new order with orderId ${oi} has arrived.`,
+							mesId: mesId,
+						};
+						await User.updateOne(
+							{ _id: workspace._id },
+							{
+								$addToSet: {
+									conversations: savedconv?._id,
+								},
+							}
+						);
+						await User.updateOne(
+							{ _id: seller._id },
+							{
+								$addToSet: {
+									conversations: savedconv?._id,
+								},
+							}
+						);
+
+						const m = new Message(data);
+						await m.save();
+
+						const msg = {
+							notification: {
+								title: `Workspace`,
+								body: `A new order with orderId ${oi} has arrived.`,
+							},
+							data: {
+								screen: "Conversation",
+								sender_fullname: `${seller?.fullname}`,
+								sender_id: `${seller?._id}`,
+								text: `A new order with orderId ${oi} has arrived.`,
+								convId: `${convs?._id}`,
+								createdAt: `${timestamp}`,
+								mesId: `${mesId}`,
+								typ: `message`,
+								senderuname: `${seller?.username}`,
+								senderverification: `${seller.isverified}`,
+								senderpic: `${recpic}`,
+								reciever_fullname: `${workspace.fullname}`,
+								reciever_username: `${workspace.username}`,
+								reciever_isverified: `${workspace.isverified}`,
+								reciever_pic: `${senderpic}`,
+								reciever_id: `${workspace._id}`,
+							},
+							token: seller?.notificationtoken,
+						};
+
+						await admin
+							.messaging()
+							.send(msg)
+							.then((response) => {
+								console.log("Successfully sent message");
+							})
+							.catch((error) => {
+								console.log("Error sending message:", error);
+							});
+					}
+				}
+
+				//sending notification to admin
+				let flashid = "655e189fb919c70bf6895485";
+				const flash = await User.findById(flashid);
+				const mainuser = await User.findById("65314cd99db37d9109914f3f");
+				const timestamp = `${new Date()}`;
+
+				const senderpic = process.env.URL + flash.profilepic;
+				const recpic = process.env.URL + mainuser.profilepic;
+
+				const mesId = msgid();
+				const convs = await Conversation.findOne({
+					members: { $all: [mainuser?._id, flash._id] },
+				});
+
+				let data = {
+					conversationId: convs._id,
+					sender: flash._id,
+					text: `A new order with orderId ${oi} has arrived.`,
+					mesId: mesId,
+				};
+				const m = new Message(data);
+				await m.save();
+				if (mainuser?.notificationtoken) {
+					const msg = {
+						notification: {
+							title: `Grovyo Flash`,
+							body: `A new order with orderId ${oi} has arrived.`,
+						},
+						data: {
+							screen: "Conversation",
+							sender_fullname: `${mainuser?.fullname}`,
+							sender_id: `${mainuser?._id}`,
+							text: `A new order with orderId ${oi} has arrived.`,
+							convId: `${convs?._id}`,
+							createdAt: `${timestamp}`,
+							mesId: `${mesId}`,
+							typ: `message`,
+							senderuname: `${mainuser?.username}`,
+							senderverification: `${mainuser.isverified}`,
+							senderpic: `${recpic}`,
+							reciever_fullname: `${flash.fullname}`,
+							reciever_username: `${flash.username}`,
+							reciever_isverified: `${flash.isverified}`,
+							reciever_pic: `${senderpic}`,
+							reciever_id: `${flash._id}`,
+						},
+						token: mainuser?.notificationtoken,
+					};
+
+					await admin
+						.messaging()
+						.send(msg)
+						.then((response) => {
+							console.log("Successfully sent message");
+						})
+						.catch((error) => {
+							console.log("Error sending message:", error);
+						});
+				}
+				credeli({
+					oid: order.orderId,
+					id: user._id,
+					storeids: sellers,
+					total: order.total,
+					instant: false,
+				});
+			}
+
+			await User.updateOne(
+				{ _id: user._id },
+				{ $unset: { cart: [], cartproducts: [] } }
+			);
+
+			res.status(200).json({ success: true });
+		} else {
+			res
+				.status(404)
+				.json({ message: "User or Product not found!", success: false });
 		}
 	} catch (e) {
 		console.log(e);

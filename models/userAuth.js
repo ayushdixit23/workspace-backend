@@ -293,7 +293,8 @@ const userSchema = new mongoose.Schema(
     ],
     foodLicense: { type: String },
     ismembershipactive: { type: Boolean, default: false },
-
+    dm: { type: Number, default: 0 },
+    tagging: { type: Number, default: 0 },
     memberships: {
       membership: { type: ObjectId, ref: "membership" },
       status: { type: Boolean, default: true },
