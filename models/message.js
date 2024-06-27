@@ -17,6 +17,7 @@ const messageSchema = new mongoose.Schema(
       type: ObjectId,
       ref: "Topic",
     },
+    readby: [{ type: ObjectId, ref: "User" }],
     hidden: [{ type: ObjectId, ref: "User" }],
     mesId: { type: Number, required: true, unique: true },
     dissapear: { type: Boolean, default: false },

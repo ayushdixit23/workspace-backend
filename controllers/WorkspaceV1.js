@@ -11,6 +11,7 @@ const uuid = require("uuid").v4;
 const Post = require("../models/post");
 require("dotenv").config();
 const Collection = require("../models/Collectionss");
+const sha256 = require("sha256")
 const Font = require("../models/Font");
 const Buttonss = require("../models/buttonScema");
 const Product = require("../models/product");
@@ -73,6 +74,7 @@ const Request = require("../models/Request");
 const Analytics = require("../models/Analytics");
 const Approvals = require("../models/Approvals");
 const Advertiser = require("../models/Advertiser");
+const { default: axios } = require("axios");
 
 const instance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -2652,10 +2654,257 @@ exports.deletecom = async (req, res) => {
   }
 };
 
+// razorpay
+
+// exports.membershipbuy = async (req, res) => {
+//   try {
+//     const { amount } = req.body;
+//     console.log(amount);
+//     const { id, memid } = req.params;
+//     const user = await User.findById(id);
+
+//     if (user.ismembershipactive) {
+//       const membership = await Membership.findById(user.memberships.membership);
+//       if (membership.title !== "Free") {
+//         const currentTime = new Date();
+//         const endingTime = new Date(user.memberships.ending);
+
+//         if (endingTime > currentTime) {
+//           return res.status(203).json({
+//             success: false,
+//             message: "You already have an active membership.",
+//           });
+//         }
+//       }
+//     }
+//     const membership = await Membership.findById(memid);
+//     const newamount = amount.split("₹")[1];
+//     const parseAmout = Number(newamount);
+
+//     if (!user) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "User Not Found" });
+//     }
+//     let oi = Math.floor(Math.random() * 9000000) + 1000000;
+//     const subs = new Subscriptions({
+//       memid,
+//       validity: Date.now(),
+//       paymentMode: "UPI",
+//       orderId: oi,
+//       purchasedby: id,
+//       amount: parseAmout,
+//     });
+//     await subs.save();
+//     // / creatign a rzp order
+
+//     instance.orders.create(
+//       {
+//         amount: parseAmout * 100,
+//         currency: "INR",
+//         receipt: `receipt-mem#${oi}`,
+//         notes: {
+//           oi,
+//           id,
+//           memid,
+//           amount: parseAmout,
+//         },
+//       },
+//       function (err, order) {
+//         console.log(err, order);
+//         if (err) {
+//           res.status(400).json({ err, success: false });
+//         } else {
+//           res.status(200).json({
+//             oid: order.id,
+//             order: oi,
+//             memid: memid,
+//             orderCreated: order,
+//             phone: user?.phone,
+//             email: user?.email,
+//             success: true,
+//           });
+//         }
+//       }
+//     );
+//   } catch (error) {
+
+//     res.status(500).json({ message: error.message, success: false });
+//   }
+// };
+
+
+// exports.memfinalize = async (req, res) => {
+//   try {
+//     const { id, orderId } = req.params;
+//     const {
+//       razorpay_order_id,
+//       razorpay_payment_id,
+//       razorpay_signature,
+//       status,
+//       paymentMethod,
+//       memid,
+//       dm,
+//       tagging,
+//       deliverylimitcity,
+//       deliverylimitcountry,
+//       period,
+//     } = req.body;
+//     const user = await User.findById(id);
+//     const subscription = await Subscriptions.findOne({ orderId: orderId });
+//     const isValid = validatePaymentVerification(
+//       { order_id: razorpay_order_id, payment_id: razorpay_payment_id },
+//       razorpay_signature,
+//       "bxyQhbzS0bHNBnalbBg9QTDo"
+//     );
+//     if (!subscription) {
+//       return res.status(400).json({ success: false });
+//     }
+//     if (isValid) {
+//       if (status) {
+//         subscription.currentStatus = "completed";
+//       }
+//     } else {
+//       if (status == false) {
+//         subscription.currentStatus = "failed";
+//       }
+//     }
+//     const currentDate = new Date();
+//     let endDate;
+//     if (period == "year") {
+//       endDate = new Date(currentDate.getTime() + 13 * 30.4375 * 24 * 60 * 60 * 1000);
+//     } else {
+//       endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+//     }
+
+//     subscription.paymentMode = "Card";
+//     const newSub = await subscription.save();
+//     user.activeSubscription.push(newSub._id);
+//     user.ismembershipactive = true;
+//     user.tagging = tagging
+//     user.dm = dm
+//     user.memberships = {
+//       membership: memid,
+//       status: true,
+//       ending: endDate,
+//       paymentdetails: { mode: "online", amount: subscription.amount },
+//     };
+
+//     const membershiphist = {
+//       id: memid,
+//       date: Date.now()
+//     };
+
+//     // Ensure membershipHistory array exists
+//     if (!Array.isArray(user.membershipHistory)) {
+//       user.membershipHistory = [];
+//     }
+//     // Add the new membership history entry
+//     user.membershipHistory.push(membershiphist);
+
+//     user.deliveryforcity = deliverylimitcity;
+//     user.deliveryforcountry = deliverylimitcountry;
+//     const membership = await Membership.findById(memid);
+//     user.isverified = true;
+//     const saveduser = await user.save();
+
+//     const dp = process.env.URL + saveduser.profilepic;
+
+//     if (saveduser.membershipHistory.length === 1) {
+//       const advertiser = await Advertiser.findById(saveduser.advertiserid)
+//       if (advertiser) {
+//         const newid = Date.now();
+//         advertiser.currentbalance = advertiser.currentbalance + 500
+//         const savedOldAdvertiser = await advertiser.save()
+//         const transactions = new Transaction({
+//           transactionid: newid,
+//           amount: 500,
+//           type: "Credits",
+//           status: "completed",
+//           advertiserid: savedOldAdvertiser._id,
+//         })
+//         const tId = await transactions.save()
+//         if (!Array.isArray(savedOldAdvertiser.transactions)) {
+//           savedOldAdvertiser.transactions = [];
+//         }
+//         savedOldAdvertiser.transactions.push(tId)
+//         await savedOldAdvertiser.save()
+
+//       } else {
+//         const firstname = saveduser.fullname.split(" ")[0];
+//         const lastname = saveduser.fullname.split(" ")[1];
+//         function generateUniqueID() {
+//           let advertiserID;
+//           advertiserID = Date.now();
+//           return advertiserID.toString();
+//         }
+
+//         const advertisernew = new Advertiser({
+//           firstname,
+//           lastname,
+//           image: saveduser.profilepic,
+//           password: await decryptaes(saveduser.passw),
+//           phone: saveduser.phone ? saveduser.phone : undefined,
+//           email: saveduser.email,
+//           address: saveduser.address.streetaddress,
+//           city: saveduser.address.city,
+//           currentbalance: 500,
+//           state: saveduser.address.state,
+//           pincode: saveduser.address.pincode,
+//           landmark: saveduser.address.landmark,
+//           userid: saveduser._id,
+//           advertiserid: generateUniqueID(),
+//         });
+//         const newid = Date.now();
+//         const savedAdvertiser = await advertisernew.save();
+
+//         const transactions = new Transaction({
+//           transactionid: newid,
+//           amount: 500,
+//           type: "Credits",
+//           status: "completed",
+//           advertiserid: savedAdvertiser._id,
+//         })
+
+//         const tId = await transactions.save()
+//         if (!Array.isArray(savedAdvertiser.transactions)) {
+//           savedAdvertiser.transactions = [];
+//         }
+//         savedAdvertiser.transactions.push(tId)
+//         await savedAdvertiser.save()
+
+//         await User.updateOne(
+//           { _id: saveduser._id },
+//           { $set: { advertiserid: savedAdvertiser._id } }
+//         );
+//       }
+//     }
+
+//     const data = {
+//       dp,
+//       fullname: saveduser.fullname,
+//       username: saveduser.username,
+//       id: saveduser._id.toString(),
+//       memberships: membership.title,
+//     };
+//     const access_token = generateAccessToken(data);
+//     const refresh_token = generateRefreshToken(data);
+//     res
+//       .status(200)
+//       .json({ success: true, refresh_token, access_token });
+//   } catch (error) {
+//     res.status(400).json({ success: false, message: "Something Went Wrong!" })
+//     console.log(error)
+//   }
+// };
+
+
+// phone pe
+
 exports.membershipbuy = async (req, res) => {
   try {
-    const { amount } = req.body;
-    console.log(amount);
+    const { amount, dm, tagging, deliverylimitcity, deliverylimitcountry, period } = req.body;
+
     const { id, memid } = req.params;
     const user = await User.findById(id);
 
@@ -2691,207 +2940,253 @@ exports.membershipbuy = async (req, res) => {
       purchasedby: id,
       amount: parseAmout,
     });
-    await subs.save();
+    const newsub = await subs.save();
     // / creatign a rzp order
 
-    instance.orders.create(
-      {
-        amount: parseAmout * 100,
-        currency: "INR",
-        receipt: `receipt-mem#${oi}`,
-        notes: {
-          oi,
-          id,
-          memid,
-          amount: parseAmout,
-        },
+    let payload = {
+      merchantId: process.env.WORKSPACE_MERCHANT_ID,
+      merchantTransactionId: newsub._id,
+      merchantUserId: user._id,
+      amount: parseAmout * 100,
+      redirectUrl: "https://workspace.grovyo.com/main/dashboard",
+      redirectMode: "REDIRECT",
+      callbackUrl: `https://work.grovyo.xyz/api/v1/memfinalize/${id}/${oi}/${memid}/${dm}/${tagging}/${deliverylimitcity}/${deliverylimitcountry}/${period}`,
+      paymentInstrument: {
+        type: "PAY_PAGE",
       },
-      function (err, order) {
-        console.log(err, order);
-        if (err) {
-          res.status(400).json({ err, success: false });
-        } else {
-          res.status(200).json({
-            oid: order.id,
-            order: oi,
-            memid: memid,
-            orderCreated: order,
-            phone: user?.phone,
-            email: user?.email,
-            success: true,
-          });
-        }
-      }
-    );
-  } catch (error) {
 
+    };
+
+    let bufferObj = Buffer.from(JSON.stringify(payload), "utf8");
+
+    let base64string = bufferObj.toString("base64");
+
+    let string = base64string + "/pg/v1/pay" + process.env.WORKSPACE_PHONE_PAY_KEY;
+    let shaString = sha256(string);
+
+    let checkSum = shaString + "###" + process.env.keyIndex;
+
+    await axios
+      .post(
+        "https://api.phonepe.com/apis/hermes/pg/v1/pay",
+
+        { request: base64string },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-VERIFY": checkSum,
+            accept: "application/json",
+          },
+        }
+      )
+      .then((response) => {
+
+        res.status(200).json({
+          success: true,
+          url: response.data.data.instrumentResponse.redirectInfo.url,
+        });
+      })
+      .catch((err) => {
+        console.log(err);
+        return res.status({ success: false, message: err.message });
+      });
+  } catch (error) {
+    console.log(error)
     res.status(500).json({ message: error.message, success: false });
   }
 };
 
 exports.memfinalize = async (req, res) => {
   try {
-    const { id, orderId } = req.params;
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      status,
-      paymentMethod,
-      memid,
+    const { id, orderId, memid,
       dm,
       tagging,
       deliverylimitcity,
       deliverylimitcountry,
-      period,
-    } = req.body;
+      period, } = req.params;
+    // const {
+    // } = req.body;
     const user = await User.findById(id);
     const subscription = await Subscriptions.findOne({ orderId: orderId });
-    const isValid = validatePaymentVerification(
-      { order_id: razorpay_order_id, payment_id: razorpay_payment_id },
-      razorpay_signature,
-      "bxyQhbzS0bHNBnalbBg9QTDo"
-    );
+
     if (!subscription) {
       return res.status(400).json({ success: false });
     }
-    if (isValid) {
-      if (status) {
-        subscription.currentStatus = "completed";
+
+    function generateChecksum(
+      merchantId,
+      merchantTransactionId,
+      saltKey,
+      saltIndex
+    ) {
+      const stringToHash =
+        `/pg/v1/status/${merchantId}/${merchantTransactionId}` + saltKey;
+      const shaHash = sha256(stringToHash).toString();
+      const checksum = shaHash + "###" + saltIndex;
+
+      return checksum;
+    }
+
+    const checksum = generateChecksum(
+      process.env.WORKSPACE_MERCHANT_ID,
+      subscription._id,
+      process.env.WORKSPACE_PHONE_PAY_KEY,
+      process.env.keyIndex
+    );
+
+    const response = await axios.get(
+      `https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.WORKSPACE_MERCHANT_ID}/${subscription._id}`,
+
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-VERIFY": checksum,
+          "X-MERCHANT-ID": process.env.WORKSPACE_MERCHANT_ID,
+        },
       }
-    } else {
-      if (status == false) {
-        subscription.currentStatus = "failed";
-      }
-    }
-    const currentDate = new Date();
-    let endDate;
-    if (period == "year") {
-      endDate = new Date(currentDate.getTime() + 13 * 30.4375 * 24 * 60 * 60 * 1000);
-    } else {
-      endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-    }
+    );
+    if (response.data.code === "PAYMENT_SUCCESS") {
+      console.log("Payment Successful");
 
-    subscription.paymentMode = "Card";
-    const newSub = await subscription.save();
-    user.activeSubscription.push(newSub._id);
-    user.ismembershipactive = true;
-    user.tagging = tagging
-    user.dm = dm
-    user.memberships = {
-      membership: memid,
-      status: true,
-      ending: endDate,
-      paymentdetails: { mode: "online", amount: subscription.amount },
-    };
+      subscription.currentStatus = "completed";
 
-    const membershiphist = {
-      id: memid,
-      date: Date.now()
-    };
-
-    // Ensure membershipHistory array exists
-    if (!Array.isArray(user.membershipHistory)) {
-      user.membershipHistory = [];
-    }
-    // Add the new membership history entry
-    user.membershipHistory.push(membershiphist);
-
-    user.deliveryforcity = deliverylimitcity;
-    user.deliveryforcountry = deliverylimitcountry;
-    const membership = await Membership.findById(memid);
-    user.isverified = true;
-    const saveduser = await user.save();
-
-    const dp = process.env.URL + saveduser.profilepic;
-
-    if (saveduser.membershipHistory.length === 1) {
-      const advertiser = await Advertiser.findById(saveduser.advertiserid)
-      if (advertiser) {
-        const newid = Date.now();
-        advertiser.currentbalance = advertiser.currentbalance + 500
-        const savedOldAdvertiser = await advertiser.save()
-        const transactions = new Transaction({
-          transactionid: newid,
-          amount: 500,
-          type: "Credits",
-          status: "completed",
-          advertiserid: savedOldAdvertiser._id,
-        })
-        const tId = await transactions.save()
-        if (!Array.isArray(savedOldAdvertiser.transactions)) {
-          savedOldAdvertiser.transactions = [];
-        }
-        savedOldAdvertiser.transactions.push(tId)
-        await savedOldAdvertiser.save()
-
+      const currentDate = new Date();
+      let endDate;
+      if (period == "year") {
+        endDate = new Date(currentDate.getTime() + 13 * 30.4375 * 24 * 60 * 60 * 1000);
       } else {
-        const firstname = saveduser.fullname.split(" ")[0];
-        const lastname = saveduser.fullname.split(" ")[1];
-        function generateUniqueID() {
-          let advertiserID;
-          advertiserID = Date.now();
-          return advertiserID.toString();
-        }
-
-        const advertisernew = new Advertiser({
-          firstname,
-          lastname,
-          image: saveduser.profilepic,
-          password: await decryptaes(saveduser.passw),
-          phone: saveduser.phone ? saveduser.phone : undefined,
-          email: saveduser.email,
-          address: saveduser.address.streetaddress,
-          city: saveduser.address.city,
-          currentbalance: 500,
-          state: saveduser.address.state,
-          pincode: saveduser.address.pincode,
-          landmark: saveduser.address.landmark,
-          userid: saveduser._id,
-          advertiserid: generateUniqueID(),
-        });
-        const newid = Date.now();
-        const savedAdvertiser = await advertisernew.save();
-
-        const transactions = new Transaction({
-          transactionid: newid,
-          amount: 500,
-          type: "Credits",
-          status: "completed",
-          advertiserid: savedAdvertiser._id,
-        })
-
-        const tId = await transactions.save()
-        if (!Array.isArray(savedAdvertiser.transactions)) {
-          savedAdvertiser.transactions = [];
-        }
-        savedAdvertiser.transactions.push(tId)
-        await savedAdvertiser.save()
-
-        await User.updateOne(
-          { _id: saveduser._id },
-          { $set: { advertiserid: savedAdvertiser._id } }
-        );
+        endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
       }
-    }
 
-    const data = {
-      dp,
-      fullname: saveduser.fullname,
-      username: saveduser.username,
-      id: saveduser._id.toString(),
-      memberships: membership.title,
-    };
-    const access_token = generateAccessToken(data);
-    const refresh_token = generateRefreshToken(data);
-    res
-      .status(200)
-      .json({ success: true, refresh_token, access_token });
+      subscription.paymentMode = "Card";
+      const newSub = await subscription.save();
+      user.activeSubscription.push(newSub._id);
+      user.ismembershipactive = true;
+      user.tagging = tagging
+      user.dm = dm
+      user.memberships = {
+        membership: memid,
+        status: true,
+        ending: endDate,
+        paymentdetails: { mode: "online", amount: subscription.amount },
+      };
+
+      const membershiphist = {
+        id: memid,
+        date: Date.now()
+      };
+
+      // Ensure membershipHistory array exists
+      if (!Array.isArray(user.membershipHistory)) {
+        user.membershipHistory = [];
+      }
+      // Add the new membership history entry
+      user.membershipHistory.push(membershiphist);
+
+      user.deliveryforcity = deliverylimitcity;
+      user.deliveryforcountry = deliverylimitcountry;
+      const membership = await Membership.findById(memid);
+      user.isverified = true;
+      const saveduser = await user.save();
+
+      const dp = process.env.URL + saveduser.profilepic;
+
+      if (saveduser.membershipHistory.length === 1) {
+        const advertiser = await Advertiser.findById(saveduser.advertiserid)
+        if (advertiser) {
+          const newid = Date.now();
+          advertiser.currentbalance = advertiser.currentbalance + 500
+          const savedOldAdvertiser = await advertiser.save()
+          const transactions = new Transaction({
+            transactionid: newid,
+            amount: 500,
+            type: "Credits",
+            status: "completed",
+            advertiserid: savedOldAdvertiser._id,
+          })
+          const tId = await transactions.save()
+          if (!Array.isArray(savedOldAdvertiser.transactions)) {
+            savedOldAdvertiser.transactions = [];
+          }
+          savedOldAdvertiser.transactions.push(tId)
+          await savedOldAdvertiser.save()
+
+        } else {
+          const firstname = saveduser.fullname.split(" ")[0];
+          const lastname = saveduser.fullname.split(" ")[1];
+          function generateUniqueID() {
+            let advertiserID;
+            advertiserID = Date.now();
+            return advertiserID.toString();
+          }
+
+          const advertisernew = new Advertiser({
+            firstname,
+            lastname,
+            image: saveduser.profilepic,
+            password: await decryptaes(saveduser.passw),
+            phone: saveduser.phone ? saveduser.phone : undefined,
+            email: saveduser.email,
+            address: saveduser.address.streetaddress,
+            city: saveduser.address.city,
+            currentbalance: 500,
+            state: saveduser.address.state,
+            pincode: saveduser.address.pincode,
+            landmark: saveduser.address.landmark,
+            userid: saveduser._id,
+            advertiserid: generateUniqueID(),
+          });
+          const newid = Date.now();
+          const savedAdvertiser = await advertisernew.save();
+
+          const transactions = new Transaction({
+            transactionid: newid,
+            amount: 500,
+            type: "Credits",
+            status: "completed",
+            advertiserid: savedAdvertiser._id,
+          })
+
+          const tId = await transactions.save()
+          if (!Array.isArray(savedAdvertiser.transactions)) {
+            savedAdvertiser.transactions = [];
+          }
+          savedAdvertiser.transactions.push(tId)
+          await savedAdvertiser.save()
+
+          await User.updateOne(
+            { _id: saveduser._id },
+            { $set: { advertiserid: savedAdvertiser._id } }
+          );
+        }
+      }
+
+      const data = {
+        dp,
+        fullname: saveduser.fullname,
+        username: saveduser.username,
+        id: saveduser._id.toString(),
+        memberships: membership.title,
+      };
+      const access_token = generateAccessToken(data);
+      const refresh_token = generateRefreshToken(data);
+      res
+        .status(200)
+        .json({ success: true, refresh_token, access_token });
+
+    } else if (response.data.code === "PAYMENT_ERROR") {
+      console.log("Payment Failed");
+
+      subscription.currentStatus = "failed";
+
+      res.status(200).json({ success: false, message: "Payment Failed!" });
+    }
   } catch (error) {
     res.status(400).json({ success: false, message: "Something Went Wrong!" })
     console.log(error)
   }
 };
+
 
 // exports.approvalrequestbank = async (req, res) => {
 //   try {
@@ -3054,6 +3349,7 @@ exports.fetchingprosite = async (req, res) => {
       phone: user.phone,
       username: user.username,
       isverified: user.isverified,
+      showContact: user?.showContact,
       fullname: user.fullname,
       dp: process.env.URL + user.profilepic,
       isStore: user.showStoreSection,

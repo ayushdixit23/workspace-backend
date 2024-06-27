@@ -5949,3 +5949,21 @@ exports.cod = async (req, res) => {
 		res.status(400).json({ message: "Something went wrong", success: false });
 	}
 };
+
+const deleteSeenunseen = async () => {
+	try {
+		const messages = await Message.find({ conversationId: "66604b028208c0072f4174ea" })
+		const senderId = "6550737ffe8f9dc7614bba5f"
+		const rec = "65b68725750001cd4dc81483"
+		for (let i = 0; i < messages.length; i++) {
+
+			await messages[i].remove()
+		}
+
+		console.log("first")
+	} catch (error) {
+		console.log(error)
+	}
+}
+
+// deleteSeenunseen()
