@@ -5950,20 +5950,28 @@ exports.cod = async (req, res) => {
 	}
 };
 
-const deleteSeenunseen = async () => {
+exports.getprofileinfo = async (req, res) => {
 	try {
-		const messages = await Message.find({ conversationId: "66604b028208c0072f4174ea" })
-		const senderId = "6550737ffe8f9dc7614bba5f"
-		const rec = "65b68725750001cd4dc81483"
-		for (let i = 0; i < messages.length; i++) {
+		const { id } = req.params;
+		const user = await User.findById(id);
+		if (user) {
 
-			await messages[i].remove()
+			const dp = process.env.URL + user.profilepic;
+			const data = {
+				name: user?.fullname,
+				email: user?.email,
+				phone: user?.phone,
+				username: user?.username,
+
+				image: dp,
+				date: user.DOB,
+				bio: user.desc,
+			};
+			res.status(200).json({ success: true, data });
+		} else {
+			res.status(400).json({ success: false, message: "User Not Found" });
 		}
-
-		console.log("first")
-	} catch (error) {
-		console.log(error)
+	} catch (err) {
+		res.status(400).json({ message: "Internal Server Error" });
 	}
-}
-
-// deleteSeenunseen()
+};

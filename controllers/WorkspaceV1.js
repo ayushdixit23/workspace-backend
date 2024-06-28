@@ -2173,6 +2173,7 @@ exports.fetchallorders = async (req, res) => {
 exports.profileinfo = async (req, res) => {
   try {
     const { id } = req.params;
+
     const { name, phone, email, username, bio, date } = req.body;
     const fun = async () => {
       const userChange = await User.findOne({
@@ -2226,7 +2227,7 @@ exports.profileinfo = async (req, res) => {
       user.desc = bio;
       user.DOB = date;
       await user.save();
-      const sessionId = generateSessionId();
+
       const dp = process.env.URL + user.profilepic;
 
       const memberships = await Membership.findById(
@@ -2237,14 +2238,14 @@ exports.profileinfo = async (req, res) => {
         fullname: user.fullname,
         username: user.username,
         id: user._id.toString(),
-        sessionId,
+        isverified: user?.isverified,
         memberships: memberships.title,
       };
       const access_token = generateAccessToken(data);
       const refresh_token = generateRefreshToken(data);
       return res
         .status(200)
-        .json({ success: true, sessionId, refresh_token, access_token });
+        .json({ success: true, refresh_token, access_token });
     } else {
       res.status(400).json({ message: "User Not Found", success: false });
     }
@@ -2296,22 +2297,14 @@ exports.getprofileinfo = async (req, res) => {
     const { id } = req.params;
     const user = await User.findById(id);
     if (user) {
-      // const dp = await generatePresignedUrl(
-      //   "images",
-      //   user.profilepic.toString(),
-      //   60 * 60
-      // );
+
       const dp = process.env.URL + user.profilepic;
       const data = {
         name: user?.fullname,
         email: user?.email,
         phone: user?.phone,
         username: user?.username,
-        // storeAddress: user?.storeAddress[0]?.buildingno,
-        // city: user?.storeAddress[0]?.city,
-        // state: user?.storeAddress[0]?.state,
-        // postalCode: user?.storeAddress[0]?.postal,
-        // landmark: user?.storeAddress[0]?.landmark,
+
         image: dp,
         date: user.DOB,
         bio: user.desc,
