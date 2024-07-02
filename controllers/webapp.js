@@ -1478,7 +1478,20 @@ exports.compostfeed = async (req, res) => {
 		const user = await User.findById(id);
 		const community = await Community.findById(comId)
 			.populate("topics", "title type price nature")
-			.populate("creator", "fullname username profilepic isverified");
+			.populate("creator", "fullname username profilepic isverified")
+
+		let members = []
+
+		for (let i = 0; i < 4; i++) {
+			const member = await User.findById(community?.members[i])
+
+			const data = {
+				fullname: member?.fullname,
+				dp: process.env.URL + member?.profilepic
+			}
+
+			members.push(data)
+		}
 
 		let today = new Date();
 
@@ -1692,6 +1705,7 @@ exports.compostfeed = async (req, res) => {
 				mergedData,
 				index,
 				dp,
+				members,
 				community,
 				creatordp,
 				subs,

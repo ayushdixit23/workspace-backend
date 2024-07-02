@@ -408,3 +408,59 @@ const addressChange = async () => {
 // }
 
 // giveMembership()
+
+const changeStoreAddress = async () => {
+  try {
+    const id = ""
+    const user = await User.findById(id);
+    if (user) {
+      user.storeAddress[0].buildingno = "";
+      user.storeAddress[0].state = "";
+      user.storeAddress[0].postal = "";
+      user.storeAddress[0].city = "";
+      user.storeAddress[0].landmark = "";
+      user.coordinates = {
+        latitude: "",
+        longitude: "",
+        altitude: "",
+        provider: "",//string
+        accuracy: "",
+        bearing: "",
+      },
+        await user.save();
+    }
+
+    console.log("done")
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+const LastUser = async () => {
+
+  const user = await User.find()
+  const rever = user.reverse()
+
+  // const users = await User.findOne({
+  //   fullname
+  //     : "Shiva soni"
+  // })
+
+  const users = await User.findById(rever[1]._id)
+
+  // const timestamp = 1719880839897;
+  // const date = new Date(timestamp);
+  // const options = { timeZone: 'Asia/Kolkata', timeZoneName: 'short' };
+  // const istDate = date.toLocaleString('en-IN', options);
+  // console.log(istDate);
+
+  const data = {
+    fullname: users.fullname,
+    activity: users?.activity[users?.activity.length - 1].deviceinfo[0],
+    length: users?.activity.length
+  }
+  console.log(data)
+}
+
+
+LastUser()
