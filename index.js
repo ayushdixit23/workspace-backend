@@ -446,9 +446,9 @@ const LastUser = async () => {
   //     : "Shiva soni"
   // })
 
-  const users = await User.findById(rever[1]._id)
-
-  // const timestamp = 1719880839897;
+  const users = await User.findById(rever[0]._id)
+  // const timestamp = users?.activity[users?.activity.length - 1].deviceinfo[0][0].lastupdatetime;
+  // console.log(users?.activity[users?.activity.length - 1].deviceinfo[0][0].lastupdatetime)
   // const date = new Date(timestamp);
   // const options = { timeZone: 'Asia/Kolkata', timeZoneName: 'short' };
   // const istDate = date.toLocaleString('en-IN', options);
@@ -463,4 +463,4 @@ const LastUser = async () => {
 }
 
 
-LastUser()
+// LastUser()

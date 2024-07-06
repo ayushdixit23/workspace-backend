@@ -4,7 +4,7 @@ const router = express.Router();
 const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage, limits: { fileSize: 1000000000 } });
-const { checkid, joinmember, unjoinmember, postanythings3, newfetchfeeds3, joinedcomnews3, fetchallchatsnew, fetchconvs, compostfeed, fetchallposts, gettopicmessages, searchcoms, searchpros, checkemail, loadmorechatmsgs, sendchatfile, fetchcart, fetchorders, mobileSearch, addRecentSearchCommunity, addRecentSearchProsite, removeRecentSearchProsite, removeRecentSearchCommunity, fetchmoredata, fetchallsubscriptions, updatequantity, removecartorder, hideconvmsg, unhideconvmsg, fetchhiddenconv, fetchmorehiddenconv, deletemessages, blockpeople, reporting, fetchallmsgreqs, acceptorrejectmesgreq, likepost, createtopicporder, finalisetopicorder, muting, removeconversation, checkqr, mutecom, fetchallcomments, createcomment, deletemessagestopic, setcomtype, getallmembers, removecomwithposts, addtocart, changeAddress, cod, getprofileinfo } = require("../controllers/webapp");
+const { checkid, joinmember, unjoinmember, postanythings3, newfetchfeeds3, joinedcomnews3, fetchallchatsnew, fetchconvs, compostfeed, fetchallposts, gettopicmessages, searchcoms, searchpros, checkemail, loadmorechatmsgs, sendchatfile, fetchcart, fetchorders, mobileSearch, addRecentSearchCommunity, addRecentSearchProsite, removeRecentSearchProsite, removeRecentSearchCommunity, fetchmoredata, fetchallsubscriptions, updatequantity, removecartorder, hideconvmsg, unhideconvmsg, fetchhiddenconv, fetchmorehiddenconv, deletemessages, blockpeople, reporting, fetchallmsgreqs, acceptorrejectmesgreq, likepost, createtopicporder, finalisetopicorder, muting, removeconversation, checkqr, mutecom, fetchallcomments, createcomment, deletemessagestopic, setcomtype, getallmembers, removecomwithposts, addtocart, changeAddress, cod, getprofileinfo, searchall, searchposts } = require("../controllers/webapp");
 const { profileinfo } = require("../controllers/WorkspaceV1");
 
 router.post("/webapplogin", checkid)
@@ -66,6 +66,8 @@ router.post("/changeAddress/:id", changeAddress);
 router.post("/cod/:userId", cod);
 router.get("/webgetprofileinfo/:id", getprofileinfo);
 router.post("/webprofileinfo/:id", upload.single("image"), profileinfo);
+router.post("/websearchforall/:id", searchall);
+router.post("/websearchforposts", searchposts);
 
 
 module.exports = router;

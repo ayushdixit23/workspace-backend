@@ -1368,40 +1368,129 @@ exports.fetchallchatsnew = async (req, res) => {
 };
 
 // particular coversation private - 
+// exports.fetchconvs = async (req, res) => {
+// 	try {
+// 		const { id, convId, otherid } = req.params;
+
+// 		const user = await User.findById(id);
+// 		const otherperson = await User.findById(otherid);
+// 		if (!user || !otherperson) {
+// 			return res
+// 				.status(404)
+// 				.json({ message: "User not found", success: false });
+// 		}
+// 		//blocking/unblocking status
+// 		//am i blocked
+
+// 		const isMuted = user.muted.includes(convId);
+
+// 		let isblocked = false;
+// 		otherperson.blockedpeople.forEach((p) => {
+// 			if (p?.id?.toString() === user._id.toString()) {
+// 				isblocked = true;
+// 			}
+// 		});
+
+// 		//can i block
+// 		let canblock = true;
+// 		user.blockedpeople.forEach((p) => {
+// 			if (p?.id?.toString() === otherperson._id.toString()) {
+// 				canblock = false;
+// 			}
+// 		});
+
+// 		const msg = await Message.find({
+// 			conversationId: convId,
+// 			// status: "active",
+// 			deletedfor: { $nin: [user._id.toString()] },
+// 			hidden: { $nin: [user._id.toString()] },
+// 		})
+// 			.limit(20)
+// 			.sort({ createdAt: -1 })
+// 			.populate("sender", "profilepic fullname isverified");
+
+// 		let messages = [];
+
+// 		for (let i = 0; i < msg?.length; i++) {
+// 			if (
+// 				msg[i].typ === "image" ||
+// 				msg[i].typ === "video" ||
+// 				msg[i].typ === "doc" ||
+// 				msg[i].typ === "glimpse"
+// 			) {
+// 				const url = process.env.MSG_URL + msg[i]?.content?.uri;
+
+// 				messages.push({ ...msg[i].toObject(), url });
+// 			} else if (msg[i].typ === "gif") {
+// 				const url = msg[i]?.content?.uri;
+
+// 				messages.push({ ...msg[i].toObject(), url });
+// 			} else if (msg[i].typ === "post") {
+// 				const url = process.env.POST_URL + msg[i]?.content?.uri;
+// 				const post = await Post.findById(msg[i].forwardid);
+// 				messages.push({
+// 					...msg[i].toObject(),
+// 					url,
+// 					comId: post?.community,
+// 				});
+// 			} else if (msg[i].typ === "product") {
+// 				const url = process.env.PRODUCT_URL + msg[i]?.content?.uri;
+
+// 				messages.push({ ...msg[i].toObject(), url });
+// 			} else {
+// 				messages.push(msg[i].toObject());
+// 			}
+// 		}
+
+// 		messages = messages.reverse();
+// 		const msgids = messages.map((message) => message.mesId);
+// 		await Message.updateMany(
+// 			{ mesId: { $in: msgids } },
+// 			{ $addToSet: { readby: user._id } }
+// 		);
+
+// 		const otheruserdetails = {
+// 			id: otherperson._id,
+// 			fullname: otherperson.fullname,
+// 			username: otherperson.username,
+// 			isverified: otherperson.isverified,
+// 			profilepic: process.env.URL + otherperson.profilepic,
+// 		}
+
+// 		if (isblocked) {
+// 			res.status(200).json({ canblock, isblocked, isMuted, otheruserdetails, messages, success: true });
+// 		} else {
+// 			res.status(200).json({ canblock, isblocked, isMuted, otheruserdetails, messages, success: true });
+// 		}
+// 	} catch (e) {
+// 		console.error(e);
+// 		res
+// 			.status(500)
+// 			.json({ message: "Something went wrong...", success: false });
+// 	}
+// };
+
 exports.fetchconvs = async (req, res) => {
 	try {
 		const { id, convId, otherid } = req.params;
 
-		const user = await User.findById(id);
-		const otherperson = await User.findById(otherid);
+		const [user, otherperson] = await Promise.all([
+			User.findById(id),
+			User.findById(otherid),
+		]);
+
 		if (!user || !otherperson) {
-			return res
-				.status(404)
-				.json({ message: "User not found", success: false });
+			return res.status(404).json({ message: "User not found", success: false });
 		}
-		//blocking/unblocking status
-		//am i blocked
 
+		// Check mute and block statuses
 		const isMuted = user.muted.includes(convId);
+		const isblocked = otherperson.blockedpeople.some(p => p?.id?.toString() === user._id.toString());
+		const canblock = !user.blockedpeople.some(p => p?.id?.toString() === otherperson._id.toString());
 
-		let isblocked = false;
-		otherperson.blockedpeople.forEach((p) => {
-			if (p?.id?.toString() === user._id.toString()) {
-				isblocked = true;
-			}
-		});
-
-		//can i block
-		let canblock = true;
-		user.blockedpeople.forEach((p) => {
-			if (p?.id?.toString() === otherperson._id.toString()) {
-				canblock = false;
-			}
-		});
-
+		// Fetch messages
 		const msg = await Message.find({
 			conversationId: convId,
-			// status: "active",
 			deletedfor: { $nin: [user._id.toString()] },
 			hidden: { $nin: [user._id.toString()] },
 		})
@@ -1409,64 +1498,50 @@ exports.fetchconvs = async (req, res) => {
 			.sort({ createdAt: -1 })
 			.populate("sender", "profilepic fullname isverified");
 
-		let messages = [];
-
-		for (let i = 0; i < msg?.length; i++) {
-			if (
-				msg[i].typ === "image" ||
-				msg[i].typ === "video" ||
-				msg[i].typ === "doc" ||
-				msg[i].typ === "glimpse"
-			) {
-				const url = process.env.MSG_URL + msg[i]?.content?.uri;
-
-				messages.push({ ...msg[i].toObject(), url });
-			} else if (msg[i].typ === "gif") {
-				const url = msg[i]?.content?.uri;
-
-				messages.push({ ...msg[i].toObject(), url });
-			} else if (msg[i].typ === "post") {
-				const url = process.env.POST_URL + msg[i]?.content?.uri;
-				const post = await Post.findById(msg[i].forwardid);
-				messages.push({
-					...msg[i].toObject(),
-					url,
-					comId: post?.community,
-				});
-			} else if (msg[i].typ === "product") {
-				const url = process.env.PRODUCT_URL + msg[i]?.content?.uri;
-
-				messages.push({ ...msg[i].toObject(), url });
-			} else {
-				messages.push(msg[i].toObject());
+		// Process messages
+		const messages = await Promise.all(msg.map(async (message) => {
+			let url = '';
+			switch (message.typ) {
+				case "image":
+				case "video":
+				case "doc":
+				case "glimpse":
+					url = process.env.MSG_URL + message?.content?.uri;
+					break;
+				case "gif":
+					url = message?.content?.uri;
+					break;
+				case "post":
+					url = process.env.POST_URL + message?.content?.uri;
+					const post = await Post.findById(message.forwardid);
+					return { ...message.toObject(), url, comId: post?.community };
+				case "product":
+					url = process.env.PRODUCT_URL + message?.content?.uri;
+					break;
+				default:
+					return message.toObject();
 			}
-		}
+			return { ...message.toObject(), url };
+		}));
 
-		messages = messages.reverse();
-		const msgids = messages.map((message) => message.mesId);
-		await Message.updateMany(
-			{ mesId: { $in: msgids } },
-			{ $addToSet: { readby: user._id } }
-		);
+		// Update read status
+		const msgids = messages.map(message => message.mesId);
+		await Message.updateMany({ mesId: { $in: msgids } }, { $addToSet: { readby: user._id } });
 
+		// Construct other user details
 		const otheruserdetails = {
 			id: otherperson._id,
 			fullname: otherperson.fullname,
 			username: otherperson.username,
 			isverified: otherperson.isverified,
 			profilepic: process.env.URL + otherperson.profilepic,
-		}
+		};
 
-		if (isblocked) {
-			res.status(200).json({ canblock, isblocked, isMuted, otheruserdetails, messages, success: true });
-		} else {
-			res.status(200).json({ canblock, isblocked, isMuted, otheruserdetails, messages, success: true });
-		}
+		// Send response
+		res.status(200).json({ canblock, isblocked, isMuted, otheruserdetails, messages: messages.reverse(), success: true });
 	} catch (e) {
 		console.error(e);
-		res
-			.status(500)
-			.json({ message: "Something went wrong...", success: false });
+		res.status(500).json({ message: "Something went wrong...", success: false });
 	}
 };
 
@@ -1475,256 +1550,384 @@ exports.compostfeed = async (req, res) => {
 		const { id, comId } = req.params;
 		const { postId } = req.body;
 
-		const user = await User.findById(id);
-		const community = await Community.findById(comId)
-			.populate("topics", "title type price nature")
-			.populate("creator", "fullname username profilepic isverified")
+		const [user, community] = await Promise.all([
+			User.findById(id),
+			Community.findById(comId)
+				.populate("topics", "title type price nature")
+				.populate("creator", "fullname username profilepic isverified")
+		]);
 
-		let members = []
+		if (!user || !community) {
+			return res.status(404).json({ message: "User or Community not found", success: false });
+		}
 
-		for (let i = 0; i < 4; i++) {
-			const member = await User.findById(community?.members[i])
-
-			const data = {
+		// Fetch members
+		const memberIds = community.members.slice(0, 4);
+		const members = await Promise.all(memberIds.map(async (memberId) => {
+			const member = await User.findById(memberId);
+			return {
 				fullname: member?.fullname,
 				dp: process.env.URL + member?.profilepic
-			}
+			};
+		}));
 
-			members.push(data)
-		}
+		const today = new Date();
+		const formattedDate = today.toISOString().slice(0, 10).split('-').reverse().join('/');
 
-		let today = new Date();
+		// Muted topics
+		const muted = community.notifications?.filter((notification) =>
+			notification.id?.toString() === user._id.toString()
+		) || null;
 
-		let year = today.getFullYear();
-		let month = String(today.getMonth() + 1).padStart(2, "0");
-		let day = String(today.getDate()).padStart(2, "0");
+		// Visitor count and analytics
+		const analytcis = await Analytics.findOne({ date: formattedDate, id: community._id });
 
-		let formattedDate = `${day}/${month}/${year}`;
-		const incrementValue = 1;
-
-		//muted and unmuted topics
-		let muted = null;
-		if (community?.notifications?.length > 0) {
-			muted = community?.notifications?.filter((f, i) => {
-				return f.id?.toString() === user._id.toString();
-			});
-		}
-
-		if (user && community) {
-			//visitor count
-			let analytcis = await Analytics.findOne({
-				date: formattedDate,
-				id: community._id,
-			});
-
-			//Graph stats
-			if (analytcis) {
-				await Analytics.updateOne(
-					{ _id: analytcis._id },
-					{
-						$inc: {
-							Y2: 1,
-						},
-					}
-				);
-				//community based stats
-				if (analytcis?.activemembers.includes(user._id)) {
-					await Analytics.updateOne(
-						{ _id: analytcis._id },
-						{
-							$addToSet: { returningvisitor: user._id },
-						}
-					);
-				} else {
-					await Analytics.updateOne(
-						{ _id: analytcis._id },
-						{
-							$addToSet: { activemembers: user._id, newvisitor: user._id },
-						}
-					);
-				}
-			} else {
-				const an = new Analytics({
-					date: formattedDate,
-					id: community._id,
-					Y2: 1,
-				});
-				await an.save();
-				//community based stats
-				if (an?.activemembers.includes(user._id)) {
-					await Analytics.updateOne(
-						{ _id: an._id },
-						{
-							$addToSet: { returningvisitor: user._id },
-						}
-					);
-				} else {
-					await Analytics.updateOne(
-						{ _id: an._id },
-						{
-							$addToSet: { activemembers: user._id, newvisitor: user._id },
-						}
-					);
-				}
-			}
-
-			await Community.updateOne(
-				{ _id: community._id },
-				{
-					$inc: {
-						visitors: 1,
-					},
-				}
-			);
-
-			//creator data
-			const creatordp = process.env.URL + community.creator.profilepic;
-
-			//community data
-			const subs =
-				community.admins.includes(user._id) ||
-				community.moderators.includes(user._id) ||
-				community.members.includes(user._id);
-
-			//can edit topics
-			const canedit =
-				(community.admins.includes(user._id) ||
-					community.moderators.includes(user._id)) &&
-				community?.memberscount > 150;
-
-			//can post
-			const canpost =
-				community.admins.includes(user._id) ||
-				community.moderators.includes(user._id);
-			const dp = process.env.URL + community.dp;
-
-			//post data
-			const posts = await Post.find({ community: community._id }).populate(
-				"sender",
-				"fullname profilepic username isverified"
-			);
-			let index = -1;
-			posts.reverse();
-
-			//index of post that appears first
-			for (let i = 0; i < posts.length; i++) {
-				if (posts[i]._id.toString() === postId) {
-					index = i;
-					break;
-				}
-			}
-
-			if (!postId) {
-				index = 0;
-			}
-
-			//comments
-			const comments = [];
-			for (let i = 0; i < posts.length; i++) {
-				const comment = await Comment.find({ postId: posts[i]._id.toString() })
-					.limit(1)
-					.sort({ createdAt: -1 });
-
-				if (comment.length > 0) {
-					comments.push(comment);
-				} else {
-					comments.push("no comment");
-				}
-			}
-
-			const liked = [];
-			const dps = [];
-			const tc = [];
-			let urls = [];
-
-			//total comments of each post
-			for (let i = 0; i < posts.length; i++) {
-				const totalcomments = await Comment.find({ postId: posts[i]._id });
-				tc.push(totalcomments.length);
-			}
-
-			//likes
-			for (let i = 0; i < posts.length; i++) {
-				if (
-					posts[i].likedby?.some((id) => id.toString() === user._id.toString())
-				) {
-					liked.push(true);
-				} else {
-					liked.push(false);
-				}
-			}
-
-			//post content
-			let ur = [];
-			for (let i = 0; i < posts?.length; i++) {
-				for (let j = 0; j < posts[i]?.post?.length; j++) {
-					const a = process.env.POST_URL + posts[i].post[j].content;
-
-					ur.push({ content: a, type: posts[i].post[j]?.type });
-				}
-				urls.push(ur);
-				ur = [];
-			}
-
-			//dp of the sender
-			for (let i = 0; i < posts.length; i++) {
-				const a = process.env.URL + posts[i].sender.profilepic;
-
-				dps.push(a);
-			}
-
-			let ismember;
-			//cheking if community is private if person is member
-			if (community?.type !== "public") {
-				if (community?.members?.includes(user._id)) {
-					ismember = true;
-				} else {
-					ismember = false;
-				}
-			}
-
-			//mergeing all the data
-			const urlData = urls;
-			const postData = posts;
-			const likeData = liked;
-			const dpsdata = dps;
-			const commentscount = tc;
-			const commentdata = comments;
-
-			const mergedData = urlData.map((u, i) => ({
-				dpdata: dpsdata[i],
-				urls: u,
-				liked: likeData[i],
-				posts: postData[i],
-				totalcomments: commentscount[i],
-				comments: commentdata[i],
-			}));
-
-			res.status(200).json({
-				muted,
-				mergedData,
-				index,
-				dp,
-				members,
-				community,
-				creatordp,
-				subs,
-				canedit,
-				canpost,
-				ismember,
-				category: community?.category,
-				success: true,
-			});
+		if (analytcis) {
+			await Analytics.updateOne({ _id: analytcis._id }, { $inc: { Y2: 1 } });
+			const updateFields = analytcis.activemembers.includes(user._id)
+				? { returningvisitor: user._id }
+				: { activemembers: user._id, newvisitor: user._id };
+			await Analytics.updateOne({ _id: analytcis._id }, { $addToSet: updateFields });
 		} else {
-			res.status(404).json({ message: "User or Community not found" });
+			const newAnalytics = new Analytics({ date: formattedDate, id: community._id, Y2: 1 });
+			await newAnalytics.save();
+			const updateFields = newAnalytics.activemembers.includes(user._id)
+				? { returningvisitor: user._id }
+				: { activemembers: user._id, newvisitor: user._id };
+			await Analytics.updateOne({ _id: newAnalytics._id }, { $addToSet: updateFields });
 		}
+
+		await Community.updateOne({ _id: community._id }, { $inc: { visitors: 1 } });
+
+		// Creator data
+		const creatordp = process.env.URL + community.creator.profilepic;
+
+		// Community data
+		const subs = [community.admins, community.moderators, community.members].some(group => group.includes(user._id));
+		const canedit = ([community.admins, community.moderators].some(group => group.includes(user._id)) && community.memberscount > 150);
+		const canpost = [community.admins, community.moderators].some(group => group.includes(user._id));
+		const dp = process.env.URL + community.dp;
+
+		// Post data
+		const posts = await Post.find({ community: community._id }).populate("sender", "fullname profilepic username isverified");
+		posts.reverse();
+
+		const index = postId ? posts.findIndex(post => post._id.toString() === postId) : 0;
+
+		// Comments and likes data
+		const commentsPromises = posts.map(post =>
+			Comment.find({ postId: post._id.toString() }).limit(1).sort({ createdAt: -1 })
+		);
+		const totalCommentsPromises = posts.map(post =>
+			Comment.countDocuments({ postId: post._id })
+		);
+		const likedPromises = posts.map(post =>
+			post.likedby?.some(id => id.toString() === user._id.toString())
+		);
+
+		const [comments, totalComments, liked] = await Promise.all([
+			Promise.all(commentsPromises),
+			Promise.all(totalCommentsPromises),
+			Promise.all(likedPromises)
+		]);
+
+		// Post content and DP of the sender
+		const urls = posts.map(post => post.post.map(content => ({
+			content: process.env.POST_URL + content.content,
+			type: content.type
+		})));
+		const dps = posts.map(post => process.env.URL + post.sender.profilepic);
+
+		// Merge data
+		const mergedData = posts.map((post, i) => ({
+			dpdata: dps[i],
+			urls: urls[i],
+			liked: liked[i],
+			posts: post,
+			totalcomments: totalComments[i],
+			comments: comments[i].length > 0 ? comments[i] : "no comment"
+		}));
+
+		// Check if member of private community
+		const ismember = community.type !== "public" ? community.members.includes(user._id) : true;
+
+		res.status(200).json({
+			muted,
+			mergedData,
+			index,
+			dp,
+			members,
+			community,
+			creatordp,
+			subs,
+			canedit,
+			canpost,
+			ismember,
+			category: community?.category,
+			success: true,
+		});
 	} catch (e) {
-		console.log(e);
-		res
-			.status(400)
-			.json({ message: "Something went wrong...", success: false });
+		console.error(e);
+		res.status(400).json({ message: "Something went wrong...", success: false });
 	}
 };
+
+
+// exports.compostfeed = async (req, res) => {
+// 	try {
+// 		const { id, comId } = req.params;
+// 		const { postId } = req.body;
+
+// 		const user = await User.findById(id);
+// 		const community = await Community.findById(comId)
+// 			.populate("topics", "title type price nature")
+// 			.populate("creator", "fullname username profilepic isverified")
+
+// 		let members = []
+
+// 		for (let i = 0; i < 4; i++) {
+// 			const member = await User.findById(community?.members[i])
+
+// 			const data = {
+// 				fullname: member?.fullname,
+// 				dp: process.env.URL + member?.profilepic
+// 			}
+
+// 			members.push(data)
+// 		}
+
+// 		let today = new Date();
+
+// 		let year = today.getFullYear();
+// 		let month = String(today.getMonth() + 1).padStart(2, "0");
+// 		let day = String(today.getDate()).padStart(2, "0");
+
+// 		let formattedDate = `${day}/${month}/${year}`;
+// 		const incrementValue = 1;
+
+// 		//muted and unmuted topics
+// 		let muted = null;
+// 		if (community?.notifications?.length > 0) {
+// 			muted = community?.notifications?.filter((f, i) => {
+// 				return f.id?.toString() === user._id.toString();
+// 			});
+// 		}
+
+// 		if (user && community) {
+// 			//visitor count
+// 			let analytcis = await Analytics.findOne({
+// 				date: formattedDate,
+// 				id: community._id,
+// 			});
+
+// 			//Graph stats
+// 			if (analytcis) {
+// 				await Analytics.updateOne(
+// 					{ _id: analytcis._id },
+// 					{
+// 						$inc: {
+// 							Y2: 1,
+// 						},
+// 					}
+// 				);
+// 				//community based stats
+// 				if (analytcis?.activemembers.includes(user._id)) {
+// 					await Analytics.updateOne(
+// 						{ _id: analytcis._id },
+// 						{
+// 							$addToSet: { returningvisitor: user._id },
+// 						}
+// 					);
+// 				} else {
+// 					await Analytics.updateOne(
+// 						{ _id: analytcis._id },
+// 						{
+// 							$addToSet: { activemembers: user._id, newvisitor: user._id },
+// 						}
+// 					);
+// 				}
+// 			} else {
+// 				const an = new Analytics({
+// 					date: formattedDate,
+// 					id: community._id,
+// 					Y2: 1,
+// 				});
+// 				await an.save();
+// 				//community based stats
+// 				if (an?.activemembers.includes(user._id)) {
+// 					await Analytics.updateOne(
+// 						{ _id: an._id },
+// 						{
+// 							$addToSet: { returningvisitor: user._id },
+// 						}
+// 					);
+// 				} else {
+// 					await Analytics.updateOne(
+// 						{ _id: an._id },
+// 						{
+// 							$addToSet: { activemembers: user._id, newvisitor: user._id },
+// 						}
+// 					);
+// 				}
+// 			}
+
+// 			await Community.updateOne(
+// 				{ _id: community._id },
+// 				{
+// 					$inc: {
+// 						visitors: 1,
+// 					},
+// 				}
+// 			);
+
+// 			//creator data
+// 			const creatordp = process.env.URL + community.creator.profilepic;
+
+// 			//community data
+// 			const subs =
+// 				community.admins.includes(user._id) ||
+// 				community.moderators.includes(user._id) ||
+// 				community.members.includes(user._id);
+
+// 			//can edit topics
+// 			const canedit =
+// 				(community.admins.includes(user._id) ||
+// 					community.moderators.includes(user._id)) &&
+// 				community?.memberscount > 150;
+
+// 			//can post
+// 			const canpost =
+// 				community.admins.includes(user._id) ||
+// 				community.moderators.includes(user._id);
+// 			const dp = process.env.URL + community.dp;
+
+// 			//post data
+// 			const posts = await Post.find({ community: community._id }).populate(
+// 				"sender",
+// 				"fullname profilepic username isverified"
+// 			);
+// 			let index = -1;
+// 			posts.reverse();
+
+// 			//index of post that appears first
+// 			for (let i = 0; i < posts.length; i++) {
+// 				if (posts[i]._id.toString() === postId) {
+// 					index = i;
+// 					break;
+// 				}
+// 			}
+
+// 			if (!postId) {
+// 				index = 0;
+// 			}
+
+// 			//comments
+// 			const comments = [];
+// 			for (let i = 0; i < posts.length; i++) {
+// 				const comment = await Comment.find({ postId: posts[i]._id.toString() })
+// 					.limit(1)
+// 					.sort({ createdAt: -1 });
+
+// 				if (comment.length > 0) {
+// 					comments.push(comment);
+// 				} else {
+// 					comments.push("no comment");
+// 				}
+// 			}
+
+// 			const liked = [];
+// 			const dps = [];
+// 			const tc = [];
+// 			let urls = [];
+
+// 			//total comments of each post
+// 			for (let i = 0; i < posts.length; i++) {
+// 				const totalcomments = await Comment.find({ postId: posts[i]._id });
+// 				tc.push(totalcomments.length);
+// 			}
+
+// 			//likes
+// 			for (let i = 0; i < posts.length; i++) {
+// 				if (
+// 					posts[i].likedby?.some((id) => id.toString() === user._id.toString())
+// 				) {
+// 					liked.push(true);
+// 				} else {
+// 					liked.push(false);
+// 				}
+// 			}
+
+// 			//post content
+// 			let ur = [];
+// 			for (let i = 0; i < posts?.length; i++) {
+// 				for (let j = 0; j < posts[i]?.post?.length; j++) {
+// 					const a = process.env.POST_URL + posts[i].post[j].content;
+
+// 					ur.push({ content: a, type: posts[i].post[j]?.type });
+// 				}
+// 				urls.push(ur);
+// 				ur = [];
+// 			}
+
+// 			//dp of the sender
+// 			for (let i = 0; i < posts.length; i++) {
+// 				const a = process.env.URL + posts[i].sender.profilepic;
+
+// 				dps.push(a);
+// 			}
+
+// 			let ismember;
+// 			//cheking if community is private if person is member
+// 			if (community?.type !== "public") {
+// 				if (community?.members?.includes(user._id)) {
+// 					ismember = true;
+// 				} else {
+// 					ismember = false;
+// 				}
+// 			}
+
+// 			//mergeing all the data
+// 			const urlData = urls;
+// 			const postData = posts;
+// 			const likeData = liked;
+// 			const dpsdata = dps;
+// 			const commentscount = tc;
+// 			const commentdata = comments;
+
+// 			const mergedData = urlData.map((u, i) => ({
+// 				dpdata: dpsdata[i],
+// 				urls: u,
+// 				liked: likeData[i],
+// 				posts: postData[i],
+// 				totalcomments: commentscount[i],
+// 				comments: commentdata[i],
+// 			}));
+
+// 			res.status(200).json({
+// 				muted,
+// 				mergedData,
+// 				index,
+// 				dp,
+// 				members,
+// 				community,
+// 				creatordp,
+// 				subs,
+// 				canedit,
+// 				canpost,
+// 				ismember,
+// 				category: community?.category,
+// 				success: true,
+// 			});
+// 		} else {
+// 			res.status(404).json({ message: "User or Community not found" });
+// 		}
+// 	} catch (e) {
+// 		console.log(e);
+// 		res
+// 			.status(400)
+// 			.json({ message: "Something went wrong...", success: false });
+// 	}
+// };
 
 // ya to post - 
 exports.fetchallposts = async (req, res) => {
@@ -5987,5 +6190,220 @@ exports.getprofileinfo = async (req, res) => {
 		}
 	} catch (err) {
 		res.status(400).json({ message: "Internal Server Error" });
+	}
+};
+
+
+// exports.searchall = async (req, res) => {
+// 	const { query } = req.query;
+// 	const { id } = req.params;
+// 	try {
+// 		if (!query) {
+// 			return res.status(400).json({ success: false, message: "Query is required" });
+// 		}
+
+// 		const processedQuery = query.trim().toLowerCase();
+
+// 		// Posts
+// 		const posts = await Post.find({
+// 			$or: [
+// 				{ title: { $regex: `.*${processedQuery}.*`, $options: "i" } },
+// 				{ desc: { $regex: `.*${processedQuery}.*`, $options: "i" } }
+// 			],
+// 			status: "Unblock"
+// 		})
+// 			.select("title desc post topicId community sender")
+// 			.limit(5)
+// 			.populate("community", "dp title createdAt")
+// 			.populate("sender", "fullname")
+// 			.lean()
+// 			.exec();
+
+// 		const imgs = posts.map(post => {
+// 			if (post.post[0].type === "image/jpg") {
+// 				return process.env.POST_URL + post.post[0].content;
+// 			} else {
+// 				return process.env.POST_URL + (post.post[0].thumbnail || post.post[0].content);
+// 			}
+// 		});
+
+// 		const dp = posts.map(post => post.community ? process.env.URL + post.community.dp : process.env.URL + "default.png");
+
+// 		const mergedposts = posts.map((p, i) => ({
+// 			...p,
+// 			img: imgs[i],
+// 			dps: dp[i]
+// 		}));
+
+// 		// Communities
+// 		const coms = await Community.find({
+// 			title: { $regex: `.*${processedQuery}.*`, $options: "i" },
+// 			type: "public",
+// 			blocked: { $nin: id }
+// 		})
+// 			.populate("creator", "fullname username profilepic isverified")
+// 			.select("title createdAt dp memberscount")
+// 			.limit(5)
+// 			.lean()
+// 			.exec();
+
+// 		const pics = coms.map(com => process.env.URL + com.dp);
+// 		const creatordps = coms.map(com => process.env.URL + com.creator.profilepic);
+
+// 		const mergedcoms = coms.map((p, i) => ({
+// 			...p,
+// 			img: pics[i],
+// 			dps: creatordps[i]
+// 		}));
+
+// 		// Users
+// 		const pros = await User.find({
+// 			$or: [
+// 				{ fullname: { $regex: `.*${processedQuery}.*`, $options: "i" } },
+// 				{ username: { $regex: `.*${processedQuery}.*`, $options: "i" } }
+// 			]
+// 		})
+// 			.select("fullname profilepic username isverified createdAt")
+// 			.lean()
+// 			.limit(5)
+// 			.exec();
+
+// 		const prosDps = pros.map(pro => process.env.URL + pro.profilepic);
+
+// 		const mergedpros = pros.map((p, i) => ({
+// 			...p,
+// 			dps: prosDps[i]
+// 		}));
+
+// 		console.log(mergedpros, "mergedpros")
+// 		console.log(mergedcoms, "mergedcoms")
+// 		console.log(mergedposts, "mergedposts")
+
+// 		return res.status(200).json({ success: true, mergedpros, mergedcoms, mergedposts });
+// 	} catch (e) {
+// 		console.error(e);
+// 		return res.status(400).json({ success: false, message: e.message });
+// 	}
+// };
+
+
+exports.searchall = async (req, res) => {
+	const { query } = req.query;
+	const { id } = req.params;
+
+	if (!query) {
+		return res.status(400).json({ success: false, message: "Query is required" });
+	}
+
+	const processedQuery = query.trim().toLowerCase();
+
+	try {
+		// Fetch public communities and their IDs
+		const publicCommunities = await Community.find({ type: "public" }).select("_id").lean();
+		const publicCommunityIds = publicCommunities.map(community => community._id);
+
+		// Fetch posts from public communities
+		const posts = await Post.find({
+			$or: [
+				{ title: { $regex: `.*${processedQuery}.*`, $options: "i" } },
+				{ desc: { $regex: `.*${processedQuery}.*`, $options: "i" } }
+			],
+			community: { $in: publicCommunityIds },
+			status: "Unblock"
+		})
+			.select("title desc post topicId community sender")
+			.limit(5)
+			.populate("community", "dp title createdAt")
+			.populate("sender", "fullname")
+			.lean();
+
+		const mergedPosts = posts.map(post => ({
+			...post,
+			img: process.env.POST_URL + (post.post[0].type === "image/jpg" ? post.post[0].content : (post.post[0].thumbnail || post.post[0].content)),
+			dps: post.community ? process.env.URL + post.community.dp : process.env.URL + "default.png"
+		}));
+
+		// Fetch public communities matching the query
+		const communities = await Community.find({
+			title: { $regex: `.*${processedQuery}.*`, $options: "i" },
+			type: "public",
+			blocked: { $nin: id }
+		})
+			.populate("creator", "fullname username profilepic isverified")
+			.select("title createdAt dp memberscount")
+			.limit(5)
+			.lean();
+
+		const mergedCommunities = communities.map(com => ({
+			...com,
+			img: process.env.URL + com.dp,
+			dps: process.env.URL + com.creator.profilepic
+		}));
+
+		// Fetch users matching the query
+		const users = await User.find({
+			$or: [
+				{ fullname: { $regex: `.*${processedQuery}.*`, $options: "i" } },
+				{ username: { $regex: `.*${processedQuery}.*`, $options: "i" } }
+			]
+		})
+			.select("fullname profilepic username isverified createdAt")
+			.lean()
+			.limit(5);
+
+		const mergedUsers = users.map(user => ({
+			...user,
+			dps: process.env.URL + user.profilepic
+		}));
+
+		return res.status(200).json({ success: true, mergedpros: mergedUsers || [], mergedcoms: mergedCommunities || [], mergedposts: mergedPosts || [], });
+	} catch (error) {
+		console.error(error);
+		return res.status(400).json({ success: false, message: error.message });
+	}
+};
+
+exports.searchposts = async (req, res) => {
+	const { query } = req.query;
+
+	if (!query) {
+		return res.status(400).json({ success: false, message: "Query is required" });
+	}
+
+	const processedQuery = query.trim().toLowerCase();
+
+	try {
+		// Fetch public communities and their IDs
+		const publicCommunities = await Community.find({ type: "public" }).select("_id").lean();
+		const publicCommunityIds = publicCommunities.map(community => community._id);
+
+		// Fetch posts from public communities
+		const posts = await Post.find({
+			$or: [
+				{ title: { $regex: `.*${processedQuery}.*`, $options: "i" } },
+				{ desc: { $regex: `.*${processedQuery}.*`, $options: "i" } }
+			],
+			community: { $in: publicCommunityIds },
+			status: "Unblock"
+		})
+			.select("title desc post topicId community sender")
+			.limit(100)
+			.populate("community", "dp title createdAt")
+			.populate("sender", "fullname")
+			.lean();
+
+		// Merging posts with their corresponding images and display pictures
+		const mergedPosts = posts.map(post => ({
+			...post,
+			img: process.env.POST_URL + (post.post[0].type === "image/jpg" ? post.post[0].content : (post.post[0].thumbnail || post.post[0].content)),
+			dp: post.community ? process.env.URL + post.community.dp : process.env.URL + "default.png"
+		}));
+
+		console.log(mergedPosts, "mergedPosts");
+
+		return res.status(200).json({ success: true, posts: mergedPosts });
+	} catch (e) {
+		console.error(e);
+		return res.status(400).json({ success: false, message: e.message });
 	}
 };
