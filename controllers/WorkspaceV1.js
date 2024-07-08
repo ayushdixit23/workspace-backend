@@ -17,21 +17,10 @@ const Buttonss = require("../models/buttonScema");
 const Product = require("../models/product");
 const moment = require("moment");
 const Order = require("../models/orders");
-// const multer = require("multer");
-// const Image = require("../models/Image");
-// const DevPost = require("../models/DevPost");
-// const Color = require("../models/Color");
-// const Font = require("../models/Font");
-// const Button = require("../models/Button");
-// const BackGround = require("../models/BackGround");
-// const BackColor = require("../models/BackColor");
-// const Temp = require("../models/Temp");
-// const Lottie = require("../models/Lottie");
 const mongoose = require("mongoose");
 const Subscriptions = require("../models/Subscriptions");
 const SellerOrder = require("../models/SellerOrder");
-// const Subscriptions = require("../models/Subscriptions");
-// const Prosite = require("../models/prosite");
+const WithDrawRequest = require("../models/WithdrawRequest")
 const Razorpay = require("razorpay");
 const {
   S3Client,
@@ -4006,3 +3995,87 @@ exports.deleteRecentProsites = async (req, res) => {
 
   }
 }
+
+// exports.createwithdrawRequest = async (req, res) => {
+//   try {
+//     const { id } = req.params
+//     const { amount } = req.body
+//     const user = await User.findById(id)
+//     if (!user) {
+//       return res.status(400).json({ success: false, message: "User Not Found!" })
+//     }
+
+//     const firstwithdraw = await WithDrawRequest.find({ userid: user?._id })
+//     if (firstwithdraw.length > 0) {
+
+//       let usercreateWithdrawRequest = true
+
+//       for (let i = 0; i < firstwithdraw.length; i++) {
+//         if (firstwithdraw[i].status !== "completed") {
+//           usercreateWithdrawRequest = false;
+//           break;
+//         }
+//       }
+
+//       if (usercreateWithdrawRequest) {
+//         const withdraw = new WithDrawRequest({
+//           userid: user._id,
+//           bank: user.bank,
+//           amount
+//         })
+//         await withdraw.save()
+//       } else {
+//         return res.status(200).json({ success: true, message: "You already have a pending withdraw request." })
+//       }
+
+//     } else {
+//       const withdraw = new WithDrawRequest({
+//         userid: user._id,
+//         bank: user.bank,
+//         amount
+//       })
+//       await withdraw.save()
+//     }
+//   } catch (error) {
+//     res.status(400).json({ success: false, message: "Something Went Wrong!" })
+//     console.log(error)
+//   }
+// }
+
+exports.createWithdrawRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount } = req.body;
+
+   
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User Not Found!" });
+    }
+  
+    const firstWithdraw = await WithDrawRequest.find({ userid: user._id });
+  
+    let userCreateWithdrawRequest = true;
+    for (let i = 0; i < firstWithdraw.length; i++) {
+      if (firstWithdraw[i].status !== "completed") {
+        userCreateWithdrawRequest = false;
+        break;
+      }
+    }
+
+    if (userCreateWithdrawRequest) {
+      const withdraw = new WithDrawRequest({
+        userid: user._id,
+        bank: user.bank,
+        amount
+      });
+      await withdraw.save();
+      return res.status(200).json({ success: true, message: "Withdraw request created successfully!" });
+    } else {
+      return res.status(200).json({ success: true, message: "You already have a pending withdraw request." });
+    }
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" });
+    console.error(error);
+  }
+};

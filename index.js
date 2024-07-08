@@ -49,6 +49,7 @@ const Request = require("./models/Request");
 const Analytics = require("./models/Analytics");
 const Membership = require("./models/membership");
 const Post = require("./models/post");
+const Order = require("./models/orders");
 
 require("dotenv").config();
 
@@ -462,5 +463,58 @@ const LastUser = async () => {
   console.log(data)
 }
 
+const pass = async () => {
+  try {
+    // const user = await User.findOne({ email: "arnavmehtaoff@gmail.com" })
+    // const user = await User.findOne({ fullname: "Rajan Pilla" })
+    // const user = await User.findOne({ fullname: "Kamalesh Kakkar" })
+    const user = await User.findOne({ email: "blinkit@gmail.com" })
+    if (user) {
+      console.log(decryptaes(user.passw), user.email)
+    }
 
-// LastUser()
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// pass()
+
+function generateUniqueID() {
+  let advertiserID;
+  advertiserID = Date.now();
+  return advertiserID.toString();
+}
+
+const organisation = async () => {
+  try {
+    const org = new Advertiser({
+      email: "arnavmehtaoff@gmail.com",
+      password: "arnavmehta",
+      firstname: "Willow",
+      lastname: "Wave",
+      currentbalance: 100000,
+      type: "Organization",
+      organizationname: "Willow Wave",
+      image: "willowwave",
+      userid: "65a8dd9ea9511349abd68ea9",
+      image: "willowwave.png",
+      advertiserid: generateUniqueID()
+    })
+
+    const organ = await org.save()
+
+    const user = await User.findById("65a8dd9ea9511349abd68ea9")
+    user.advertiserid = organ._id
+    user.adid = organ.advertiserid
+
+    await user.save()
+
+    console.log("first")
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// organisation()
+

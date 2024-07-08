@@ -54,6 +54,7 @@ const {
   updateproducvariant,
   fetchingprosite,
   deleteRecentProsites,
+  createWithdrawRequest,
 
   // base64upload,
   // getimage,
@@ -183,6 +184,6 @@ router.post("/defaultprositeselector/:id", defaultprositeselector);
 router.post("/changemont/:comid", changemont);
 router.get("/checkfordefault/:id", checkfordefault);
 router.post("/deleteRecentProsites/:userId/:prositeId", deleteRecentProsites);
-// router.post("/approvalrequestbank/:id", approvalrequestbank)
+router.post("/createwithdrawRequest/:id", createWithdrawRequest)
 
 module.exports = router;
