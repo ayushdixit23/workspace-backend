@@ -381,6 +381,36 @@ const addressChange = async () => {
 }
 
 // addressChange()
+
+
+const freeMembership = async () => {
+  try {
+    const currentDate = new Date();
+    let endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const id = "65926d7709fb86617923eed7"
+    const memid = "65671e6004b7d0d07ef0e798"
+    const membership = await Membership.findById(memid)
+
+    const user = await User.findById(id)
+    user.memberships = {
+      membership: memid,
+      status: true,
+      ending: endDate,
+      paymentdetails: { mode: "online", amount: 3499 },
+    };
+    user.dm = membership.dms
+    user.tagging = membership.tagging
+    user.isverified = true;
+    await user.save();
+
+    console.log("done", user.fullname)
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+
 // const giveMembership = async () => {
 //   try {
 //     const currentDate = new Date();
