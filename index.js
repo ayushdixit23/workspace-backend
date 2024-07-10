@@ -406,7 +406,7 @@ const freeMembership = async () => {
     console.log(error)
   }
 }
-
+// 
 // freeMembership()
 
 // const giveMembership = async () => {

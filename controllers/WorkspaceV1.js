@@ -2978,6 +2978,43 @@ exports.membershipbuy = async (req, res) => {
   }
 };
 
+exports.fetchdetails = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(id);
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const dp = process.env.URL + user.profilepic;
+    const memberships = await Membership.findById(user.memberships.membership);
+    const data = {
+      dp,
+      fullname: user.fullname,
+      username: user.username,
+      id: user._id.toString(),
+
+      memberships: memberships.title,
+    };
+    const access_token = generateAccessToken(data);
+    const refresh_token = generateRefreshToken(data);
+
+    res.status(200).json({
+
+      access_token,
+      refresh_token,
+      data,
+      success: true,
+    });
+
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Something Went Wrong!" })
+    console.log(error)
+  }
+}
+
 exports.memfinalize = async (req, res) => {
   console.log("first runndded")
   try {

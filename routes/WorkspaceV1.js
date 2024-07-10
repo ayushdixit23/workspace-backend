@@ -55,7 +55,7 @@ const {
   fetchingprosite,
   deleteRecentProsites,
   createWithdrawRequest,
-
+  fetchdetails,
   // base64upload,
   // getimage,
   // colors,
@@ -82,6 +82,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 router.post("/checkid", checkid);
+router.post("/fetchdetails/:id", fetchdetails);
 router.post("/checkqr", checkqr);
 router.post("/checkemail", checkemail);
 router.post("/refresh", refresh);
