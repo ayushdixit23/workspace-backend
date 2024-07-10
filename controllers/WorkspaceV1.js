@@ -2922,7 +2922,6 @@ exports.membershipbuy = async (req, res) => {
       amount: parseAmout,
     });
 
-    console.log(subs._id)
     const newsub = await subs.save();
     // / creatign a rzp order
 
@@ -2931,7 +2930,7 @@ exports.membershipbuy = async (req, res) => {
       merchantTransactionId: newsub._id.toString(),
       merchantUserId: user._id,
       amount: parseAmout * 100,
-      redirectUrl: "https://workspace.grovyo.com/main/dashboard",
+      redirectUrl: "https://workspace.grovyo.com/main/dashboard?membership=true",
       redirectMode: "REDIRECT",
       callbackUrl: `https://work.grovyo.xyz/api/v1/memfinalize/${id}/${newsub.orderId}/${memid}/${dm}/${tagging}/${deliverylimitcity}/${deliverylimitcountry}/${period}`,
       paymentInstrument: {
@@ -3018,7 +3017,6 @@ exports.memfinalize = async (req, res) => {
       process.env.keyIndex
     );
 
-    console.log(`https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.WORKSPACE_MERCHANT_ID}/${subscription._id.toString()}`)
 
     const response = await axios.get(
       `https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.WORKSPACE_MERCHANT_ID}/${subscription._id.toString()}`,
