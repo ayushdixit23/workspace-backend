@@ -3156,7 +3156,7 @@ exports.memfinalize = async (req, res) => {
       const refresh_token = generateRefreshToken(data);
       res
         .status(200)
-        .json({ success: true, refresh_token, access_token });
+        .json({ success: true, refresh_token, access_token, data });
 
     } else if (response.data.code === "PAYMENT_ERROR") {
       console.log("Payment Failed");

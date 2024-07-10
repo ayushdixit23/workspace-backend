@@ -385,22 +385,19 @@ const addressChange = async () => {
 
 const freeMembership = async () => {
   try {
-    const currentDate = new Date();
-    let endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    const id = "65926d7709fb86617923eed7"
-    const memid = "65671e6004b7d0d07ef0e798"
+
+    const id = "65b68725750001cd4dc81483"
+    const memid = "65671e5204b7d0d07ef0e796"
     const membership = await Membership.findById(memid)
 
     const user = await User.findById(id)
     user.memberships = {
       membership: memid,
       status: true,
-      ending: endDate,
-      paymentdetails: { mode: "online", amount: 3499 },
+      ending: "infinite",
     };
-    user.dm = membership.dms
-    user.tagging = membership.tagging
+
     user.isverified = true;
     await user.save();
 
@@ -410,6 +407,7 @@ const freeMembership = async () => {
   }
 }
 
+// freeMembership()
 
 // const giveMembership = async () => {
 //   try {
