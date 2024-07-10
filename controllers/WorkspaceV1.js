@@ -2921,6 +2921,8 @@ exports.membershipbuy = async (req, res) => {
       purchasedby: id,
       amount: parseAmout,
     });
+
+    console.log(subs._id)
     const newsub = await subs.save();
     // / creatign a rzp order
 
@@ -2931,7 +2933,7 @@ exports.membershipbuy = async (req, res) => {
       amount: parseAmout * 100,
       redirectUrl: "https://workspace.grovyo.com/main/dashboard",
       redirectMode: "REDIRECT",
-      callbackUrl: `https://work.grovyo.xyz/api/v1/memfinalize/${id}/${oi}/${memid}/${dm}/${tagging}/${deliverylimitcity}/${deliverylimitcountry}/${period}`,
+      callbackUrl: `https://work.grovyo.xyz/api/v1/memfinalize/${id}/${newsub.orderId}/${memid}/${dm}/${tagging}/${deliverylimitcity}/${deliverylimitcountry}/${period}`,
       paymentInstrument: {
         type: "PAY_PAGE",
       },
@@ -2984,12 +2986,13 @@ exports.memfinalize = async (req, res) => {
       tagging,
       deliverylimitcity,
       deliverylimitcountry,
-      period, } = req.params;
+      period } = req.params;
 
     const user = await User.findById(id);
     const subscription = await Subscriptions.findOne({ orderId: orderId });
 
     if (!subscription) {
+      console.log("first")
       return res.status(400).json({ success: false });
     }
 
@@ -3013,6 +3016,8 @@ exports.memfinalize = async (req, res) => {
       process.env.WORKSPACE_PHONE_PAY_KEY,
       process.env.keyIndex
     );
+
+    console.log(`https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.WORKSPACE_MERCHANT_ID}/${subscription._id}`)
 
     const response = await axios.get(
       `https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.WORKSPACE_MERCHANT_ID}/${subscription._id}`,
@@ -4044,14 +4049,14 @@ exports.createWithdrawRequest = async (req, res) => {
     const { id } = req.params;
     const { amount } = req.body;
 
-   
+
     const user = await User.findById(id);
     if (!user) {
       return res.status(400).json({ success: false, message: "User Not Found!" });
     }
-  
+
     const firstWithdraw = await WithDrawRequest.find({ userid: user._id });
-  
+
     let userCreateWithdrawRequest = true;
     for (let i = 0; i < firstWithdraw.length; i++) {
       if (firstWithdraw[i].status !== "completed") {
