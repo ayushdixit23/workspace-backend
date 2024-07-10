@@ -2980,6 +2980,7 @@ exports.membershipbuy = async (req, res) => {
 };
 
 exports.memfinalize = async (req, res) => {
+  console.log("first runndded")
   try {
     const { id, orderId, memid,
       dm,

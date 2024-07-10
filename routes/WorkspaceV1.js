@@ -145,7 +145,7 @@ router.get("/checkstore/:id", checkStore);
 router.get("/earnings/:id", earnings);
 router.post("/membershipbuy/:id/:memid", membershipbuy);
 // router.post("/memfinalize/:id/:orderId", memfinalize);
-router.post("/memfinalize/:id/:orderId/:memid/:dm/:tagging:/deliverylimitcity/:deliverylimitcountry/:period", memfinalize);
+router.post("/memfinalize/:id/:orderId/:memid/:dm/:tagging/:deliverylimitcity/:deliverylimitcountry/:period", memfinalize);
 router.post("/addbank/:id", addbank);
 router.get("/fetchwithid/:id", fetchwithid);
 router.get("/fetchmembership", fetchMemberShip);
