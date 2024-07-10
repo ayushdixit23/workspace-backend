@@ -333,7 +333,7 @@ exports.refresh = async (req, res) => {
             memberships: memberships.title,
           };
 
-          clg
+
           const access_token = generateAccessToken(data);
           const refresh_token = generateRefreshToken(data);
 
