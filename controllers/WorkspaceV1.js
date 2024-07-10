@@ -2928,7 +2928,7 @@ exports.membershipbuy = async (req, res) => {
 
     let payload = {
       merchantId: process.env.WORKSPACE_MERCHANT_ID,
-      merchantTransactionId: newsub._id,
+      merchantTransactionId: newsub._id.toString(),
       merchantUserId: user._id,
       amount: parseAmout * 100,
       redirectUrl: "https://workspace.grovyo.com/main/dashboard",
@@ -3012,15 +3012,15 @@ exports.memfinalize = async (req, res) => {
 
     const checksum = generateChecksum(
       process.env.WORKSPACE_MERCHANT_ID,
-      subscription._id,
+      subscription._id.toString(),
       process.env.WORKSPACE_PHONE_PAY_KEY,
       process.env.keyIndex
     );
 
-    console.log(`https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.WORKSPACE_MERCHANT_ID}/${subscription._id}`)
+    console.log(`https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.WORKSPACE_MERCHANT_ID}/${subscription._id.toString()}`)
 
     const response = await axios.get(
-      `https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.WORKSPACE_MERCHANT_ID}/${subscription._id}`,
+      `https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.WORKSPACE_MERCHANT_ID}/${subscription._id.toString()}`,
 
       {
         headers: {
