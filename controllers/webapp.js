@@ -192,6 +192,7 @@ exports.checkid = async (req, res) => {
 			res.status(200).json({
 				access_token,
 				refresh_token,
+				data,
 				userexists: true,
 				success: true,
 			});
@@ -234,6 +235,7 @@ exports.checkemail = async (req, res) => {
 				message: "Account exists",
 				access_token,
 				refresh_token,
+				data,
 				success: true,
 				userexists: true,
 			});
@@ -270,6 +272,7 @@ exports.checkqr = async (req, res) => {
 			res.status(200).json({
 				access_token,
 				refresh_token,
+				data,
 				userexists: true,
 				success: true,
 			});

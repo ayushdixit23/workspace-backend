@@ -150,15 +150,13 @@ exports.checkid = async (req, res) => {
     const memberships = await Membership.findById(user.memberships.membership);
     console.log(memberships);
     if (user) {
-      const sessionId = generateSessionId();
-
       const dp = process.env.URL + user.profilepic;
       const data = {
         dp,
         fullname: user.fullname,
         username: user.username,
         id: user._id.toString(),
-        sessionId,
+
         memberships: memberships.title,
       };
       const access_token = generateAccessToken(data);
@@ -168,7 +166,7 @@ exports.checkid = async (req, res) => {
         dp,
         access_token,
         refresh_token,
-        sessionId,
+        data,
         success: true,
       });
     } else {
@@ -206,6 +204,7 @@ exports.fetchwithid = async (req, res) => {
       dp,
       access_token,
       refresh_token,
+      data,
       sessionId,
       success: true,
       user,
@@ -237,7 +236,7 @@ exports.checkqr = async (req, res) => {
       const refresh_token = generateRefreshToken(data);
       return res
         .status(200)
-        .json({ dp, access_token, refresh_token, sessionId, success: true });
+        .json({ dp, access_token, refresh_token, data, sessionId, success: true });
     } else {
       return res
         .status(404)
@@ -279,6 +278,7 @@ exports.checkemail = async (req, res) => {
         access_token,
         sessionId,
         refresh_token,
+        data,
         success: true,
         userexists: true,
       });
@@ -2234,7 +2234,7 @@ exports.profileinfo = async (req, res) => {
       const refresh_token = generateRefreshToken(data);
       return res
         .status(200)
-        .json({ success: true, refresh_token, access_token });
+        .json({ success: true, refresh_token, data, access_token });
     } else {
       res.status(400).json({ message: "User Not Found", success: false });
     }
