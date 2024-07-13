@@ -23,6 +23,7 @@
     "@aws-sdk/cloudfront-signer": "^3.496.0",
     "@sendgrid/mail": "^7.7.0",
     "aes-js": "^3.1.2",
+    "aws-sdk": "^2.1658.0",
     "axios": "^1.6.7",
     "axios-retry": "^4.4.0",
     "base64-img": "^1.0.4",

@@ -16,6 +16,7 @@ const admin = require("../fireb")
 const Tag = require("../models/Tag");
 const Interest = require("../models/Interest");
 require("dotenv").config();
+const AWS = require("aws-sdk");
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
 const POST_BUCKET = process.env.POST_BUCKET;
@@ -27,6 +28,13 @@ const s3 = new S3Client({
     secretAccessKey: process.env.AWS_SECRET_KEY,
   },
 });
+
+AWS.config.update({
+  accessKeyId: process.env.AWS_ACCESS_KEY,
+  secretAccessKey: process.env.AWS_SECRET_KEY,
+  region: process.env.BUCKET_REGION,
+});
+const s3multi = new AWS.S3();
 
 const minioClient = new Minio.Client({
   endPoint: "minio.grovyo.xyz",
@@ -1314,7 +1322,7 @@ exports.postanythings3 = async (req, res) => {
           pos.push({ content: objectName, type: req.files[i].mimetype });
         }
       }
-      console.log(pos, "pos")
+     
       const post = new Post({
         title,
         desc,

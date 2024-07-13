@@ -409,32 +409,33 @@ const freeMembership = async () => {
 // 
 // freeMembership()
 
-// const giveMembership = async () => {
-//   try {
-//     const currentDate = new Date();
-//     let endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+const giveMembership = async () => {
+  try {
+    const currentDate = new Date();
+    // let endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+    let endDate = new Date(currentDate.getTime() + 12 * 30.4375 * 24 * 60 * 60 * 1000);
 
-//     const id = "65926d7709fb86617923eed7"
-//     const memid = "65671e6004b7d0d07ef0e798"
-//     const membership = await Membership.findById(memid)
+    const id = ""
+    const memid = "65671e6004b7d0d07ef0e798"
+    const membership = await Membership.findById(memid)
 
-//     const user = await User.findById(id)
-//     user.memberships = {
-//       membership: memid,
-//       status: true,
-//       ending: endDate,
-//       paymentdetails: { mode: "online", amount: 3499 },
-//     };
-//     user.dm = membership.dms
-//     user.tagging = membership.tagging
-//     user.isverified = true;
-//     await user.save();
+    const user = await User.findById(id)
+    user.memberships = {
+      membership: memid,
+      status: true,
+      ending: endDate,
+      paymentdetails: { mode: "online", amount: 3499 },
+    };
+    user.dm = membership.dms
+    user.tagging = membership.tagging
+    user.isverified = true;
+    await user.save();
 
-//     console.log("done", user.fullname)
-//   } catch (error) {
-//     console.log(error)
-//   }
-// }
+    console.log("done", user.fullname)
+  } catch (error) {
+    console.log(error)
+  }
+}
 
 // giveMembership()
 
@@ -496,7 +497,7 @@ const pass = async () => {
     // const user = await User.findOne({ email: "arnavmehtaoff@gmail.com" })
     // const user = await User.findOne({ fullname: "Rajan Pilla" })
     // const user = await User.findOne({ fullname: "Kamalesh Kakkar" })
-    const user = await User.findOne({ email: "blinkit@gmail.com" })
+    const user = await User.findOne({ email: "grovyoinc@gmail.com" })
     if (user) {
       console.log(decryptaes(user.passw), user.email)
     }

@@ -9,6 +9,7 @@ const Topic = require("../models/topic");
 const Analytics = require("../models/Analytics");
 const uuid = require("uuid").v4;
 const Post = require("../models/post");
+const moment = require("moment")
 const Tag = require("../models/Tag");
 const Admin = require("../models/admin");
 const SellerOrder = require("../models/SellerOrder")
@@ -6408,5 +6409,152 @@ exports.searchposts = async (req, res) => {
 	} catch (e) {
 		console.error(e);
 		return res.status(400).json({ success: false, message: e.message });
+	}
+};
+
+exports.createmessagereqs = async (req, res) => {
+	const { sender, message, reciever } = req.body;
+	try {
+		const conv = await Conversation.findOne({
+			members: { $all: [sender, reciever] },
+		});
+
+		// await Conversation.findOne({
+		//   members: { $all: [sender, reciever] },
+		// });
+		const sendingperson = await User.findById(sender);
+		const recievingperson = await User.findById(reciever);
+		let blockcheck = false;
+		let existsbothway = false;
+
+		//checking if conversation exists in any of the persons phone
+		if (
+			sendingperson?.conversations?.includes(conv?._id?.toString()) &&
+			recievingperson?.conversations?.includes(conv?._id?.toString())
+		) {
+			existsbothway = true;
+		}
+
+		//checking for blocking
+		if (
+			sendingperson.blockedpeople.find((f, i) => {
+				return f.id.toString() === reciever;
+			}) ||
+			recievingperson.blockedpeople.find((f, i) => {
+				return f.id.toString() === sender;
+			})
+		) {
+			blockcheck = true;
+		}
+		if (blockcheck) {
+			res.status(201).json({ message: "You are blocked", success: false });
+		} else {
+			if (conv) {
+				if (existsbothway) {
+					res.status(203).json({
+						success: true,
+						covId: conv._id,
+						existingreq: false,
+						existsbothway: true,
+						convexists: true,
+					});
+				} else {
+					res.status(203).json({
+						success: true,
+						covId: conv._id,
+						existingreq: false,
+						existsbothway: false,
+						convexists: true,
+					});
+				}
+			} else if (!recievingperson) {
+				res.status(404).json({
+					success: false,
+					message: "User not found",
+				});
+			} else {
+				let Reqexits = false;
+				//checking for already sent msg request
+				for (const reqs of recievingperson.messagerequests) {
+					if (reqs.id.toString() === sender) {
+						Reqexits = true;
+						break;
+					}
+				}
+				for (const reqs of recievingperson.msgrequestsent) {
+					if (reqs.id.toString() === sender) {
+						Reqexits = true;
+						break;
+					}
+				}
+				for (const reqs of sendingperson.msgrequestsent) {
+					if (reqs.id.toString() === reciever) {
+						Reqexits = true;
+						break;
+					}
+				}
+				for (const reqs of sendingperson.messagerequests) {
+					if (reqs.id.toString() === reciever) {
+						Reqexits = true;
+						break;
+					}
+				}
+				if (Reqexits) {
+					res.status(200).json({ success: true, existingreq: true });
+				} else {
+					await User.updateOne(
+						{ _id: reciever },
+						{
+							$push: {
+								messagerequests: { id: sender, message: message },
+							},
+						}
+					);
+					await User.updateOne(
+						{ _id: sender },
+						{
+							$push: {
+								msgrequestsent: { id: reciever },
+							},
+						}
+					);
+
+					//message for notification
+					let date = moment(new Date()).format("hh:mm");
+					const msg = {
+						notification: {
+							title: "A new request has arrived.",
+							body: `👋 Extend your hand and accept!!`,
+						},
+						data: {
+							screen: "Requests",
+							sender_fullname: `${sendingperson?.fullname}`,
+							sender_id: `${sendingperson?._id}`,
+							text: "A new request has arrived!!",
+							isverified: `${sendingperson?.isverified}`,
+							createdAt: `${date}`,
+						},
+						token: recievingperson?.notificationtoken,
+					};
+
+					await admin
+						.messaging()
+						.send(msg)
+						.then((response) => {
+							console.log("Successfully sent message");
+						})
+						.catch((error) => {
+							console.log("Error sending message:", error);
+						});
+
+					res.status(200).json({ success: true, existingreq: true });
+				}
+			}
+		}
+	} catch (e) {
+		console.log(e);
+		res
+			.status(500)
+			.json({ message: e.message, success: false, existingreq: false });
 	}
 };

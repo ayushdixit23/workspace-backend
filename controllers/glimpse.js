@@ -242,3 +242,175 @@ exports.knownglimpse = async (req, res) => {
     res.status(400).json({ message: e.message, success: false });
   }
 };
+
+
+
+
+// for (let file of uris) {
+//   console.log(file);
+//   const response = await axios.post(
+//     'http://192.168.1.7:7700/api/start-multipart-upload',
+//     {
+//       fileName: file.fileName,
+//       contentType: file.type,
+//     },
+//   );
+
+//   // get uploadId
+//   let {uploadId} = response.data;
+//   console.log('UploadId- ', uploadId);
+
+//   // get total size of the file
+//   let totalSize = file.fileSize;
+//   // set chunk size to 10MB
+//   let chunkSize = 128 * 1024;
+//   // calculate number of chunks
+//   let numChunks = Math.ceil(totalSize / chunkSize);
+
+//   // generate presigned urls
+//   let presignedUrls_response = await axios.post(
+//     'http://192.168.1.7:7700/api/generate-presigned-url',
+//     {
+//       fileName: file.fileName,
+//       uploadId: uploadId,
+//       partNumbers: numChunks,
+//     },
+//   );
+
+//   let presigned_urls = presignedUrls_response?.data?.presignedUrls;
+
+//   console.log('Presigned urls- ', presigned_urls);
+
+//   // upload the file into chunks to different presigned url
+//   let parts = [];
+
+//   for (let i = 0; i < numChunks; i++) {
+//     let start = i * chunkSize;
+//     let end = Math.min(start + chunkSize, totalSize);
+//     console.log(file, start, end);
+//     let chunk = file.slice(start, end);
+
+//     let presignedUrl = presigned_urls[i];
+
+//     uploadPromises.push(
+//       axios.put(presignedUrl, chunk, {
+//         headers: {
+//           'Content-Type': file.type,
+//         },
+//       }),
+//     );
+//   }
+
+//   const uploadResponses = await Promise.all(uploadPromises);
+
+//   uploadResponses.forEach((response, i) => {
+//     // existing response handling
+
+//     parts.push({
+//       etag: response.headers.etag,
+//       PartNumber: i + 1,
+//     });
+//   });
+
+//   console.log('Parts- ', parts);
+
+//   // make a call to multipart complete api
+//   let complete_upload = await axios.post(
+//     'http://192.168.1.7:7700/api/complete-multipart-upload',
+//     {
+//       fileName: file.fileName,
+//       uploadId: uploadId,
+//       parts: parts,
+//     },
+//   );
+
+//   console.log('Complete upload- ', complete_upload.data);
+
+//   // if upload is successful, alert user
+//   if (complete_upload.status === 200) {
+//     alert('File uploaded successfully.');
+//   } else {
+//     alert('Upload failed.');
+//   }
+// }
+
+
+exports.startmultipart = async (req, res) => {
+  // initialization
+  let fileName = req.body.fileName;
+  let contentType = req.body.contentType;
+
+  const params = {
+    Bucket: process.env.BUCKET_NAME,
+    Key: fileName,
+  };
+
+  // add extra params if content type is video
+  if (contentType == "VIDEO") {
+    params.ContentDisposition = "inline";
+    params.ContentType = "video/mp4";
+  }
+
+  try {
+    const multipart = await s3multi.createMultipartUpload(params).promise();
+    res.json({ uploadId: multipart.UploadId });
+  } catch (error) {
+    console.error("Error starting multipart upload:", error);
+    return res.status(500).json({ error: "Error starting multipart upload" });
+  }
+};
+
+//upload multipart
+exports.uploadmulti = async (req, res) => {
+  // get values from req body
+  const { fileName, uploadId, partNumbers } = req.body;
+  const totalParts = Array.from({ length: partNumbers }, (_, i) => i + 1);
+  try {
+    const presignedUrls = await Promise.all(
+      totalParts.map(async (partNumber) => {
+        const params = {
+          Bucket: process.env.BUCKET_NAME,
+          Key: fileName,
+          PartNumber: partNumber,
+          UploadId: uploadId,
+          Expires: 3600 * 3,
+        };
+
+        return s3multi.getSignedUrl("uploadPart", {
+          ...params,
+        });
+      })
+    );
+    res.json({ presignedUrls });
+  } catch (error) {
+    console.error("Error generating pre-signed URLs:", error);
+    return res.status(500).json({ error: "Error generating pre-signed URLs" });
+  }
+};
+
+exports.completemulti = async (req, res) => {
+  // Req body
+  let fileName = req.body.fileName;
+  let uploadId = req.body.uploadId;
+  let parts = req.body.parts;
+
+  const params = {
+    Bucket: process.env.BUCKET_NAME,
+    Key: fileName,
+    UploadId: uploadId,
+
+    MultipartUpload: {
+      Parts: parts.map((part, index) => ({
+        ETag: part.etag,
+        PartNumber: index + 1,
+      })),
+    },
+  };
+  try {
+    const data = await s3multi.completeMultipartUpload(params).promise();
+    res.status(200).json({ fileData: data });
+  } catch (error) {
+    console.error("Error completing multipart upload:", error);
+    return res.status(500).json({ error: "Error completing multipart upload" });
+  }
+};

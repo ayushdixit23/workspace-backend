@@ -3316,9 +3316,10 @@ exports.fetchingprosite = async (req, res) => {
 
         for (let i = 0; i < posts.length; i++) {
           const obj = {
+            id: posts[i]?._id,
             title: posts[i].title,
-            dp: process.env.POST_URL + posts[i].post[0].content,
-            type: posts[i].post[0].type
+            dp: process.env.POST_URL + posts[i]?.post[0]?.content,
+            type: posts[i].post[0]?.type
           }
           data.push(obj)
         }
@@ -3366,6 +3367,7 @@ exports.fetchingprosite = async (req, res) => {
 
     const userDetails = {
       bio: user.desc,
+      id: user?._id,
       phone: user.phone,
       username: user.username,
       isverified: user.isverified,
