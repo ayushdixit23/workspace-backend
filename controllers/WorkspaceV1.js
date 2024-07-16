@@ -355,8 +355,11 @@ exports.analyticsuser = async (req, res) => {
     const user = await User.findById(userid);
     if (user) {
       const community = await Community.find({
-        creator: user._id.toString(),
-      }).populate("topics");
+        type: "public",
+        creator: user._id.toString()
+      })
+        .populate("topics")
+        .lean();
 
       const dps = await Promise.all(
         community.map(async (d) => {
@@ -529,10 +532,21 @@ exports.analyticsuser = async (req, res) => {
         };
       });
 
-      const posts = await Post.find({ sender: user._id.toString() }).populate(
-        "community",
-        "title"
-      );
+      // const posts = await Post.find({ sender: user._id.toString() }).populate(
+      //   "community",
+      //   "title"
+      // );
+
+
+      const publicCommunityIds = community.map(com => com._id);
+
+      // Fetch posts from public communities created by the user
+      const posts = await Post.find({
+        sender: user._id.toString(),
+        community: { $in: publicCommunityIds }
+      }).populate("community", "title");
+
+
 
       let dp;
       let video;
@@ -602,8 +616,11 @@ exports.analyticsuserThirtyDays = async (req, res) => {
     const user = await User.findById(userid);
     if (user) {
       const community = await Community.find({
-        creator: user._id.toString(),
-      }).populate("topics");
+        type: "public",
+        creator: user._id.toString()
+      })
+        .populate("topics")
+        .lean();
 
       const dps = await Promise.all(
         community.map(async (d) => {
@@ -771,10 +788,19 @@ exports.analyticsuserThirtyDays = async (req, res) => {
         };
       });
 
-      const posts = await Post.find({ sender: user._id.toString() }).populate(
-        "community",
-        "title"
-      );
+      // const posts = await Post.find({ sender: user._id.toString() }).populate(
+      //   "community",
+      //   "title"
+      // );
+
+      const publicCommunityIds = community.map(com => com._id);
+
+      // Fetch posts from public communities created by the user
+      const posts = await Post.find({
+        sender: user._id.toString(),
+        community: { $in: publicCommunityIds }
+      }).populate("community", "title");
+
 
       let dp;
       let video;
@@ -2506,7 +2532,13 @@ exports.checkStore = async (req, res) => {
     const user = await User.findById(id);
     if (user) {
       const data = [];
-      const community = await Community.find({ creator: user._id });
+
+      const community = await Community.find({
+        type: "public",
+        creator: user._id.toString()
+      })
+        .lean();
+
 
       for (let i = 0; i < community.length; i++) {
         const post = await Post.find({ community: community[i]._id });
@@ -2516,7 +2548,14 @@ exports.checkStore = async (req, res) => {
         });
       }
 
-      const post = await Post.find({ sender: user._id });
+      const publicCommunityIds = community.map(com => com._id);
+
+      // Fetch posts from public communities created by the user
+      const post = await Post.find({
+        sender: user._id.toString(),
+        community: { $in: publicCommunityIds }
+      }).populate("community", "title");
+
 
       const checkUser = () => data.some((d) => d.community && d.posts > 0);
       const validToCreateStore = checkUser();
