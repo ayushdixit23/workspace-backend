@@ -3,7 +3,6 @@ const {
   newad,
   getad,
   getallads,
-  checkaccount,
   createadvacc,
   fetchdashboard,
   editcurrentad,
@@ -45,7 +44,6 @@ router.get("/getad/:id", getad);
 router.get("/getallads/:id", getallads);
 router.get("/getalladsforthirtyDays/:id", getalladsforthirtyDays);
 router.post("/checkadvaccount", loginAdspace)
-// router.post("/checkadvaccount", checkaccount),
 router.post("/createadvacc", upload.single("image"), createadvacc);
 router.get("/fetchdashboard/:id", fetchdashboard);
 router.get("/fetchdashboardO/:id/:advertiserid", fetchdashboardO);

@@ -168,9 +168,7 @@ function generateRefreshToken(data) {
 }
 
 exports.checkid = async (req, res) => {
-	console.log(req.body)
 	try {
-
 		const { phone } = req.body;
 
 		const user = await User.findOne({ phone });

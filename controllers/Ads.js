@@ -4,6 +4,7 @@ const Minio = require("minio");
 const Verification = require("../models/Veriification");
 const Transaction = require("../models/AdTransactions");
 const Order = require("../models/orders");
+const Topic = require("../models/topic");
 const Community = require("../models/community");
 const Product = require("../models/product");
 const Razorpay = require("razorpay");
@@ -33,7 +34,6 @@ const minioClient = new Minio.Client({
 
 const Advertiser = require("../models/Advertiser");
 const Post = require("../models/post");
-const Topic = require("../models/topic");
 const Approvals = require("../models/Approvals");
 const Analytics = require("../models/Analytics");
 const Conversation = require("../models/conversation");
@@ -185,7 +185,7 @@ function generateUniqueID() {
   return advertiserID.toString();
 }
 
-// correct api
+
 exports.loginAdspace = async (req, res) => {
   const { phone, email, password } = req.body;
   try {
@@ -289,6 +289,7 @@ exports.loginAdspace = async (req, res) => {
       return res.status(200).json({
         message: "Advertiser exists",
         advertiser,
+        data,
         access_token,
         refresh_token,
         type: advertiser.type,
@@ -425,6 +426,7 @@ exports.loginAdspace = async (req, res) => {
         message: "Account Created",
         access_token,
         refresh_token,
+        data,
       });
     }
   } catch (e) {
@@ -432,7 +434,6 @@ exports.loginAdspace = async (req, res) => {
   }
 };
 
-// correct api
 exports.loginwithworkspace = async (req, res) => {
   try {
     const { id, postid } = req.params;
@@ -567,9 +568,8 @@ exports.loginwithworkspace = async (req, res) => {
   }
 };
 
-// correct api
 exports.addAccount = async (req, res) => {
-  console.log(req.body, req.files)
+
   try {
     const { agencyuserid,
       agencyadvertiserid } = req.params
@@ -772,7 +772,6 @@ exports.addAccount = async (req, res) => {
   }
 };
 
-// correct api
 exports.loginagency = async (req, res) => {
   try {
     const { agencyId } = req.params
@@ -871,7 +870,6 @@ exports.loginagency = async (req, res) => {
   }
 }
 
-// correct api
 exports.loginforAdspace = async (req, res) => {
   try {
     const { id } = req.params;
@@ -978,7 +976,6 @@ exports.loginforAdspace = async (req, res) => {
   }
 }
 
-//create adv account !!missing password hashing
 exports.createadvacc = async (req, res) => {
   const {
     firstname,
@@ -1007,6 +1004,10 @@ exports.createadvacc = async (req, res) => {
     });
 
     let savedAdv;
+
+    if (advertiser) {
+      savedAdv = advertiser
+    }
 
     if (!advertiser && !user) {
       const advid = generateUniqueID();
@@ -1137,7 +1138,6 @@ exports.createadvacc = async (req, res) => {
       );
     }
 
-
     let data
 
     if (savedAdv.type === "Individual") {
@@ -1214,6 +1214,8 @@ exports.createadvacc = async (req, res) => {
       access_token,
       fullname: savedAdv?.firstname + " " + savedAdv?.lastname,
       userid: savedAdv?.userid,
+      data,
+      accountexists: advertiser ? true : false,
       advertiserid: savedAdv?.advertiserid,
       image: process.env.URL + savedAdv?.image,
       type: savedAdv.type,
