@@ -2269,44 +2269,6 @@ exports.profileinfo = async (req, res) => {
   }
 };
 
-// exports.profileStore = async (req, res) => {
-//   console.log(req.body);
-//   try {
-//     const { id } = req.params;
-//     const { storeAddress, city, landmark, state, postalCode } = req.body;
-
-//     const user = await User.findById(id);
-//     if (user) {
-//       user.storeAddress[0].buildingno = storeAddress;
-//       user.storeAddress[0].state = state;
-//       user.storeAddress[0].postal = postalCode;
-//       user.storeAddress[0].city = city;
-//       user.storeAddress[0].landmark = landmark;
-//       await user.save();
-//       const sessionId = generateSessionId();
-//       const dp = await generatePresignedUrl(
-//         "images",
-//         user.profilepic.toString(),
-//         60 * 60
-//       );
-//       const data = {
-//         dp,
-//         fullname: user.fullname,
-//         username: user.username,
-//         id: user._id.toString(),
-//         sessionId
-//       };
-//       const access_token = generateAccessToken(data)
-//       return res.status(200).json({ success: true, sessionId, access_token });
-//     } else {
-//       res.status(400).json({ message: "User Not Found", success: false });
-//     }
-//   } catch (err) {
-//;
-//     res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
-
 exports.getprofileinfo = async (req, res) => {
   try {
     const { id } = req.params;
@@ -3055,7 +3017,7 @@ exports.fetchdetails = async (req, res) => {
 }
 
 exports.memfinalize = async (req, res) => {
-  console.log("first runndded")
+
   try {
     const { id, orderId, memid,
       dm,
@@ -3246,26 +3208,6 @@ exports.memfinalize = async (req, res) => {
     console.log(error)
   }
 };
-
-// exports.approvalrequestbank = async (req, res) => {
-//   try {
-//     const { id } = req.params
-//     const user = await User.findById(id)
-//     if (!user) {
-//       return res.status(400).json({ success: false, message: "User Not Found" })
-//     }
-//     user.isbankverified = false
-//     await user.save()
-//     const approval = await Approvals({
-//       id,
-//       type: "bank",
-//     })
-//     await approval.save()
-//     res.status(200).json({ success: true, message: "Request sent!" })
-//   } catch (error) {
-//     res.status(400).json({ success: false, message: "Something went Wrong!" })
-//   }
-// }
 
 exports.addbank = async (req, res) => {
   try {

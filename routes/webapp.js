@@ -4,7 +4,7 @@ const router = express.Router();
 const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage, limits: { fileSize: 1000000000 } });
-const { checkid, joinmember, unjoinmember, postanythings3, newfetchfeeds3, joinedcomnews3, fetchallchatsnew, fetchconvs, compostfeed, fetchallposts, gettopicmessages, searchcoms, searchpros, checkemail, loadmorechatmsgs, sendchatfile, fetchcart, fetchorders, mobileSearch, addRecentSearchCommunity, addRecentSearchProsite, removeRecentSearchProsite, removeRecentSearchCommunity, fetchmoredata, fetchallsubscriptions, updatequantity, removecartorder, hideconvmsg, unhideconvmsg, fetchhiddenconv, fetchmorehiddenconv, deletemessages, blockpeople, reporting, fetchallmsgreqs, acceptorrejectmesgreq, likepost, createtopicporder, finalisetopicorder, muting, removeconversation, checkqr, mutecom, fetchallcomments, createcomment, deletemessagestopic, setcomtype, getallmembers, removecomwithposts, addtocart, changeAddress, cod, getprofileinfo, searchall, searchposts, createmessagereqs } = require("../controllers/webapp");
+const { checkid, joinmember, unjoinmember, postanythings3, newfetchfeeds3, joinedcomnews3, fetchallchatsnew, fetchconvs, compostfeed, fetchallposts, gettopicmessages, searchcoms, searchpros, checkemail, loadmorechatmsgs, sendchatfile, fetchcart, fetchorders, mobileSearch, addRecentSearchCommunity, addRecentSearchProsite, removeRecentSearchProsite, removeRecentSearchCommunity, fetchmoredata, fetchallsubscriptions, updatequantity, removecartorder, hideconvmsg, unhideconvmsg, fetchhiddenconv, fetchmorehiddenconv, deletemessages, blockpeople, reporting, fetchallmsgreqs, acceptorrejectmesgreq, likepost, createtopicporder, finalisetopicorder, muting, removeconversation, checkqr, mutecom, fetchallcomments, createcomment, deletemessagestopic, setcomtype, getallmembers, removecomwithposts, addtocart, changeAddress, cod, getprofileinfo, searchall, searchposts, createmessagereqs, createrzporder, finaliseorder, productsfetchfeed } = require("../controllers/webapp");
 const { profileinfo } = require("../controllers/WorkspaceV1");
 
 router.post("/webapplogin", checkid)
@@ -25,8 +25,9 @@ router.get("/fetchallposts/:id/:comId", fetchallposts)
 router.get("/gettopicmessages/:id/:topicId", gettopicmessages)
 router.post("/searchcoms/:id", searchcoms)
 router.post("/searchpros", searchpros)
-router.get("/fetchcart/:userId", fetchcart)
-router.post("/removecartweb/:id/:cartId/:productId", removecartorder)
+router.post("/websearchforall/:id", searchall);
+router.post("/websearchforposts", searchposts);
+
 router.get("/fetchorders/:userId", fetchorders)
 router.get("/webmobileSearch/:id", mobileSearch)
 router.post("/addRecentCommunity/:id", addRecentSearchCommunity)
@@ -61,14 +62,18 @@ router.post("/web/deletemessagestopic/:id", deletemessagestopic);
 router.post("/setcomtype/:id/:comId", setcomtype);
 router.get("/web/getallmembers/:id/:comId", getallmembers);
 router.post("/web/removecomwithposts/:id/:comId", removecomwithposts);
+router.get("/fetchcart/:userId", fetchcart)
+router.post("/removecartweb/:id/:cartId/:productId", removecartorder)
 router.post("/webaddtocart/:userId/:productId", addtocart);
 router.post("/changeAddress/:id", changeAddress);
 router.post("/cod/:userId", cod);
 router.get("/webgetprofileinfo/:id", getprofileinfo);
 router.post("/webprofileinfo/:id", upload.single("image"), profileinfo);
-router.post("/websearchforall/:id", searchall);
-router.post("/websearchforposts", searchposts);
 router.post("/createmessagereqs", createmessagereqs);
 
+// order
+router.post("/createrzporder/:id", createrzporder);
+router.post("/finaliseorder/:id/:ordId", finaliseorder);
+router.get("/web/products", productsfetchfeed);
 
 module.exports = router;

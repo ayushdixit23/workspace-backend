@@ -2449,6 +2449,150 @@ exports.gettopicmessages = async (req, res) => {
 	}
 };
 
+exports.gettopicmessages = async (req, res) => {
+	try {
+		const { id, topicId } = req.params;
+		const user = await User.findById(id);
+		const topic = await Topic.findById(topicId);
+		const community = await Community.find({ topics: { $in: [topic._id] } });
+		if (community && topic && user) {
+			const msg = await Message.find({
+				topicId: topicId,
+				// status: "active",
+				deletedfor: { $nin: [user._id.toString()] },
+			})
+				.limit(20)
+				.sort({ createdAt: -1 })
+				.populate("sender", "profilepic fullname isverified");
+
+			let messages = [];
+
+			for (let i = 0; i < msg?.length; i++) {
+				if (
+					msg[i].typ === "image" ||
+					msg[i].typ === "video" ||
+					msg[i].typ === "doc" ||
+					msg[i].typ === "glimpse"
+				) {
+					const url = process.env.MSG_URL + msg[i]?.content?.uri;
+
+					messages.push({ ...msg[i].toObject(), url, dp: process.env.URL + msg[i].sender.profilepic, });
+				} else if (msg[i].typ === "gif") {
+					const url = msg[i]?.content?.uri;
+
+					messages.push({ ...msg[i].toObject(), url, dp: process.env.URL + msg[i].sender.profilepic, });
+				} else if (msg[i].typ === "post") {
+					const url = process.env.POST_URL + msg[i]?.content?.uri;
+					const post = await Post.findById(msg[i].forwardid);
+					messages.push({
+						...msg[i].toObject(),
+						url,
+						dp: process.env.URL + msg[i].sender.profilepic,
+						comId: post?.community,
+					});
+				} else if (msg[i].typ === "product") {
+					const url = process.env.PRODUCT_URL + msg[i]?.content?.uri;
+
+					messages.push({ ...msg[i].toObject(), url, dp: process.env.URL + msg[i].sender.profilepic, });
+				} else {
+					messages.push({ ...msg[i].toObject(), dp: process.env.URL + msg[i].sender.profilepic });
+				}
+			}
+
+			messages.reverse();
+
+			//muted and unmuted topics
+			let muted = null;
+			if (topic?.notifications?.length > 0) {
+				muted = topic?.notifications?.filter((f, i) => {
+					return f.id?.toString() === user._id.toString();
+				});
+			}
+
+			if (!community[0].members.includes(user._id)) {
+				res.status(203).json({
+					message: "You are not the member of the Community",
+					success: true,
+					topicjoined: false,
+				});
+			} else {
+				//checking if brought topic is valid
+				let purchaseindex = topic.purchased.findIndex(
+					(f, i) => f.id?.toString() === user._id?.toString()
+				);
+
+				const timestamp = topic.purchased[purchaseindex]?.broughton || 0;
+				const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+
+				const currentTimestamp = Date.now();
+
+				const difference = currentTimestamp - timestamp;
+
+				const isWithin30Days = difference <= thirtyDaysInMs;
+				let topicdetail = {
+					id: topic?._id,
+					price: topic?.price,
+					desc: topic?.message,
+					members: topic?.memberscount,
+					name: topic?.title,
+					type: topic?.type
+				};
+
+				if (
+					topic.type !== "paid" &&
+					topic.members.some((memberId) => memberId.equals(user?._id))
+				) {
+					res.status(200).json({
+						muted,
+						messages,
+						success: true,
+						topicjoined: true,
+					});
+				} else {
+					if (topic?.type === "paid") {
+						if (
+							topic.purchased.some((memberId) =>
+								memberId.id.equals(user?._id)
+							) &&
+							isWithin30Days
+						) {
+							res.status(200).json({
+								muted,
+								messages,
+								success: true,
+								topicjoined: true,
+							});
+						} else {
+							res.status(203).json({
+								// messages: ["Not joined"],
+								messages: [],
+								// messages: "Not joined",
+								success: true,
+								topicjoined: false,
+								topic: topicdetail,
+							});
+						}
+					} else {
+						res.status(200).json({
+							muted,
+							messages,
+							success: true,
+							topicjoined: true,
+						});
+					}
+				}
+			}
+		} else {
+			res.status(404).json({ message: "Something not found!", success: false });
+		}
+	} catch (e) {
+		console.log(e);
+		res
+			.status(400)
+			.json({ message: "Something went wrong...", success: false });
+	}
+};
+
 // saerch com
 exports.searchcoms = async (req, res) => {
 	const { id } = req.params;
@@ -5516,7 +5660,7 @@ exports.cod = async (req, res) => {
 				const order = new Order({
 					buyerId: user._id,
 					productId: fast,
-					quantity: finalqty,
+					quantity: finalqty === 0 ? 1 : finalqty,
 					total: finalamount,
 					orderId: oi,
 					paymentMode: "Cash",
@@ -6556,3 +6700,491 @@ exports.createmessagereqs = async (req, res) => {
 			.json({ message: e.message, success: false, existingreq: false });
 	}
 };
+
+exports.createrzporder = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { quantity, deliverycharges, productId, total, path } = req.body;
+
+		const ordern = await Order.countDocuments();
+		const user = await User.findById(id);
+		const products = await Product.find({ _id: { $in: productId } })
+			.populate("creator", "storeAddress")
+			.populate("collectionss", "category");
+
+		let oi = Math.floor(Math.random() * 9000000) + 1000000;
+
+		let fast = [];
+		let slow = [];
+
+		if (!user || products.length <= 0) {
+			return res.status(404).json({ message: "User or Product not found" });
+		} else {
+			for (let product of products) {
+				// Separating food and grocery
+				if (
+					product.collectionss &&
+					product.collectionss.category === "Food and Grocery"
+				) {
+					fast.push(product._id);
+				} else {
+					slow.push(product._id);
+				}
+			}
+
+			// Generating msgId
+			function msgid() {
+				return Math.floor(100000 + Math.random() * 900000);
+			}
+
+			let finalmaindata = [];
+
+			// For Food & Grocery
+			if (fast.length > 0) {
+				let sellers = [];
+				let maindata = [];
+				let qty = [];
+				let prices = [];
+
+				// Checking for products in fast
+				let matchedObjects = [];
+				user.cart.forEach((obj1) => {
+					let matchingObj = fast.find(
+						(obj2) => obj2?.toString() === obj1.product?.toString()
+					);
+
+					if (matchingObj) {
+						matchedObjects.push(obj1);
+					}
+				});
+
+				for (let i = 0; i < matchedObjects.length; i++) {
+					const product = await Product.findById(
+						matchedObjects[i].product
+					).populate("creator", "storeAddress");
+					prices.push(product?.discountedprice);
+					sellers.push(product?.creator?._id);
+					qty.push(matchedObjects[i].quantity);
+					maindata.push({
+						product: product._id,
+						seller: product?.creator?._id,
+						price: product?.discountedprice,
+						qty: matchedObjects[i].quantity,
+					});
+
+					finalmaindata.push({
+						product: product._id,
+						seller: product?.creator?._id,
+						price: product?.discountedprice,
+						qty: matchedObjects[i].quantity,
+					});
+				}
+
+				let finalqty = sumArray(qty);
+				let finalamount = sumArray(prices);
+
+				// A new order is created
+				const order = new Order({
+					buyerId: user._id,
+					productId: fast,
+					quantity: finalqty === 0 ? 1 : finalqty,
+					total: finalamount,
+					orderId: oi,
+					paymentMode: "UPI",
+					currentStatus: "pending",
+					deliverycharges: deliverycharges,
+					timing: "Arriving Soon!",
+					orderno: ordern + 1,
+					data: maindata,
+					sellerId: sellers,
+				});
+				await order.save();
+
+				// Updating order in customer's purchase history
+				await User.updateOne(
+					{ _id: user._id },
+					{ $push: { puchase_history: order._id } }
+				);
+			}
+
+			// For Usual
+			if (slow.length > 0) {
+				let sellers = [];
+				let maindata = [];
+				let qty = [];
+				let prices = [];
+
+				// Checking for products in slow
+				let matchedObjects = [];
+				user.cart.forEach((obj1) => {
+					let matchingObj = slow.find(
+						(obj2) => obj2?.toString() === obj1.product?.toString()
+					);
+
+					if (matchingObj) {
+						matchedObjects.push(obj1);
+					}
+				});
+
+				for (let i = 0; i < matchedObjects.length; i++) {
+					const product = await Product.findById(
+						matchedObjects[i].product
+					).populate("creator", "storeAddress");
+					prices.push(product?.discountedprice);
+					sellers.push(product?.creator?._id);
+					qty.push(matchedObjects[i].quantity);
+					maindata.push({
+						product: product._id,
+						seller: product?.creator?._id,
+						price: product?.discountedprice,
+						qty: matchedObjects[i].quantity,
+					});
+
+					finalmaindata.push({
+						product: product._id,
+						seller: product?.creator?._id,
+						price: product?.discountedprice,
+						qty: matchedObjects[i].quantity,
+					});
+				}
+
+				let finalqty = sumArray(qty);
+				let finalamount = sumArray(prices);
+
+
+				// A new order is created
+				const order = new Order({
+					buyerId: user._id,
+					productId: slow,
+					quantity: finalqty === 0 ? 1 : finalqty,
+					total: finalamount,
+					orderId: oi,
+					paymentMode: "UPI",
+					currentStatus: "pending",
+					deliverycharges: deliverycharges,
+					timing: "Tomorrow, by 7:00 pm",
+					orderno: ordern + 1,
+					data: maindata,
+					sellerId: sellers,
+				});
+				await order.save();
+
+				// Updating order in customer's purchase history
+				await User.updateOne(
+					{ _id: user._id },
+					{ $push: { puchase_history: order._id } }
+				);
+			}
+		}
+
+		let pids = JSON.stringify(productId);
+
+		let payload = {
+			merchantId: process.env.TEST_MERCHANT_ID,
+			merchantTransactionId: oi,
+			merchantUserId: user._id,
+			amount: parseInt(total),
+			redirectUrl: `http://localhost:3000/${path}`,
+			// redirectUrl: `https://grovyo.com/${path}`,
+			redirectMode: "REDIRECT",
+			// callbackUrl: `http://192.168.1.6:7190/api/v1/finaliseorder/${user._id}/${oi}`,
+			callbackUrl: `https://work.grovyo.xyz/api/v1/finaliseorder/${user._id}/${oi}`,
+			paymentInstrument: {
+				type: "PAY_PAGE",
+			},
+		};
+		let bufferObj = Buffer.from(JSON.stringify(payload), "utf8");
+
+		let base64string = bufferObj.toString("base64");
+
+		let string = base64string + "/pg/v1/pay" + process.env.TEST_PHONE_PAY_KEY;
+		let shaString = sha256(string);
+
+		let checkSum = shaString + "###" + process.env.keyIndex;
+
+		await axios
+			.post(
+				// "https://api.phonepe.com/apis/hermes/pg/v1/pay",
+				`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay`,
+
+				{ request: base64string },
+				{
+					headers: {
+						"Content-Type": "application/json",
+						"X-VERIFY": checkSum,
+						accept: "application/json",
+					},
+				}
+			)
+			.then((response) => {
+				console.log(
+					response.data,
+					response.data.data.instrumentResponse.redirectInfo.url
+				);
+				res.status(200).json({
+					success: true,
+					url: response.data.data.instrumentResponse.redirectInfo.url,
+				});
+			})
+			.catch((err) => {
+				console.log(err);
+				return res.status({ success: false, message: err.message });
+			});
+
+	} catch (e) {
+		console.log(e);
+		res.status(400).json({ success: false });
+	}
+};
+
+// Helper function to sum an array
+function sumArray(arr) {
+	return arr.reduce((a, b) => a + b, 0);
+}
+
+exports.finaliseorder = async (req, res) => {
+	try {
+		const { id, ordId } = req.params;
+
+		const user = await User.findById(id).populate({
+			path: "cart",
+			populate: {
+				path: "product",
+				model: "Product",
+			},
+		});
+
+		if (!user) {
+			return res.status(404).json({ message: "User or Product not found" });
+		}
+
+		function generateChecksum(
+			merchantId,
+			merchantTransactionId,
+			saltKey,
+			saltIndex
+		) {
+			const stringToHash =
+				`/pg/v1/status/${merchantId}/${merchantTransactionId}` + saltKey;
+			const shaHash = sha256(stringToHash)?.toString();
+			const checksum = shaHash + "###" + saltIndex;
+
+			return checksum;
+		}
+
+
+		const checksum = generateChecksum(
+			process.env.TEST_MERCHANT_ID,
+			ordId,
+			process.env.TEST_PHONE_PAY_KEY,
+			process.env.keyIndex
+		);
+		const response = await axios.get(
+			`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/status/${process.env.TEST_MERCHANT_ID}/${ordId}`,
+
+			{
+				headers: {
+					"Content-Type": "application/json",
+					"X-VERIFY": checksum,
+					"X-MERCHANT-ID": process.env.TEST_MERCHANT_ID,
+				},
+			}
+		);
+		if (response.data.code === "PAYMENT_SUCCESS") {
+			console.log("Payment Successful");
+			await Order.updateMany(
+				{ orderId: ordId },
+				{ $set: { currentStatus: "processing", onlineorderid: ordId } }
+			);
+
+			await User.updateOne(
+				{ _id: user._id },
+				{ $unset: { cart: [], cartproducts: [] } }
+			);
+
+			const order = await Order.findOne({ orderId: ordId });
+
+			for (let item of user.cart) {
+				const sellerOrder = new SellerOrder({
+					buyerId: order.buyerId,
+					productId: item.product._id,
+					quantity: item.quantity,
+					total: item.total,
+					orderId: oid,
+					paymentMode: "Cash",
+					currentStatus: "processing",
+					deliverycharges: order.deliverycharges,
+					sellerId: item.product.creator._id,
+					orderno: parseInt(await Order.countDocuments() + 1),
+				});
+				await sellerOrder.save();
+
+				const product = await Product.findById(item.product._id).populate("creator", "storeAddress ismembershipactive memberships");
+
+				let deduction = 0;
+				if (product.creator.ismembershipactive === false ||
+					product.creator.memberships.membership?.toString() === "65671e5204b7d0d07ef0e796") {
+					deduction = product.discountedprice * 0.1;
+				}
+
+				let today = new Date();
+				let formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+
+				if (deduction > 0) {
+					const earned = {
+						how: "Sales Commission",
+						amount: deduction,
+						when: Date.now(),
+						id: order._id,
+					};
+
+					await Admin.updateOne(
+						{ date: formattedDate },
+						{
+							$inc: { todayearning: deduction },
+							$push: { earningtype: earned },
+						}
+					);
+				}
+
+				const storeearning = product.discountedprice - deduction;
+				const earning = { how: "product", when: Date.now() };
+
+				await User.updateOne(
+					{ _id: product.creator._id },
+					{
+						$addToSet: { customers: user._id, earningtype: earning },
+						$inc: { storeearning: storeearning },
+					}
+				);
+
+				await Product.updateOne(
+					{ _id: product._id },
+					{ $inc: { itemsold: 1 } }
+				);
+			}
+
+			const sendMessage = async (sender, receiver, message) => {
+				const conversation = await Conversation.findOne({ members: { $all: [sender._id, receiver._id] } }) || new Conversation({ members: [sender._id, receiver._id] });
+				if (!conversation._id) await conversation.save();
+
+				const msgId = Math.floor(100000 + Math.random() * 900000);
+				const timestamp = new Date();
+				const senderPic = process.env.URL + sender.profilepic;
+				const receiverPic = process.env.URL + receiver.profilepic;
+
+				const data = {
+					conversationId: conversation._id,
+					sender: sender._id,
+					text: message,
+					mesId: msgId,
+				};
+
+				const msg = new Message(data);
+				await msg.save();
+
+				if (receiver.notificationtoken) {
+					const notification = {
+						notification: {
+							title: sender.fullname,
+							body: message,
+						},
+						data: {
+							screen: "Conversation",
+							sender_fullname: sender.fullname,
+							sender_id: sender._id,
+							text: message,
+							convId: conversation._id?.toString(),
+							createdAt: timestamp?.toString(),
+							mesId: msgId.toString(),
+							typ: "message",
+							senderuname: sender.username,
+							senderverification: sender.isverified.toString(),
+							senderpic: senderPic,
+							reciever_fullname: receiver.fullname,
+							reciever_username: receiver.username,
+							reciever_isverified: receiver.isverified.toString(),
+							reciever_pic: receiverPic,
+							reciever_id: receiver._id.toString(),
+						},
+						token: receiver.notificationtoken,
+					};
+
+					await admin.messaging().send(notification).catch(console.error);
+				}
+			};
+
+			const workspace = await User.findById("65f5539d09dbe77dea51400d");
+			const sellers = user.cart.map(item => item.product.creator._id);
+
+			for (const sellerId of sellers) {
+				const seller = await User.findById(sellerId);
+				await sendMessage(workspace, seller, `A new order with orderId #${order.orderId} has arrived.`);
+			}
+
+			const flash = await User.findById("655e189fb919c70bf6895485");
+			const mainUser = await User.findById("65314cd99db37d9109914f3f");
+			await sendMessage(flash, mainUser, `A new order with orderId ${oid} has arrived.`);
+
+			const formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+
+			for (let sellerId of order.sellerId) {
+				let sellerUser = await User.findById(sellerId);
+
+				let analytics = await Analytics.findOne({ date: formattedDate, id: sellerUser._id });
+				if (analytics) {
+					await Analytics.updateOne(
+						{ _id: analytics._id },
+						{ $inc: { Sales: 1 } }
+					);
+				} else {
+					const newAnalytics = new Analytics({
+						date: formattedDate,
+						id: sellerUser._id,
+						Sales: 1,
+					});
+					await newAnalytics.save();
+				}
+			}
+
+			const finalOrders = await Order.find({ orderId: oid }).populate("collectionss", "category");
+			for (let order of finalOrders) {
+				credeli({
+					oid: order.orderId,
+					id: user._id,
+					storeids: sellers,
+					total: order.total,
+					instant: order.collectionss.category === "Food & Grocery",
+				});
+			}
+
+			res.status(200).json({ success: true });
+		} else if (response.data.code === "PAYMENT_ERROR") {
+			console.log("payment failed")
+
+			await Order.updateOne(
+				{ orderId: ordId },
+				{ $set: { currentStatus: "failed", onlineorderid: ordId } }
+			);
+
+			res.status(200).json({ success: false });
+		}
+
+	} catch (e) {
+		console.error(e);
+		res.status(400).json({ success: false });
+	}
+};
+
+exports.productsfetchfeed = async (req, res) => {
+	try {
+		const products = await Product.find({ creator: "654fdd2a787d1b672bf37231" }).limit(2)
+		const productWithDp = products.map((d) => {
+			return ({ ...d.toObject(), productImage: process.env.PRODUCT_URL + d?.images[0].content })
+		})
+		res.status(200).json({ success: true, products: productWithDp })
+	} catch (error) {
+		console.log(error)
+		res.status()
+	}
+}

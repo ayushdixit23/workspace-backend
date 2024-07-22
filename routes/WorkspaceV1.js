@@ -89,12 +89,7 @@ router.post("/refresh", refresh);
 router.get("/analyticsuser/:userid", analyticsuser);
 router.get("/analyticsuserThirtyDays/:userid", analyticsuserThirtyDays);
 router.get("/allcoms/:id", allcoms);
-router.post(
-  "/createcom/:userId",
-  middlewareMembership,
-  upload.single("image"),
-  createcom
-);
+
 router.post(
   "/createCollection/:userId",
   middlewareMembership,
@@ -132,11 +127,18 @@ router.get("/getallposts/:comid", getallposts);
 router.get("/getprofileinfo/:id", getprofileinfo);
 router.post("/profileinfo/:id", upload.single("image"), profileinfo);
 // router.post("/profilestore/:id", profileStore);
-router.post("/createtopic/:userId/:comId", middlewareMembership, createtopic);
 router.post("/delete/:comId", deletecom);
+router.post(
+  "/createcom/:userId",
+  middlewareMembership,
+  upload.single("image"),
+  createcom
+);
+router.post("/createtopic/:userId/:comId", middlewareMembership, createtopic);
 router.post("/deletetopic/:userId/:topicId", deletetopic);
 router.post("/edittopic/:id/:topicid", edittopic);
 router.get("/fetchtopic/:id/:comId", fetchtopic);
+router.post("/removecomwithposts/:id/:comId", removecomwithposts);
 router.post(
   "/updatecommunity/:userId/:comId",
   upload.single("image"),
@@ -177,7 +179,6 @@ router.get("/getprositedetails/:id", fetchingprosite)
 // router.post("/lottie", upload.single("lottieFile"), lottie);
 // router.post("/getprositefull", getprositefull);
 // router.post("/postforprosite", prosite);
-router.post("/removecomwithposts/:id/:comId", removecomwithposts);
 router.delete("/deletepost/:userId/:postId", deletepost);
 router.post("/savemytemplate/:id", templates);
 router.get("/fetchSingleProduct/:productId", fetchSingleProduct);
