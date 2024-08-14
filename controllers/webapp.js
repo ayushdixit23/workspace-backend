@@ -46,14 +46,6 @@ const minioClient = new Minio.Client({
 	secretKey: "shreyansh379",
 });
 
-function sumArray(arr) {
-	let total = 0;
-	for (let i = 0; i < arr.length; i++) {
-		total += arr[i];
-	}
-	return total;
-}
-
 function calculateTotalDistance(coordinates) {
 	let totalDistance = 0;
 
@@ -880,15 +872,6 @@ exports.newfetchfeeds3 = async (req, res) => {
 		const content = [];
 		const addp = [];
 
-		//checking and removing posts with no communities
-		// const p = await Post.find();
-
-		// for (let i = 0; i < p.length; i++) {
-		//   const com = await Community.findById(p[i].community);
-		//   if (!com) {
-		//     p[i].remove();
-		//   }
-		// }
 
 		//fetching post
 		const post = await Post.aggregate([
@@ -3390,15 +3373,7 @@ exports.fetchmoredata = async (req, res) => {
 		const content = [];
 		const addp = [];
 
-		//checking and removing posts with no communities
-		// const p = await Post.find();
 
-		// for (let i = 0; i < p.length; i++) {
-		//   const com = await Community.findById(p[i].community);
-		//   if (!com) {
-		//     p[i].remove();
-		//   }
-		// }
 
 		//fetching post
 		const post = await Post.aggregate([
@@ -4136,7 +4111,6 @@ exports.createtopicporder = async (req, res) => {
 				.post(
 					// "https://api.phonepe.com/apis/hermes/pg/v1/pay",
 					`https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay`,
-
 					{ request: base64string },
 					{
 						headers: {

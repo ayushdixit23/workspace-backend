@@ -64,6 +64,7 @@ const Analytics = require("../models/Analytics");
 const Approvals = require("../models/Approvals");
 const Advertiser = require("../models/Advertiser");
 const { default: axios } = require("axios");
+const WithdrawRequest = require("../models/WithdrawRequest");
 
 const instance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -3604,9 +3605,9 @@ exports.fetchCommunityStats = async (req, res) => {
     });
 
     const store = user.storeAddress.length > 0 ? true : false;
-    console.log(store);
+
     const verified = user.isStoreVerified;
-    console.log(communities.length, communities[0].post);
+
     res.status(200).json({ success: true, communities, store, verified });
   } catch (error) {
     console.log(error);
@@ -4063,6 +4064,15 @@ exports.deleteRecentProsites = async (req, res) => {
 //   }
 // }
 
+
+function generateRandom10DigitNumber() {
+  let randomNumber = '';
+  for (let i = 0; i < 10; i++) {
+    randomNumber += Math.floor(Math.random() * 10).toString();
+  }
+  return parseInt(randomNumber, 10);
+}
+
 exports.createWithdrawRequest = async (req, res) => {
   try {
     const { id } = req.params;
@@ -4088,7 +4098,8 @@ exports.createWithdrawRequest = async (req, res) => {
       const withdraw = new WithDrawRequest({
         userid: user._id,
         bank: user.bank,
-        amount
+        amount,
+        transcationId: generateRandom10DigitNumber()
       });
       await withdraw.save();
       return res.status(200).json({ success: true, message: "Withdraw request created successfully!" });
@@ -4100,3 +4111,19 @@ exports.createWithdrawRequest = async (req, res) => {
     console.error(error);
   }
 };
+
+exports.fetchwithdrawrequest = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const withdraw = await WithdrawRequest.find({ userid: id })
+
+    const data = withdraw.reverse()
+
+    res.status(200).json({ success: true, data })
+
+  } catch (error) {
+    res.status(400).json({ success: false, message: "Internal Server Error" })
+    console.log(error)
+  }
+}

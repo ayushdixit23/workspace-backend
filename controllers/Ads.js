@@ -191,8 +191,10 @@ exports.loginAdspace = async (req, res) => {
   try {
     let advertiser;
     if (email && password) {
+      console.log(1)
       advertiser = await Advertiser.findOne({ email, password });
     } else if (phone) {
+      console.log(2)
       // number(phone) is without 91
       advertiser = await Advertiser.findOne({ phone: "91" + phone });
     } else {
@@ -201,7 +203,10 @@ exports.loginAdspace = async (req, res) => {
         success: false,
       });
     }
+
+
     if (advertiser) {
+      console.log(3)
       const dp = process.env.URL + advertiser.image;
 
       const newEditCount = {
@@ -302,6 +307,7 @@ exports.loginAdspace = async (req, res) => {
       if (email && password) {
         const enpas = encryptaes(password);
         user = await User.findOne({ email, passw: enpas });
+        console.log(user.fullname)
       } else if (phone) {
         user = await User.findOne({ phone: "91" + phone });
       } else {
@@ -322,114 +328,210 @@ exports.loginAdspace = async (req, res) => {
 
       const firstname = user.fullname.split(" ")[0];
       const lastname = user.fullname.split(" ")[1];
+
       const dp = process.env.URL + user.profilepic;
 
       // correct
-      const advertisernew = new Advertiser({
-        firstname,
-        lastname,
-        image: user?.profilepic,
-        phone: user?.phone,
-        email: user?.email,
-        address: user?.address.streetaddress,
-        password: decryptaes(user.passw),
-        city: user?.address.city,
-        state: user?.address.state,
-        pincode: user?.address.pincode,
-        landmark: user?.address.landmark,
-        userid: user?._id,
-        advertiserid: generateUniqueID(),
+      const adv = await Advertiser.findOne({
+        $or: [
+          { email: user.email },
+          { phone: user.phone }
+        ]
       });
 
-      const savedAdvertiser = await advertisernew.save();
+      if (!adv) {
+        const advertisernew = new Advertiser({
+          firstname,
+          lastname,
+          image: user?.profilepic,
+          phone: user?.phone,
+          email: user?.email,
+          address: user?.address.streetaddress,
+          password: decryptaes(user.passw),
+          city: user?.address.city,
+          state: user?.address.state,
+          pincode: user?.address.pincode,
+          landmark: user?.address.landmark,
+          userid: user?._id,
+          advertiserid: generateUniqueID(),
+        });
 
-      user.advertiserid = savedAdvertiser._id;
-      await user.save();
+        const savedAdvertiser = await advertisernew.save();
 
-      let data
+        user.advertiserid = savedAdvertiser._id;
+        await user.save();
 
-      if (savedAdvertiser.type === "Individual") {
-        data = {
-          userid: savedAdvertiser?.userid,
-          advid: savedAdvertiser?._id,
-          image: process.env.URL + savedAdvertiser?.image,
-          firstname: savedAdvertiser?.firstname,
-          lastname: savedAdvertiser?.lastname,
-          country: savedAdvertiser?.country,
-          city: savedAdvertiser?.city,
-          type: savedAdvertiser.type,
-          address: savedAdvertiser?.address,
-          accounttype: savedAdvertiser?.type,
-          taxinfo: savedAdvertiser?.taxinfo,
-          email: savedAdvertiser?.email,
-          advertiserid: savedAdvertiser?.advertiserid,
-        };
-      } else {
-        const findAdvser = await Advertiser.find({
-          "agencyDetails.agencyadvertiserid": savedAdvertiser._id
-        })
+        let data
 
-        let manageusers = []
+        if (savedAdvertiser.type === "Individual") {
+          data = {
+            userid: savedAdvertiser?.userid,
+            advid: savedAdvertiser?._id,
+            image: process.env.URL + savedAdvertiser?.image,
+            firstname: savedAdvertiser?.firstname,
+            lastname: savedAdvertiser?.lastname,
+            country: savedAdvertiser?.country,
+            city: savedAdvertiser?.city,
+            type: savedAdvertiser.type,
+            address: savedAdvertiser?.address,
+            accounttype: savedAdvertiser?.type,
+            taxinfo: savedAdvertiser?.taxinfo,
+            email: savedAdvertiser?.email,
+            advertiserid: savedAdvertiser?.advertiserid,
+          };
+        } else {
+          const findAdvser = await Advertiser.find({
+            "agencyDetails.agencyadvertiserid": savedAdvertiser._id
+          })
 
-        const agencyrobj = {
-          fullname: savedAdvertiser.firstname + " " + savedAdvertiser.lastname,
-          firstname: savedAdvertiser.firstname,
-          lastname: savedAdvertiser.lastname,
-          image: process.env.URL + savedAdvertiser.image,
-          userid: savedAdvertiser.userid,
-          username: user.username,
-          advertiserid: savedAdvertiser.advertiserid,
-          id: savedAdvertiser._id
-        }
+          let manageusers = []
 
-        manageusers.push(agencyrobj)
-
-        for (let i = 0; i < findAdvser.length; i++) {
-          const user = await User.findById(findAdvser[i].userid)
-          const obj = {
-            fullname: findAdvser[i].firstname + " " + findAdvser[i].lastname,
-            firstname: findAdvser[i].firstname,
-            lastname: findAdvser[i].lastname,
-            image: process.env.URL + findAdvser[i].image,
-            userid: findAdvser[i].userid,
+          const agencyrobj = {
+            fullname: savedAdvertiser.firstname + " " + savedAdvertiser.lastname,
+            firstname: savedAdvertiser.firstname,
+            lastname: savedAdvertiser.lastname,
+            image: process.env.URL + savedAdvertiser.image,
+            userid: savedAdvertiser.userid,
             username: user.username,
-            advertiserid: findAdvser[i].advertiserid,
-            id: findAdvser[i]._id
+            advertiserid: savedAdvertiser.advertiserid,
+            id: savedAdvertiser._id
           }
-          manageusers.push(obj)
+
+          manageusers.push(agencyrobj)
+
+          for (let i = 0; i < findAdvser.length; i++) {
+            const user = await User.findById(findAdvser[i].userid)
+            const obj = {
+              fullname: findAdvser[i].firstname + " " + findAdvser[i].lastname,
+              firstname: findAdvser[i].firstname,
+              lastname: findAdvser[i].lastname,
+              image: process.env.URL + findAdvser[i].image,
+              userid: findAdvser[i].userid,
+              username: user.username,
+              advertiserid: findAdvser[i].advertiserid,
+              id: findAdvser[i]._id
+            }
+            manageusers.push(obj)
+          }
+
+          data = {
+            userid: savedAdvertiser?.userid,
+            advid: savedAdvertiser?._id,
+            image: process.env.URL + savedAdvertiser?.image,
+            firstname: savedAdvertiser?.firstname,
+            lastname: savedAdvertiser?.lastname,
+            country: savedAdvertiser?.country,
+            city: savedAdvertiser?.city,
+            address: savedAdvertiser?.address,
+            accounttype: savedAdvertiser?.type,
+            type: savedAdvertiser.type,
+            taxinfo: savedAdvertiser?.taxinfo,
+            email: savedAdvertiser?.email,
+            advertiserid: savedAdvertiser?.advertiserid,
+            manageusers
+          }
         }
 
-        data = {
-          userid: savedAdvertiser?.userid,
-          advid: savedAdvertiser?._id,
-          image: process.env.URL + savedAdvertiser?.image,
-          firstname: savedAdvertiser?.firstname,
-          lastname: savedAdvertiser?.lastname,
-          country: savedAdvertiser?.country,
-          city: savedAdvertiser?.city,
-          address: savedAdvertiser?.address,
-          accounttype: savedAdvertiser?.type,
+        const access_token = generateAccessToken(data);
+        const refresh_token = generateRefreshToken(data);
+
+        res.status(203).json({
+          success: true,
           type: savedAdvertiser.type,
-          taxinfo: savedAdvertiser?.taxinfo,
-          email: savedAdvertiser?.email,
-          advertiserid: savedAdvertiser?.advertiserid,
-          manageusers
+          message: "Account Created",
+          access_token,
+          refresh_token,
+          data,
+        });
+
+      } else {
+        let data
+        if (adv.type === "Individual") {
+          data = {
+            userid: adv?.userid,
+            advid: adv?._id,
+            image: process.env.URL + adv?.image,
+            firstname: adv?.firstname,
+            lastname: adv?.lastname,
+            country: adv?.country,
+            city: adv?.city,
+            type: adv.type,
+            address: adv?.address,
+            accounttype: adv?.type,
+            taxinfo: adv?.taxinfo,
+            email: adv?.email,
+            advertiserid: adv?.advertiserid,
+          };
+        } else {
+          const findAdvser = await Advertiser.find({
+            "agencyDetails.agencyadvertiserid": adv._id
+          })
+
+          let manageusers = []
+
+          const agencyrobj = {
+            fullname: adv.firstname + " " + adv.lastname,
+            firstname: adv.firstname,
+            lastname: adv.lastname,
+            image: process.env.URL + adv.image,
+            userid: adv.userid,
+            username: user.username,
+            advertiserid: adv.advertiserid,
+            id: adv._id
+          }
+
+          manageusers.push(agencyrobj)
+
+          for (let i = 0; i < findAdvser.length; i++) {
+            const user = await User.findById(findAdvser[i].userid)
+            const obj = {
+              fullname: findAdvser[i].firstname + " " + findAdvser[i].lastname,
+              firstname: findAdvser[i].firstname,
+              lastname: findAdvser[i].lastname,
+              image: process.env.URL + findAdvser[i].image,
+              userid: findAdvser[i].userid,
+              username: user.username,
+              advertiserid: findAdvser[i].advertiserid,
+              id: findAdvser[i]._id
+            }
+            manageusers.push(obj)
+          }
+
+          data = {
+            userid: adv?.userid,
+            advid: adv?._id,
+            image: process.env.URL + adv?.image,
+            firstname: adv?.firstname,
+            lastname: adv?.lastname,
+            country: adv?.country,
+            city: adv?.city,
+            address: adv?.address,
+            accounttype: adv?.type,
+            type: adv.type,
+            taxinfo: adv?.taxinfo,
+            email: adv?.email,
+            advertiserid: adv?.advertiserid,
+            manageusers
+          }
         }
+
+        const access_token = generateAccessToken(data);
+        const refresh_token = generateRefreshToken(data);
+
+        res.status(203).json({
+          success: true,
+          type: adv.type,
+          message: "Account Created",
+          access_token,
+          refresh_token,
+          data,
+        });
       }
 
-      const access_token = generateAccessToken(data);
-      const refresh_token = generateRefreshToken(data);
 
-      res.status(203).json({
-        success: true,
-        type: savedAdvertiser.type,
-        message: "Account Created",
-        access_token,
-        refresh_token,
-        data,
-      });
     }
   } catch (e) {
+    console.log(e)
     res.status(400).json({ message: "Something went wrong", success: false });
   }
 };

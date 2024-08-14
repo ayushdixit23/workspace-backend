@@ -47,7 +47,6 @@ router.post("/web/reporting/:userid", reporting)
 router.get("/fetchallmsgreqs/:id", fetchallmsgreqs)
 router.post("/acceptorrejectmesgreq", acceptorrejectmesgreq)
 router.post("/likepost/:userId/:postId", likepost)
-
 //create topic order new
 router.post("/v1/createtopicporder/:id/:topicId", createtopicporder);
 
@@ -66,14 +65,15 @@ router.get("/fetchcart/:userId", fetchcart)
 router.post("/removecartweb/:id/:cartId/:productId", removecartorder)
 router.post("/webaddtocart/:userId/:productId", addtocart);
 router.post("/changeAddress/:id", changeAddress);
-router.post("/cod/:userId", cod);
 router.get("/webgetprofileinfo/:id", getprofileinfo);
 router.post("/webprofileinfo/:id", upload.single("image"), profileinfo);
 router.post("/createmessagereqs", createmessagereqs);
 
 // order
+router.post("/cod/:userId", cod);
 router.post("/createrzporder/:id", createrzporder);
 router.post("/finaliseorder/:id/:ordId", finaliseorder);
+
 router.get("/web/products", productsfetchfeed);
 
 module.exports = router;

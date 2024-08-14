@@ -56,6 +56,7 @@ const {
   deleteRecentProsites,
   createWithdrawRequest,
   fetchdetails,
+  fetchwithdrawrequest,
   // base64upload,
   // getimage,
   // colors,
@@ -187,5 +188,6 @@ router.post("/changemont/:comid", changemont);
 router.get("/checkfordefault/:id", checkfordefault);
 router.post("/deleteRecentProsites/:userId/:prositeId", deleteRecentProsites);
 router.post("/createwithdrawRequest/:id", createWithdrawRequest)
+router.get("/fetchwithdrawrequest/:id", fetchwithdrawrequest)
 
 module.exports = router;

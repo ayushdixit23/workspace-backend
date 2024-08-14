@@ -50,6 +50,7 @@ const Analytics = require("./models/Analytics");
 const Membership = require("./models/membership");
 const Post = require("./models/post");
 const Order = require("./models/orders");
+const Interest = require("./models/Interest");
 
 require("dotenv").config();
 
@@ -197,18 +198,19 @@ const findUser = async () => {
 
 const deleteCommunity = async () => {
   try {
-    const community = await Community.findOne({ title: "ghj" });
-    console.log(community.title, community._id);
-    for (let i = 0; i < community.posts.length; i++) {
-      const post = await Post.findByIdAndDelete(community.posts[i]);
-      const ads = await Ads.findOneAndDelete({ postid: community.posts[i] });
-    }
-    const deletcomm = await Community.findByIdAndDelete(community._id);
-    console.log("done");
+    const community = await Community.findOne({ title: "" });
+    console.log(community.title, community._id, community.memberscount);
+    // for (let i = 0; i < community.posts.length; i++) {
+    //   const post = await Post.findByIdAndDelete(community.posts[i]);
+    //   const ads = await Ads.findOneAndDelete({ postid: community.posts[i] });
+    // }
+    // const deletcomm = await Community.findByIdAndDelete(community._id);
+    // console.log("done");
   } catch (error) {
     console.log(error);
   }
 };
+// deleteCommunity()
 
 const pushId = async () => {
   try {
@@ -232,7 +234,6 @@ const pushId = async () => {
 };
 
 // pushId()
-// deleteCommunity()
 
 const usersIds = async () => {
   try {
@@ -268,14 +269,63 @@ const usersIds = async () => {
   }
 };
 
+const communityofUsers = async () => {
+  console.log("first")
+  try {
+    const communities = []
+    const users = await User.find({ gr: 1 })
+    console.log(users.length)
+    for (let i = 0; i < users.length; i++) {
+      console.log(i)
+      const community = await Community.find({ creator: users[i]._id })
+
+      if (community && community.length > 0) {
+        const mapcom = community.map((d) => d?.title)
+        communities.push(mapcom)
+      }
+    }
+
+    console.log(communities)
+
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// communityofUsers()
+
+const communityofUsersr = async () => {
+  console.log("secc")
+  try {
+    const communities = []
+    const users = await User.find({ gr: 0 })
+    for (let i = 0; i < users.length; i++) {
+      const community = await Community.find({ creator: users[i]._id })
+
+      if (community && community.length > 0) {
+        const mapcom = community.map((d) => d?.title)
+        communities.push(mapcom)
+      }
+    }
+
+    console.log(communities)
+
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// communityofUsersr()
+
 // usersIds()
 
-// const uses = async () => {
-//   let usr = await User.find()
-//   const user = await User.findOne({ email: "watchmovies@gmail.com" });
-//   const pass = decryptaes(user.passw);
-//   console.log(pass, "pass");
-// };
+const uses = async () => {
+
+  const user = await User.findOne({ email: "grovyoinc@gmail.com" });
+  // const user = await User.findOne({ username: "anilgiftstore_131" });
+  const pass = decryptaes(user.passw);
+  console.log(pass, "pass", user.email);
+};
 
 // uses();
 
@@ -547,3 +597,79 @@ const organisation = async () => {
 
 // organisation()
 
+const InterestFetch = async () => {
+  try {
+    const inter = await Interest.find()
+    const titles = inter.map((d) => {
+      return (d.title)
+    })
+
+    // console.log(titles)
+
+    const data = []
+
+    for (let i = 0; i < titles.length; i++) {
+      const community = await Community.find({ category: titles[i] })
+      const cdata = {
+        interest: titles[i],
+        totalCommunity: community.length,
+        communities: community.map((d) => d?.title)
+      }
+      data.push(cdata)
+    }
+
+    console.log(data)
+
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// InterestFetch()
+
+function formatDateTime(dateTime) {
+  const date = new Date(dateTime);
+  const padZero = (num) => num.toString().padStart(2, '0');
+
+  const day = padZero(date.getDate());
+  const month = padZero(date.getMonth() + 1); // Months are zero-based
+  const year = date.getFullYear();
+  const hours = padZero(date.getHours());
+  const minutes = padZero(date.getMinutes());
+  const seconds = padZero(date.getSeconds());
+
+  return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+}
+
+const communityFetchAcctoInter = async () => {
+  try {
+    const interest = "Gaming"
+    const community = await Community.find({ category: interest })
+    console.log(`We have total: ${community.length} no 0f communities for this ${interest}`)
+
+    const data = []
+
+    for (let i = 0; i < community.length; i++) {
+      const lastPosts = await Post.findById(community[i].posts[community[i].posts?.length - 1])
+      const user = await User.findById(community[i].creator)
+      const datas = {
+        id: community[i]._id,
+        title: community[i].title,
+        isuserreal: user.gr === 0 ? true : false,
+        posts: community[i].posts?.length,
+        lastPost: {
+          title: lastPosts ? lastPosts?.title : null,
+          createAt: lastPosts ? formatDateTime(lastPosts?.createdAt) : null,
+        }
+      }
+      data.push(datas)
+    }
+
+    console.log(data, "data")
+
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// communityFetchAcctoInter()
