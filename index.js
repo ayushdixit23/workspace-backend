@@ -321,7 +321,8 @@ const communityofUsersr = async () => {
 
 const uses = async () => {
 
-  const user = await User.findOne({ email: "grovyoinc@gmail.com" });
+  const user = await User.findOne({ username: "secretdesires" });
+  // const user = await User.findOne({ email: "grovyoinc@gmail.com" });
   // const user = await User.findOne({ username: "anilgiftstore_131" });
   const pass = decryptaes(user.passw);
   console.log(pass, "pass", user.email);
@@ -465,7 +466,7 @@ const giveMembership = async () => {
     // let endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
     let endDate = new Date(currentDate.getTime() + 12 * 30.4375 * 24 * 60 * 60 * 1000);
 
-    const id = ""
+    const id = "65b68725750001cd4dc81483"
     const memid = "65671e6004b7d0d07ef0e798"
     const membership = await Membership.findById(memid)
 

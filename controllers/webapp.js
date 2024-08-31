@@ -7152,13 +7152,16 @@ exports.finaliseorder = async (req, res) => {
 
 exports.productsfetchfeed = async (req, res) => {
 	try {
-		const products = await Product.find({ creator: "654fdd2a787d1b672bf37231" }).limit(2)
+		const products = await Product.find({ creator: "65ffcfacd9813f32d5777bc2" }).limit(2)
+
 		const productWithDp = products.map((d) => {
 			return ({ ...d.toObject(), productImage: process.env.PRODUCT_URL + d?.images[0].content })
 		})
+
+		console.log(productWithDp)
 		res.status(200).json({ success: true, products: productWithDp })
 	} catch (error) {
 		console.log(error)
-		res.status()
+		res.status(400).json({ success: false, message: "Something Went Wrong!" })
 	}
 }
