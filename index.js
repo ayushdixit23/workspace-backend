@@ -48,6 +48,7 @@ const Posts = require("./models/post");
 const Request = require("./models/Request");
 const Analytics = require("./models/Analytics");
 const Membership = require("./models/membership");
+const DeliveriesSchema = require("./models/deliveries");
 const Post = require("./models/post");
 const Order = require("./models/orders");
 const Interest = require("./models/Interest");
@@ -93,6 +94,9 @@ const connectDB = async () => {
     mongoose.connect(process.env.PRODDB).then(() => {
       console.log("DB is connected");
     });
+    // mongoose.connect(process.env.SAMPLEDATABASE).then(() => {
+    //   console.log("DB is connected");
+    // });
   } catch (err) {
     console.log(err);
   }
@@ -295,7 +299,7 @@ const communityofUsers = async () => {
 // communityofUsers()
 
 const communityofUsersr = async () => {
-  console.log("secc")
+
   try {
     const communities = []
     const users = await User.find({ gr: 0 })
@@ -321,9 +325,9 @@ const communityofUsersr = async () => {
 
 const uses = async () => {
 
-  const user = await User.findOne({ username: "secretdesires" });
-  // const user = await User.findOne({ email: "grovyoinc@gmail.com" });
-  // const user = await User.findOne({ username: "anilgiftstore_131" });
+  // const user = await User.findOne({ username: "secretdesires" });
+  // const user = await User.findOne({ email: "golukq@gmail.com" });
+  const user = await User.findOne({ username: "anilgiftstore_131" });
   const pass = decryptaes(user.passw);
   console.log(pass, "pass", user.email);
 };
@@ -674,3 +678,22 @@ const communityFetchAcctoInter = async () => {
 }
 
 // communityFetchAcctoInter()
+const deleteUsers = async () => {
+  try {
+    const users = await User.find()
+    // const users = await User.countDocuments()
+
+    console.log("started")
+
+    for (let i = 0; i < users.length; i++) {
+      console.log(i)
+      await User.findByIdAndDelete(users[i]?._id)
+    }
+
+    console.log("done")
+  } catch (error) {
+
+  }
+}
+
+// deleteUsers()

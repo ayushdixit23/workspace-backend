@@ -110,7 +110,6 @@ const userSchema = new mongoose.Schema(
     adsearning: { type: Number, default: 0 },//store
     pendingpayments: { type: Number, default: 0 },
     revenue: { type: Number, default: 0 },
-    cart: [{ type: ObjectId, ref: "Cart" }],
     cartproducts: [{ type: ObjectId, ref: "Subscriptions" }],
     web: { type: String },
     prositeid: { type: ObjectId, ref: "Prosite" },
@@ -129,6 +128,7 @@ const userSchema = new mongoose.Schema(
         location: { type: [Array] },
       },
     ],
+    cart: [{ type: ObjectId, ref: "Cart" }],
     activity: [
       {
         time: { type: String, default: Date.now().toString() },
@@ -209,7 +209,7 @@ const userSchema = new mongoose.Schema(
         bearing: { type: Number },
       },
     },
-    // ayush
+
     storeAddress: [
       {
         buildingno: { type: String },

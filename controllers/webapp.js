@@ -6861,7 +6861,7 @@ exports.createrzporder = async (req, res) => {
 			redirectUrl: `http://localhost:3000/${path}`,
 			// redirectUrl: `https://grovyo.com/${path}`,
 			redirectMode: "REDIRECT",
-			// callbackUrl: `http://192.168.1.6:7190/api/v1/finaliseorder/${user._id}/${oi}`,
+			// callbackUrl: `http://192.168.1.12:7190/api/v1/finaliseorder/${user._id}/${oi}`,
 			callbackUrl: `https://work.grovyo.xyz/api/v1/finaliseorder/${user._id}/${oi}`,
 			paymentInstrument: {
 				type: "PAY_PAGE",
@@ -6875,6 +6875,8 @@ exports.createrzporder = async (req, res) => {
 		let shaString = sha256(string);
 
 		let checkSum = shaString + "###" + process.env.keyIndex;
+
+		console.log(checksum)
 
 		await axios
 			.post(
@@ -6938,8 +6940,7 @@ exports.finaliseorder = async (req, res) => {
 			saltKey,
 			saltIndex
 		) {
-			const stringToHash =
-				`/pg/v1/status/${merchantId}/${merchantTransactionId}` + saltKey;
+			const stringToHash = `/pg/v1/status/${merchantId}/${merchantTransactionId}` + saltKey;
 			const shaHash = sha256(stringToHash)?.toString();
 			const checksum = shaHash + "###" + saltIndex;
 
