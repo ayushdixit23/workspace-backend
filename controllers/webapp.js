@@ -6876,8 +6876,6 @@ exports.createrzporder = async (req, res) => {
 
 		let checkSum = shaString + "###" + process.env.keyIndex;
 
-		console.log(checksum)
-
 		await axios
 			.post(
 				// "https://api.phonepe.com/apis/hermes/pg/v1/pay",
@@ -6904,7 +6902,7 @@ exports.createrzporder = async (req, res) => {
 			})
 			.catch((err) => {
 				console.log(err);
-				return res.status({ success: false, message: err.message });
+				return res.status(400).json({ success: false, message: err.message });
 			});
 
 	} catch (e) {
