@@ -66,6 +66,8 @@ const Approvals = require("../models/Approvals");
 const Advertiser = require("../models/Advertiser");
 const { default: axios } = require("axios");
 const WithdrawRequest = require("../models/WithdrawRequest");
+const Conversation = require("../models/conversation");
+const Messge = require("../models/message");
 
 const instance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -4307,9 +4309,11 @@ exports.createrzporder = async (req, res) => {
 
     let pids = JSON.stringify(productId);
 
+    console.log(oi, "orderId")
+
     let payload = {
       merchantId: process.env.WEBAPP_MERCHANT_ID,
-      merchantTransactionId: oi,
+      merchantTransactionId: oi.toString(),
       merchantUserId: user._id,
       amount: parseInt(total),
       redirectUrl: `https://grovyo.com/${path}`,
@@ -4373,6 +4377,7 @@ function sumArray(arr) {
 exports.finaliseorder = async (req, res) => {
   try {
     const { id, ordId } = req.params;
+    console.log(ordId, "ordId", typeof ordId, ordId.toString())
 
     const user = await User.findById(id).populate({
       path: "cart",
@@ -4407,7 +4412,7 @@ exports.finaliseorder = async (req, res) => {
       process.env.keyIndex
     );
     const response = await axios.get(
-      `https://api.phonepe.com/apis/hermes/pg/v1/pay/${process.env.WEBAPP_MERCHANT_ID}/${ordId}`,
+      `https://api.phonepe.com/apis/hermes/pg/v1/status/${process.env.WEBAPP_MERCHANT_ID}/${ordId.toString()}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -4436,7 +4441,7 @@ exports.finaliseorder = async (req, res) => {
           productId: item.product._id,
           quantity: item.quantity,
           total: item.total,
-          orderId: oid,
+          orderId: ordId,
           paymentMode: "Cash",
           currentStatus: "processing",
           deliverycharges: order.deliverycharges,
@@ -4573,7 +4578,7 @@ exports.finaliseorder = async (req, res) => {
         }
       }
 
-      const finalOrders = await Order.find({ orderId: oid }).populate("collectionss", "category");
+      const finalOrders = await Order.find({ orderId: ordId }).populate("collectionss", "category");
       for (let order of finalOrders) {
         credeli({
           oid: order.orderId,
