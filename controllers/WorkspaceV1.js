@@ -4119,6 +4119,18 @@ exports.createWithdrawRequest = async (req, res) => {
   }
 };
 
+function calculateTotalDistance(coordinates) {
+  let totalDistance = 0;
+
+  for (let i = 1; i < coordinates.length; i++) {
+    const coord1 = coordinates[i - 1];
+    const coord2 = coordinates[i];
+    totalDistance += geolib.getDistance(coord1, coord2);
+  }
+
+  return totalDistance / 1000;
+}
+
 const credeli = async ({ id, storeids, oid, total, instant }) => {
   try {
     const user = await User.findById(id);
@@ -4137,7 +4149,6 @@ const credeli = async ({ id, storeids, oid, total, instant }) => {
         country: "India",
         coordinates: stores.coordinates,
       };
-      // let store = mainstore.storeAddress || mainstore.storeAddress[0];
 
       coordinates.push({
         latitude: store?.coordinates?.latitude,
@@ -4147,7 +4158,6 @@ const credeli = async ({ id, storeids, oid, total, instant }) => {
       });
     }
 
-    // Sorting locations
     const sortedCoordinates = geolib.orderByDistance(
       {
         latitude: user.address.coordinates.latitude,
@@ -4156,63 +4166,125 @@ const credeli = async ({ id, storeids, oid, total, instant }) => {
       coordinates
     );
 
-    // Finding the nearest driver from the last location
     let partners = [];
 
-    const deliverypartners = await Deluser.findOne({
+    const deliverypartners = await Deluser.find({
       accounttype: "partner",
-      // primaryloc: user.address.city,
+      primaryloc: user.address.city,
     });
 
-    console.log(sortedCoordinates[0].address, "sortedCoordinates[0].address");
+    for (let deliverypartner of deliverypartners) {
+      if (
+        deliverypartner &&
+        deliverypartner.accstatus !== "banned" &&
+        deliverypartner.accstatus !== "review" &&
+        deliverypartner.deliveries?.length < 21 &&
+        deliverypartner.totalbalance < 3000
+      ) {
+        partners.push({
+          latitude: deliverypartner.currentlocation?.latitude,
+          longitude: deliverypartner.currentlocation?.longitude,
+          id: deliverypartner?._id,
+        });
+      }
+    }
 
-    const newDeliveries = new Delivery({
-      title: user?.fullname,
-      amount: total,
-      orderId: oid,
-      pickupaddress: sortedCoordinates[0].address,
-      partner: deliverypartners?._id,
-      droppingaddress: user?.address,
-      phonenumber: user.phone,
-      mode: order.paymentMode ? order?.paymentMode : "Cash",
-      earning: 20,
-      where: "customer",
-      data: order.data,
-    });
-    await newDeliveries.save();
-
-    // Pushing delivery for driver
-    await Deluser.updateOne(
-      { _id: deliverypartners._id },
-      { $push: { deliveries: newDeliveries._id } }
+    let eligiblepartner = geolib.findNearest(
+      sortedCoordinates[sortedCoordinates.length - 1],
+      partners
     );
 
-    const msg = {
-      notification: {
-        title: "A new delivery has arrived.",
-        body: `From ${user?.fullname} OrderId #${oid}`,
-      },
-      data: {},
-      tokens: [
-        deliverypartners?.notificationtoken,
-        // user?.notificationtoken,
-        // store?.notificationtoken, //person who sells this item
-      ],
-    };
+    if (eligiblepartner) {
+      const driver = await Deluser.findById(eligiblepartner.id);
 
-    await admin
-      ?.messaging()
-      ?.sendEachForMulticast(msg)
-      ?.then((response) => {
-        console.log("Successfully sent message");
-      })
-      ?.catch((error) => {
-        console.log("Error sending message:", error);
+      const finalcoordinates = [
+        {
+          latitude: user.address.coordinates.latitude,
+          longitude: user.address.coordinates.longitude,
+        },
+        ...sortedCoordinates.map(coord => ({
+          latitude: coord.latitude,
+          longitude: coord.longitude,
+        })),
+        {
+          latitude: eligiblepartner.latitude,
+          longitude: eligiblepartner.longitude,
+        },
+      ];
+
+      const totalDistance = calculateTotalDistance(finalcoordinates);
+      const earning = totalDistance * foodadmount;
+
+      let marks = [
+        {
+          latitude: eligiblepartner.latitude,
+          longitude: eligiblepartner.longitude,
+          done: true,
+        },
+      ];
+
+      for (let final of sortedCoordinates) {
+        marks.push({
+          latitude: final.latitude,
+          longitude: final.longitude,
+          done: false,
+          address: final.address,
+        });
+      }
+
+      marks.push({
+        latitude: user.address.coordinates.latitude,
+        longitude: user.address.coordinates.longitude,
+        done: false,
+        address: user.address,
       });
 
-    console.log("Booked Instant");
-  } catch (e) {
-    console.log(e, "Cannot assign delivery");
+      const newDeliveries = new Delivery({
+        title: user.fullname,
+        amount: total,
+        orderId: oid,
+        pickupaddress: sortedCoordinates[0].address,
+        partner: driver._id,
+        droppingaddress: user.address,
+        phonenumber: user.phone,
+        mode: order.paymentMode || "Cash",
+        marks: marks,
+        earning: earning > 150 ? 150 : earning,
+        where: "customer",
+        data: order.data,
+      });
+      await newDeliveries.save();
+
+      await Deluser.updateOne(
+        { _id: driver._id },
+        { $push: { deliveries: newDeliveries._id } }
+      );
+
+      const msg = {
+        notification: {
+          title: "A new delivery has arrived.",
+          body: `From ${user.fullname} OrderId #${oid}`,
+        },
+        data: {},
+        tokens: [driver.notificationtoken],
+      };
+
+      // await admin
+      //   .messaging()
+      //   .sendEachForMulticast(msg)
+      //   .then((response) => {
+      //     console.log("Successfully sent message");
+      //   })
+      //   .catch((error) => {
+      //     console.log("Error sending message:", error);
+      //   });
+
+      console.log("Booked Instant");
+    } else {
+      console.log("No drivers available at the moment!");
+    }
+  } catch (error) {
+    console.error("Error in delivery creation:", error);
   }
 };
 
@@ -4643,7 +4715,7 @@ exports.finaliseorder = async (req, res) => {
             token: receiver.notificationtoken,
           };
 
-          await admin.messaging().send(notification).catch(console.error);
+          // await admin.messaging().send(notification).catch(console.error);
         }
       };
 
@@ -4657,8 +4729,8 @@ exports.finaliseorder = async (req, res) => {
 
       const flash = await User.findById("655e189fb919c70bf6895485");
       const mainUser = await User.findById("65314cd99db37d9109914f3f");
-      await sendMessage(flash, mainUser, `A new order with orderId ${oid} has arrived.`);
-
+      await sendMessage(flash, mainUser, `A new order with orderId ${ordId} has arrived.`);
+      let today = new Date();
       const formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
 
       for (let sellerId of order.sellerId) {
