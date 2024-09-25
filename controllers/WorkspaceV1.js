@@ -4,9 +4,11 @@ const User = require("../models/userAuth");
 const jwt = require("jsonwebtoken");
 const sharp = require("sharp");
 const Topic = require("../models/topic");
+const Delivery = require("../models/deliveries")
 // const Analytics = require("../models/Analytics");
 const Transaction = require("../models/AdTransactions");
 const Community = require("../models/community");
+const geolib = require("geolib");
 const uuid = require("uuid").v4;
 const Post = require("../models/post");
 require("dotenv").config();
@@ -14,6 +16,7 @@ const Collection = require("../models/Collectionss");
 const sha256 = require("sha256")
 const Font = require("../models/Font");
 const Buttonss = require("../models/buttonScema");
+const Deluser = require("../models/deluser");
 const Product = require("../models/product");
 const moment = require("moment");
 const Order = require("../models/orders");
@@ -67,7 +70,8 @@ const Advertiser = require("../models/Advertiser");
 const { default: axios } = require("axios");
 const WithdrawRequest = require("../models/WithdrawRequest");
 const Conversation = require("../models/conversation");
-const Messge = require("../models/message");
+const Message = require("../models/message");
+const admin = require("../fireb")
 
 const instance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -4114,6 +4118,104 @@ exports.createWithdrawRequest = async (req, res) => {
     console.error(error);
   }
 };
+
+const credeli = async ({ id, storeids, oid, total, instant }) => {
+  try {
+    const user = await User.findById(id);
+    const order = await Order.findOne({ orderId: oid });
+
+    let coordinates = [];
+    for (let storeid of storeids) {
+      const mainstore = await User.findById(storeid);
+      let stores = mainstore.storeAddress[0];
+      const store = {
+        streetaddress: stores.buildingno,
+        state: stores.state,
+        city: stores.city,
+        landmark: stores.landmark,
+        pincode: stores.postal,
+        country: "India",
+        coordinates: stores.coordinates,
+      };
+      // let store = mainstore.storeAddress || mainstore.storeAddress[0];
+
+      coordinates.push({
+        latitude: store?.coordinates?.latitude,
+        longitude: store?.coordinates?.longitude,
+        address: store,
+        id: mainstore._id,
+      });
+    }
+
+    // Sorting locations
+    const sortedCoordinates = geolib.orderByDistance(
+      {
+        latitude: user.address.coordinates.latitude,
+        longitude: user.address.coordinates.longitude,
+      },
+      coordinates
+    );
+
+    // Finding the nearest driver from the last location
+    let partners = [];
+
+    const deliverypartners = await Deluser.findOne({
+      accounttype: "partner",
+      // primaryloc: user.address.city,
+    });
+
+    console.log(sortedCoordinates[0].address, "sortedCoordinates[0].address");
+
+    const newDeliveries = new Delivery({
+      title: user?.fullname,
+      amount: total,
+      orderId: oid,
+      pickupaddress: sortedCoordinates[0].address,
+      partner: deliverypartners?._id,
+      droppingaddress: user?.address,
+      phonenumber: user.phone,
+      mode: order.paymentMode ? order?.paymentMode : "Cash",
+      earning: 20,
+      where: "customer",
+      data: order.data,
+    });
+    await newDeliveries.save();
+
+    // Pushing delivery for driver
+    await Deluser.updateOne(
+      { _id: deliverypartners._id },
+      { $push: { deliveries: newDeliveries._id } }
+    );
+
+    const msg = {
+      notification: {
+        title: "A new delivery has arrived.",
+        body: `From ${user?.fullname} OrderId #${oid}`,
+      },
+      data: {},
+      tokens: [
+        deliverypartners?.notificationtoken,
+        // user?.notificationtoken,
+        // store?.notificationtoken, //person who sells this item
+      ],
+    };
+
+    await admin
+      ?.messaging()
+      ?.sendEachForMulticast(msg)
+      ?.then((response) => {
+        console.log("Successfully sent message");
+      })
+      ?.catch((error) => {
+        console.log("Error sending message:", error);
+      });
+
+    console.log("Booked Instant");
+  } catch (e) {
+    console.log(e, "Cannot assign delivery");
+  }
+};
+
 
 exports.fetchwithdrawrequest = async (req, res) => {
   try {
