@@ -61,55 +61,6 @@ const deluser = new mongoose.Schema({
     otp: { type: Number },
     timing: { type: Number, default: Date.now().toString() },
   },
-  // deliveries: [
-  //   {
-  //     time: { type: String, default: Date.now().toString() },
-  //     amount: { type: String },
-  //     status: { type: String },
-  //     timing: { type: String },
-  //     phonenumber: { type: Number },
-  //     type: { type: String },
-  //     pickupaddress: {
-  //       streetaddress: { type: String },
-  //       state: { type: String },
-  //       city: { type: String },
-  //       landmark: { type: String },
-  //       pincode: { type: Number },
-  //       country: { type: String },
-  //       coordinates: {
-  //         latitude: { type: Number },
-  //         longitude: { type: Number },
-  //         altitude: { type: Number },
-  //         provider: { type: String },
-  //         accuracy: { type: Number },
-  //         speed: { type: Number },
-  //         bearing: { type: Number },
-  //       },
-  //     },
-  //     droppingaddress: {
-  //       streetaddress: { type: String },
-  //       state: { type: String },
-  //       city: { type: String },
-  //       landmark: { type: String },
-  //       pincode: { type: Number },
-  //       country: { type: String },
-  //       coordinates: {
-  //         latitude: { type: Number },
-  //         longitude: { type: Number },
-  //         altitude: { type: Number },
-  //         provider: { type: String },
-  //         accuracy: { type: Number },
-  //         speed: { type: Number },
-  //         bearing: { type: Number },
-  //       },
-  //     },
-  //     name: { type: String },
-  //     id: {
-  //       type: ObjectId,
-  //       ref: "Deliveries",
-  //     },
-  //   },
-  // ],
   deliveries: [{ type: ObjectId, ref: "DeliveriesSchema" }],
   finisheddeliveries: [{ type: ObjectId, ref: "DeliveriesSchema" }], //compeleted deliveries
   achievements: [
@@ -143,7 +94,7 @@ const deluser = new mongoose.Schema({
   },
   primaryloc: {
     type: String,
-  }, // for city
+  },
   bank: {
     accno: { type: String },
     ifsccode: { type: String },

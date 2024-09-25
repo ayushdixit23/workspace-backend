@@ -57,6 +57,8 @@ const {
   createWithdrawRequest,
   fetchdetails,
   fetchwithdrawrequest,
+  createrzporder,
+  finaliseorder,
   // base64upload,
   // getimage,
   // colors,
@@ -190,4 +192,6 @@ router.post("/deleteRecentProsites/:userId/:prositeId", deleteRecentProsites);
 router.post("/createwithdrawRequest/:id", createWithdrawRequest)
 router.get("/fetchwithdrawrequest/:id", fetchwithdrawrequest)
 
+router.post("/createrzporder/:id", createrzporder);
+router.post("/finaliseorder/:id/:ordId", finaliseorder);
 module.exports = router;

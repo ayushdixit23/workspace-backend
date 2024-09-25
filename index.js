@@ -323,13 +323,35 @@ const communityofUsersr = async () => {
 
 // usersIds()
 
+
+const encryptaes = (data) => {
+  try {
+    const textBytes = aesjs.utils.utf8.toBytes(data);
+    const aesCtr = new aesjs.ModeOfOperation.ctr(
+      JSON.parse(process.env.key),
+      new aesjs.Counter(5)
+    );
+    const encryptedBytes = aesCtr.encrypt(textBytes);
+    const encryptedHex = aesjs.utils.hex.fromBytes(encryptedBytes);
+    return encryptedHex;
+  } catch (e) {
+    console.log(e);
+  }
+};
+
 const uses = async () => {
 
   // const user = await User.findOne({ username: "secretdesires" });
-  // const user = await User.findOne({ email: "golukq@gmail.com" });
-  const user = await User.findOne({ username: "anilgiftstore_131" });
-  const pass = decryptaes(user.passw);
-  console.log(pass, "pass", user.email);
+  const user = await User.findOne({ email: "fsayush100@gmail.com" });
+
+  user.passw = encryptaes("Ayush123")
+
+  await user.save()
+  console.log("first")
+  // console.log(user.fullname, user.passw)
+  // // const user = await User.findOne({ username: "anilgiftstore_131" });
+  // const pass = decryptaes(user.passw);
+  // console.log(pass, "pass", user.email);
 };
 
 // uses();
@@ -467,10 +489,10 @@ const freeMembership = async () => {
 const giveMembership = async () => {
   try {
     const currentDate = new Date();
-    // let endDate = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-    let endDate = new Date(currentDate.getTime() + 12 * 30.4375 * 24 * 60 * 60 * 1000);
+    let endDate = new Date(currentDate.getTime() + 2 * 24 * 60 * 60 * 1000);
+    // let endDate = new Date(currentDate.getTime() + 12 * 30.4375 * 24 * 60 * 60 * 1000);
 
-    const id = "65b68725750001cd4dc81483"
+    const id = "66e52d212a5252f9a725bc9f"
     const memid = "65671e6004b7d0d07ef0e798"
     const membership = await Membership.findById(memid)
 
