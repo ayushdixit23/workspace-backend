@@ -4278,8 +4278,6 @@ const credeli = async ({ id, storeids, oid, total, instant }) => {
       //   .catch((error) => {
       //     console.log("Error sending message:", error);
       //   });
-
-      console.log("Booked Instant");
     } else {
       console.log("No drivers available at the moment!");
     }
@@ -4752,14 +4750,14 @@ exports.finaliseorder = async (req, res) => {
         }
       }
 
-      const finalOrders = await Order.find({ orderId: ordId }).populate("collectionss", "category");
+      const finalOrders = await Order.find({ orderId: ordId })
       for (let order of finalOrders) {
         credeli({
           oid: order.orderId,
           id: user._id,
           storeids: sellers,
           total: order.total,
-          instant: order.collectionss.category === "Food & Grocery",
+          instant: order?.collectionss ? order?.collectionss?.category === "Food & Grocery" : false,
         });
       }
 
